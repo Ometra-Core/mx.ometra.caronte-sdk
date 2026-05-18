@@ -9,8 +9,10 @@ use Equidna\Toolkit\Exceptions\UnprocessableEntityException;
 use Illuminate\Support\Arr;
 use Illuminate\Http\Request;
 use Lcobucci\JWT\Configuration;
+use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Hmac\Sha256;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Lcobucci\JWT\Token\Parser;
 use Lcobucci\JWT\Token\Plain;
 use Lcobucci\JWT\Validation\Constraint\IssuedBy;
 use Lcobucci\JWT\Validation\Constraint\SignedWith;
@@ -18,6 +20,7 @@ use Ometra\Caronte\Api\AuthApi;
 use Ometra\Caronte\Exceptions\CaronteApiException;
 use Ometra\Caronte\Facades\Caronte;
 use Ometra\Caronte\Oidc\Base64Url;
+use Ometra\Caronte\Oidc\OidcClient;
 use Ometra\Caronte\Oidc\OidcTokenValidator;
 use Ometra\Caronte\Support\CaronteApplicationToken;
 use RuntimeException;
@@ -32,7 +35,7 @@ final class CaronteUserToken
     public static function validateToken(string $rawToken, bool $skipExchange = false): Plain
     {
         if (static::shouldUseOidc($rawToken)) {
-            return app(OidcTokenValidator::class)->validate($rawToken);
+            return static::validateOidcToken($rawToken, $skipExchange);
         }
 
         $token = static::decodeToken($rawToken);
@@ -40,12 +43,14 @@ final class CaronteUserToken
         static::assertSignatureAndIssuer($token);
         static::assertApplicationClaim($token);
 
-        if (static::isExpired($token)) {
-            if ($skipExchange || static::$exchanging) {
+        if (static::shouldRefresh($token)) {
+            if (static::isExpired($token) && ($skipExchange || static::$exchanging)) {
                 throw new UnprocessableEntityException('Token has expired. Please login again.');
             }
 
-            return static::exchangeToken($rawToken);
+            if (! $skipExchange && ! static::$exchanging) {
+                return static::exchangeToken($rawToken);
+            }
         }
 
         static::assertNotBefore($token);
@@ -84,10 +89,77 @@ final class CaronteUserToken
 
             return $token;
         } catch (CaronteApiException $exception) {
+            if (static::isStillValidExchangeRejection($exception)) {
+                return static::currentLegacyToken($rawToken);
+            }
+
             Caronte::clearToken();
 
             throw new UnprocessableEntityException(
                 'Cannot exchange token: ' . $exception->getMessage(),
+                previous: $exception
+            );
+        } finally {
+            static::$exchanging = false;
+        }
+    }
+
+    private static function validateOidcToken(string $rawToken, bool $skipExchange): Plain
+    {
+        if (! static::oidcShouldRefresh($rawToken)) {
+            return app(OidcTokenValidator::class)->validate($rawToken);
+        }
+
+        if ($skipExchange || static::$exchanging) {
+            return app(OidcTokenValidator::class)->validate($rawToken);
+        }
+
+        return static::refreshOidcToken($rawToken);
+    }
+
+    private static function refreshOidcToken(string $rawToken): Plain
+    {
+        $refreshToken = static::oidcRefreshToken();
+
+        if ($refreshToken === null) {
+            return app(OidcTokenValidator::class)->validate($rawToken);
+        }
+
+        static::$exchanging = true;
+
+        try {
+            $tokens = app(OidcClient::class)->refresh($refreshToken);
+            $idToken = (string) ($tokens['id_token'] ?? '');
+
+            if ($idToken === '') {
+                throw new UnprocessableEntityException('Caronte did not return a refreshed OIDC token.');
+            }
+
+            $token = app(OidcTokenValidator::class)->validate($idToken);
+            Caronte::saveToken($idToken);
+
+            $newRefreshToken = (string) ($tokens['refresh_token'] ?? '');
+
+            if ($newRefreshToken !== '' && app()->bound('session')) {
+                request()->session()->put('caronte.oidc.refresh_token', $newRefreshToken);
+            }
+
+            Caronte::setTokenWasExchanged();
+
+            return $token;
+        } catch (\Throwable $exception) {
+            Caronte::clearToken();
+
+            if (app()->bound('session')) {
+                request()->session()->forget('caronte.oidc.refresh_token');
+            }
+
+            if ($exception instanceof UnprocessableEntityException) {
+                throw $exception;
+            }
+
+            throw new UnprocessableEntityException(
+                'Cannot refresh OIDC token: ' . $exception->getMessage(),
                 previous: $exception
             );
         } finally {
@@ -164,6 +236,17 @@ final class CaronteUserToken
         $header = json_decode((string) Base64Url::decode($parts[0]), true);
 
         return is_array($header) && isset($header['kid']);
+    }
+
+    private static function oidcRefreshToken(): ?string
+    {
+        if (! app()->bound('session')) {
+            return null;
+        }
+
+        $refreshToken = request()->session()->get('caronte.oidc.refresh_token');
+
+        return is_string($refreshToken) && $refreshToken !== '' ? $refreshToken : null;
     }
 
     private static function hasExplicitUserClaims(Plain $token): bool
@@ -308,6 +391,58 @@ final class CaronteUserToken
 
         return $expiresAt instanceof DateTimeImmutable
             && $expiresAt <= new DateTimeImmutable('now', new DateTimeZone('UTC'));
+    }
+
+    private static function shouldRefresh(Plain $token): bool
+    {
+        if (!$token->claims()->has('exp')) {
+            return false;
+        }
+
+        $expiresAt = $token->claims()->get('exp');
+
+        return $expiresAt instanceof DateTimeImmutable
+            && $expiresAt->getTimestamp() <= (
+                (new DateTimeImmutable('now', new DateTimeZone('UTC')))->getTimestamp()
+                + static::refreshLeewaySeconds()
+            );
+    }
+
+    private static function oidcShouldRefresh(string $rawToken): bool
+    {
+        try {
+            $token = (new Parser(new JoseEncoder()))->parse($rawToken);
+        } catch (\Throwable) {
+            return false;
+        }
+
+        return $token instanceof Plain && static::shouldRefresh($token);
+    }
+
+    private static function refreshLeewaySeconds(): int
+    {
+        return max(0, (int) config('caronte.token_refresh_leeway_seconds', 60));
+    }
+
+    private static function isStillValidExchangeRejection(CaronteApiException $exception): bool
+    {
+        return $exception->getCode() === 401
+            && strcasecmp($exception->getMessage(), 'Token is still valid') === 0;
+    }
+
+    private static function currentLegacyToken(string $rawToken): Plain
+    {
+        $token = static::decodeToken($rawToken);
+
+        static::assertSignatureAndIssuer($token);
+        static::assertApplicationClaim($token);
+        static::assertNotBefore($token);
+
+        if (config('caronte.update_local_user')) {
+            Caronte::updateUserData(static::userPayload($token));
+        }
+
+        return $token;
     }
 
     private static function isWebRequest(): bool
