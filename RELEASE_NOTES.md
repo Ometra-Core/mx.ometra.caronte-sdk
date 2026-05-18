@@ -1,4 +1,4 @@
-# Release v4.0.0 "Northstar"
+# Release v4.1.0 "Northstar"
 
 > **Release date:** 2026-05-14
 > **Type:** Major — tenant identity model and persistence semantics update.
@@ -7,7 +7,7 @@
 
 ## Summary
 
-v4.0.0 "Northstar" unifies tenant identity semantics across the SDK by standardizing on `tenant_id` and enforcing tenant-aware composite primary keys for local user persistence. This release closes ambiguity around legacy tenant field naming, strengthens tenant isolation in metadata/user lookups, and aligns token-driven user sync with deterministic tenant-scoped identity.
+v4.1.0 "Northstar" unifies tenant identity semantics across the SDK by standardizing on `tenant_id` and enforcing tenant-aware composite primary keys for local user persistence. This release closes ambiguity around legacy tenant field naming, strengthens tenant isolation in metadata/user lookups, and aligns token-driven user sync with deterministic tenant-scoped identity.
 
 The codename _Northstar_ reflects the release goal: a single, reliable reference point for tenant identity across all persistence and helper paths.
 
