@@ -5,6 +5,7 @@ namespace Tests;
 use DateTimeImmutable;
 use DateTimeZone;
 use Equidna\Toolkit\Providers\EquidnaLaravelToolkitServiceProvider;
+use Inertia\ServiceProvider as InertiaServiceProvider;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Encoding\ChainedFormatter;
 use Lcobucci\JWT\Signer\Hmac\Sha256;
@@ -19,6 +20,7 @@ abstract class TestCase extends Orchestra
     {
         return [
             EquidnaLaravelToolkitServiceProvider::class,
+            InertiaServiceProvider::class,
             CaronteServiceProvider::class,
         ];
     }

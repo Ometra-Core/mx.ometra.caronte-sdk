@@ -56,6 +56,7 @@
     CARONTE_URL=https://your-caronte-server.example.com
     CARONTE_APP_CN=your-app-canonical-name
     CARONTE_APP_SECRET=a-secret-at-least-32-characters-long
+    CARONTE_TOKEN_REFRESH_LEEWAY_SECONDS=60
     ```
 
     Apps that belong to an internal application group can also share user tokens and app-to-app credentials:
@@ -108,6 +109,8 @@
 
 - User JWTs authenticate humans and are checked by `caronte.session`.
 - User JWTs are read from phase-2 top-level claims first: `sub`, `aud`, `jti`, `tenant_id`, `roles`, `metadata`, `app_id`, and `token_audience`. The legacy nested `user` claim remains supported as a fallback.
+- `caronte.session` renews expired or near-expiry user JWTs. JSON/API consumers must replace their local bearer token when a protected response includes `X-User-Token`.
+- In OIDC mode, the SDK uses the session-stored OIDC refresh token to renew the ID token before redirecting users back to login.
 - Logout routes in the SDK may be called with `GET` or `POST`, but the SDK always calls the Caronte server logout endpoint with `POST`.
 - App-to-app credentials use `X-Application-Token` and are checked by `caronte.application`.
 - Application-group credentials use `base64(group_id:application_group_secret)`.

@@ -3,7 +3,8 @@
 namespace Ometra\Caronte\Support;
 
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Throwable;
 
 class CaronteResponse
@@ -13,7 +14,7 @@ class CaronteResponse
         mixed $data = null,
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         return static::respond(200, $message, [], $data, $headers, $forwardUrl);
     }
 
@@ -22,7 +23,7 @@ class CaronteResponse
         array $errors = [],
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         return static::respond(400, $message, $errors, null, $headers, $forwardUrl);
     }
 
@@ -31,7 +32,7 @@ class CaronteResponse
         array $errors = [],
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         return static::respond(401, $message, $errors, null, $headers, $forwardUrl);
     }
 
@@ -40,7 +41,7 @@ class CaronteResponse
         array $errors = [],
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         return static::respond(403, $message, $errors, null, $headers, $forwardUrl);
     }
 
@@ -50,7 +51,7 @@ class CaronteResponse
         mixed $data = null,
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         return static::respond(409, $message, $errors, $data, $headers, $forwardUrl);
     }
 
@@ -59,7 +60,7 @@ class CaronteResponse
         array $errors = [],
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         return static::respond(404, $message, $errors, null, $headers, $forwardUrl);
     }
 
@@ -68,7 +69,7 @@ class CaronteResponse
         array $errors = [],
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         return static::respond(422, $message, $errors, null, $headers, $forwardUrl);
     }
 
@@ -77,7 +78,7 @@ class CaronteResponse
         array $errors = [],
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         return static::respond(500, $message, $errors, null, $headers, $forwardUrl);
     }
 
@@ -86,7 +87,7 @@ class CaronteResponse
         array $errors = [],
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         if ($errors === [] && method_exists($exception, 'errors')) {
             $candidate = $exception->errors();
 
@@ -119,7 +120,7 @@ class CaronteResponse
         mixed $data = null,
         array $headers = [],
         ?string $forwardUrl = null
-    ): JsonResponse|RedirectResponse {
+    ): SymfonyResponse {
         if (static::wantsJson()) {
             return static::json($status, $message, $errors, $data, $headers);
         }
@@ -159,10 +160,14 @@ class CaronteResponse
         mixed $data = null,
         array $headers = [],
         ?string $forwardUrl = null
-    ): RedirectResponse {
+    ): SymfonyResponse {
         $sanitizedMessage = static::sanitizeMessage($status, $message);
         $sanitizedErrors = static::sanitizeErrors($status, $errors);
         $destination = $forwardUrl ?: url()->previous();
+
+        if ($forwardUrl !== null && static::isInertiaRequest()) {
+            return Inertia::location($destination);
+        }
 
         $response = redirect()->to($destination, 302, static::stringHeaders($headers))
             ->with([
@@ -206,6 +211,11 @@ class CaronteResponse
         return $request->expectsJson()
             || $request->wantsJson()
             || $request->is('api/*');
+    }
+
+    private static function isInertiaRequest(): bool
+    {
+        return app()->bound('request') && request()->headers->get('X-Inertia') === 'true';
     }
 
     private static function sanitizeErrors(int $status, array $errors): array
