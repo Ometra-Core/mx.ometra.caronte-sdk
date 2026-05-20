@@ -244,15 +244,27 @@ Request body:
 
 The package does not register concrete API URIs for these middleware aliases, but host applications use them to protect their own API routes:
 
-- `caronte.application[:tenant_required]` validates `X-Application-Token`
-- `caronte.app-token` validates bearer application access JWT
-- `caronte.app-permissions:<permission>` checks app-token permissions
+- `caronte.application[:tenant_required]` validates short-lived `X-Application-Token` JWTs; grouped calls also validate `X-Group-Token`
+- `caronte.protected-api-token` validates bearer Protected API Access Tokens issued by Caronte server/admin
+- `caronte.protected-api-scopes:<scope>` checks protected API scopes
+- `caronte.app-token` and `caronte.app-permissions:<permission>` are deprecated compatibility aliases and must be removed in the next major version
 
 Example host route:
 
 ```php
 Route::middleware([
-        'caronte.app-token',
-        'caronte.app-permissions:invoices.read',
+        'caronte.protected-api-token',
+        'caronte.protected-api-scopes:invoices.read',
 ])->get('/api/invoices', InvoiceController::class);
 ```
+
+External consumers call this route with:
+
+```http
+Authorization: Bearer <protected-api-access-token>
+Accept: application/json
+```
+
+Caronte server/admin is responsible for issuing Protected API Access Tokens.
+The host SDK validates them locally and does not expose a public production API
+for third-party token generation.

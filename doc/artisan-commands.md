@@ -42,34 +42,40 @@ php artisan caronte:roles:sync
 
 ---
 
-## caronte:permissions:sync
+## caronte:protected-api:scopes:sync
 
-**Class:** `Permissions\SyncPermissions`
+**Class:** `ProtectedApi\SyncScopes` (target name)
 
-Reads API permissions defined in `config/caronte.php` under the `permissions` key and pushes them to the Caronte server. These permissions are used when tenant admins generate `ApplicationTokens` for external apps that consume this application's API.
+Reads protected API scopes defined in `config/caronte.php` under `protected_api.scopes` and pushes them to the Caronte server. Caronte server/admin uses these scopes when issuing Protected API Access Tokens for external clients that consume this host application's API.
 
 ```bash
-# Preview normalized permissions
-php artisan caronte:permissions:sync --dry-run
+# Preview normalized scopes
+php artisan caronte:protected-api:scopes:sync --dry-run
 
 # Apply
-php artisan caronte:permissions:sync
+php artisan caronte:protected-api:scopes:sync
 ```
 
 Example config:
 
 ```php
-'permissions' => [
-    'invoices.read' => 'Read invoices',
-    'invoices.write' => 'Write invoices',
+'protected_api' => [
+    'scopes' => [
+        'invoices.read' => 'Read invoices',
+        'invoices.write' => 'Write invoices',
+    ],
 ],
 ```
 
 **Options:**
 
-| Option      | Description                                 |
-| ----------- | ------------------------------------------- |
-| `--dry-run` | Show normalized permissions without pushing |
+| Option      | Description                           |
+| ----------- | ------------------------------------- |
+| `--dry-run` | Show normalized scopes without pushing |
+
+### Deprecated compatibility command
+
+`caronte:permissions:sync` remains available only as a compatibility alias during this migration window. Do not use it for new integrations. It must be removed in the next major version together with the `permissions` payload/claim terminology.
 
 ---
 

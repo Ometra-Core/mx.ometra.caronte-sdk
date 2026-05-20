@@ -44,10 +44,12 @@ CARONTE_APP_SECRET=a-strong-secret-at-least-32-chars
 | ---------------------------------- | ----------------------- | ---------------------------------------------------------- |
 | `CARONTE_URL`                      | Yes                     | Base URL of the Caronte authentication server              |
 | `CARONTE_APP_CN`                   | Yes                     | Canonical name that identifies this application in Caronte |
-| `CARONTE_APP_SECRET`               | Yes                     | Shared secret for application token generation             |
+| `CARONTE_APP_SECRET`               | Yes                     | Signing secret for short-lived application JWTs            |
 | `CARONTE_ISSUER_ID`                | No                      | Overrides JWT issuer claim validation                      |
 | `CARONTE_APPLICATION_GROUP_ID`     | No                      | Application group id for grouped user/app tokens           |
-| `CARONTE_APPLICATION_GROUP_SECRET` | No                      | Group secret for grouped user/app tokens                   |
+| `CARONTE_APPLICATION_GROUP_SECRET` | No                      | Signing secret for short-lived group JWTs                  |
+| `CARONTE_APPLICATION_TOKEN_TTL_SECONDS` | No                 | TTL for `X-Application-Token` JWTs, default `300`          |
+| `CARONTE_APPLICATION_GROUP_TOKEN_TTL_SECONDS` | No           | TTL for `X-Group-Token` JWTs, default `300`                |
 | `CARONTE_AUTH_MODE`                | No                      | `legacy`, `oidc`, or `dual`                                |
 | `CARONTE_TENANCY_MODE`             | No                      | `multi` (default) or `single`                              |
 | `CARONTE_TENANT_ID`                | Required in single mode | Tenant id enforced when `CARONTE_TENANCY_MODE=single`      |
@@ -79,6 +81,12 @@ return [
     'roles' => [
         'admin'  => 'Administrator',
         'editor' => 'Content editor',
+    ],
+
+    'protected_api' => [
+        'scopes' => [
+            'invoices.read' => 'Read invoices through this application API',
+        ],
     ],
 
     'management' => [
@@ -140,15 +148,17 @@ When `caronte.management.use_inertia=true`, publish `caronte:inertia` and compil
 
 ## 5. Middleware
 
-Three aliases are registered automatically by `CaronteServiceProvider`:
+These aliases are registered automatically by `CaronteServiceProvider`:
 
-| Alias                     | Class                                  | Purpose                                                 |
-| ------------------------- | -------------------------------------- | ------------------------------------------------------- |
-| `caronte.session`         | `ValidateUserToken`                    | Validates and auto-renews the user JWT                  |
-| `caronte.roles`           | `ValidateUserRoles`                    | Checks the user has the specified roles                 |
-| `caronte.application`     | `ResolveApplicationContext`            | Validates incoming application tokens                   |
-| `caronte.app-token`       | `ValidateApplicationAccessToken`       | Validates tenant-bound `ApplicationToken` JWTs          |
-| `caronte.app-permissions` | `ValidateApplicationAccessPermissions` | Checks permissions on validated `ApplicationToken` JWTs |
+| Alias                                    | Purpose                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------ |
+| `caronte.session`                        | Validates and auto-renews the user JWT                                   |
+| `caronte.roles`                          | Checks the user has the specified roles                                  |
+| `caronte.application`                    | Validates incoming app-to-app auth JWT headers                           |
+| `caronte.protected-api-token`            | Validates tenant-bound Protected API Access Tokens                       |
+| `caronte.protected-api-scopes`           | Checks scopes on a validated Protected API Access Token                  |
+| `caronte.app-token`                      | Deprecated alias for `caronte.protected-api-token`                       |
+| `caronte.app-permissions`                | Deprecated alias for `caronte.protected-api-scopes`                      |
 
 ```php
 // Auth guard
@@ -162,7 +172,15 @@ Route::middleware('caronte.application')->group(function () { ... });
 
 // Service-to-service with mandatory tenant header
 Route::middleware('caronte.application:tenant_required')->group(function () { ... });
+
+// External API consumers
+Route::middleware([
+    'caronte.protected-api-token',
+    'caronte.protected-api-scopes:invoices.read',
+])->group(function () { ... });
 ```
+
+For exact headers and token responsibilities, see [Client Handover](client-handover.md).
 
 ---
 
@@ -203,6 +221,7 @@ php artisan caronte:roles:sync
 - [ ] `CARONTE_URL`, `CARONTE_APP_CN`, `CARONTE_APP_SECRET` present in `.env`
 - [ ] `php artisan migrate` completed
 - [ ] `php artisan caronte:roles:sync` completed
+- [ ] `php artisan caronte:protected-api:scopes:sync` completed if this app exposes protected APIs to external clients
 - [ ] Management UI accessible at `/{management.route_prefix}`
 - [ ] If using Inertia management UI, `caronte:inertia` assets are published and compiled by the host app
 - [ ] At least one user linked to `root` or a configured management access role via `caronte:users:roles:sync`

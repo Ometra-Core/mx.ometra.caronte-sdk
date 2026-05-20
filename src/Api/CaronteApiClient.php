@@ -29,9 +29,7 @@ final class CaronteApiClient extends CaronteHttpClient
         array $query = [],
         ?string $userToken = null,
     ): array {
-        $headers = [
-            'X-Application-Token' => $this->makeApplicationToken(),
-        ];
+        $headers = $this->applicationHeaders();
 
         if (is_string($userToken) && $userToken !== '') {
             $headers['X-User-Token'] = $userToken;

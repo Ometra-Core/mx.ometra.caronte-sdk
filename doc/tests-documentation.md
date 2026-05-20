@@ -15,18 +15,18 @@ npm run typecheck
 | Area                                                                                  | Test file                           |
 | ------------------------------------------------------------------------------------- | ----------------------------------- |
 | Auth pages, login, logout, password recovery, 2FA                                     | `AuthContractTest`                  |
-| Commands for roles, permissions, and users                                            | `CommandBehaviorTest`               |
+| Commands for roles, protected API scopes, and users                                  | `CommandBehaviorTest`               |
 | Config validation for roles and management access                                     | `ConfigurationValidationTest`       |
 | Management UI routes                                                                  | `ManagementUiTest`                  |
 | Resolved tenancy, Inertia, and helper contracts                                       | `ResolvedOpenQuestionsTest`         |
 | Disabled management routes                                                            | `ManagementUiWhenDisabledTest`      |
-| Middleware: user session, roles, app token, group app token, application access token | `MiddlewareBehaviorTest`            |
+| Middleware: user session, roles, app auth token, group auth token, protected API access token | `MiddlewareBehaviorTest`            |
 | Route registration                                                                    | `RouteRegistrationTest`             |
 | Disabled route registration                                                           | `RouteRegistrationWhenDisabledTest` |
 
 ## Important Contracts Covered
 
-- Group app credentials are accepted by `caronte.application`.
+- JWT app credentials and JWT group credentials are accepted by `caronte.application`.
 - Group user JWTs validate against group id and group secret.
 - Expired user JWTs trigger exchange.
 - Phase-2 user JWT claims are preferred and tokens without the legacy `user` claim are accepted.
@@ -36,15 +36,17 @@ npm run typecheck
 - Management dashboard supports Inertia responses when enabled.
 - `CaronteUserHelper` reads local cache name, email, and metadata values.
 - Role middleware rejects missing roles.
-- `caronte.app-token` accepts valid `ApplicationTokens`.
-- `caronte.app-permissions` rejects missing permissions.
-- `caronte:permissions:sync` sends the configured API permission catalog to Caronte.
+- `caronte.protected-api-token` accepts valid Protected API Access Tokens.
+- `caronte.protected-api-scopes` rejects missing scopes.
+- `caronte:protected-api:scopes:sync` sends the configured protected API scope catalog to Caronte.
+- Legacy `caronte.app-token`, `caronte.app-permissions`, `caronte:permissions:sync`, and `permissions` terminology remains covered only as deprecated compatibility until the next major version.
 
 ## Test Helpers
 
 `tests/TestCase.php` provides:
 
 - `makeToken()` for user JWTs.
-- `makeApplicationAccessToken()` for `ApplicationToken` JWTs.
+- `makeProtectedApiAccessToken()` for Protected API Access Token fixtures using `protected_api_access` and `scopes`.
+- `makeApplicationAccessToken()` only for legacy compatibility fixtures using `application_token` and `permissions`.
 
 Both helpers sign tokens with the configured test secrets.
