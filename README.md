@@ -11,7 +11,7 @@
 - JWT user authentication (login, logout, 2FA, password recovery)
 - Automatic token validation and renewal on every request
 - Role-based access control tied to a central role registry
-- Application API permission declaration and application-token middleware
+- Protected API scope declaration and protected API access middleware
 - A ready-to-use management UI for users and roles
 - A server-side provisioning wrapper for Caronte tenant provisioning
 - Server-to-server inter-app communication via application tokens
@@ -84,23 +84,28 @@
     php artisan caronte:roles:sync
     ```
 
-7. **Declare API permissions** if external applications will consume your API:
+7. **Declare protected API scopes** if external applications will consume your API:
 
     ```php
-    'permissions' => [
-        'invoices.read' => 'Read invoices',
-        'invoices.write' => 'Write invoices',
+    'protected_api' => [
+        'scopes' => [
+            'invoices.read' => 'Read invoices',
+            'invoices.write' => 'Write invoices',
+        ],
     ],
     ```
 
     ```bash
-    php artisan caronte:permissions:sync
+    php artisan caronte:protected-api:scopes:sync
     ```
 
-8. **Protect external API routes** with application-token middleware:
+8. **Protect external API routes** with Protected API Access Token middleware:
 
     ```php
-    Route::middleware(['caronte.app-token', 'caronte.app-permissions:invoices.read'])->get(...);
+    Route::middleware([
+        'caronte.protected-api-token',
+        'caronte.protected-api-scopes:invoices.read',
+    ])->get(...);
     ```
 
 9. **Visit** the app-local management UI at `/caronte/management` (default).
@@ -109,12 +114,15 @@
 
 - User JWTs authenticate humans and are checked by `caronte.session`.
 - User JWTs are read from phase-2 top-level claims first: `sub`, `aud`, `jti`, `tenant_id`, `roles`, `metadata`, `app_id`, and `token_audience`. The legacy nested `user` claim remains supported as a fallback.
+- `caronte.session` reads web user JWTs from session and API user JWTs from `Authorization: Bearer <user-jwt>`.
 - `caronte.session` renews expired or near-expiry user JWTs. JSON/API consumers must replace their local bearer token when a protected response includes `X-User-Token`.
+- `X-User-Token` is used for SDK forwarding and refreshed-token responses; it is not the primary incoming auth header for host API routes.
 - In OIDC mode, the SDK uses the session-stored OIDC refresh token to renew the ID token before redirecting users back to login.
 - Logout routes in the SDK may be called with `GET` or `POST`, but the SDK always calls the Caronte server logout endpoint with `POST`.
-- App-to-app credentials use `X-Application-Token` and are checked by `caronte.application`.
-- Application-group credentials use `base64(group_id:application_group_secret)`.
-- `ApplicationTokens` authenticate external applications consuming this app's API and are checked by `caronte.app-token` plus `caronte.app-permissions:*`.
+- App-to-app credentials use a short-lived JWT in `X-Application-Token` and are checked by `caronte.application`.
+- Application-group credentials use a short-lived JWT in `X-Group-Token`; grouped calls also include `X-Application-Token`, and the group JWT carries source app traceability.
+- Protected API Access Tokens authenticate external clients consuming this host app's API and are checked by `caronte.protected-api-token` plus `caronte.protected-api-scopes:*`.
+- Legacy protected API names such as `CaronteApplicationAccess*`, `caronte.app-token`, `caronte.app-permissions`, `permissions`, and `caronte:permissions:sync` are deprecated compatibility names and must be removed in the next major version.
 
 See [Deployment Instructions](doc/deployment-instructions.md) for the full setup guide.
 
@@ -123,6 +131,8 @@ See [Deployment Instructions](doc/deployment-instructions.md) for the full setup
 ## Documentation Index
 
 - [Deployment Instructions](doc/deployment-instructions.md)
+- [Client Handover](doc/client-handover.md)
+- [Admin Handover](doc/admin-handover.md)
 - [API Documentation](doc/api-documentation.md)
 - [Routes Documentation](doc/routes-documentation.md)
 - [Artisan Commands](doc/artisan-commands.md)

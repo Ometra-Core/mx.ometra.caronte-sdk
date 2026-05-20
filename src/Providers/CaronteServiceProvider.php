@@ -11,6 +11,7 @@ use Ometra\Caronte\Api\CaronteApiClient;
 use Ometra\Caronte\Caronte;
 use Ometra\Caronte\Console\Commands\ManagementCaronte;
 use Ometra\Caronte\Console\Commands\Permissions\SyncPermissions;
+use Ometra\Caronte\Console\Commands\ProtectedApi\SyncScopes;
 use Ometra\Caronte\Console\Commands\Roles\SyncRoles;
 use Ometra\Caronte\Console\Commands\Tenants\ListTenants;
 use Ometra\Caronte\Console\Commands\Tenants\ShowTenant;
@@ -26,6 +27,8 @@ use Ometra\Caronte\Helpers\PermissionHelper;
 use Ometra\Caronte\Http\Middleware\ResolveApplicationContext;
 use Ometra\Caronte\Http\Middleware\ValidateApplicationAccessPermissions;
 use Ometra\Caronte\Http\Middleware\ValidateApplicationAccessToken;
+use Ometra\Caronte\Http\Middleware\ValidateProtectedApiAccessToken;
+use Ometra\Caronte\Http\Middleware\ValidateProtectedApiScopes;
 use Ometra\Caronte\Http\Middleware\ValidateUserRoles;
 use Ometra\Caronte\Http\Middleware\ValidateUserToken;
 use Ometra\Caronte\Notifications\PasswordRecoverySender;
@@ -91,6 +94,8 @@ class CaronteServiceProvider extends ServiceProvider
         $router->aliasMiddleware('caronte.session', ValidateUserToken::class);
         $router->aliasMiddleware('caronte.roles', ValidateUserRoles::class);
         $router->aliasMiddleware('caronte.application', ResolveApplicationContext::class);
+        $router->aliasMiddleware('caronte.protected-api-token', ValidateProtectedApiAccessToken::class);
+        $router->aliasMiddleware('caronte.protected-api-scopes', ValidateProtectedApiScopes::class);
         $router->aliasMiddleware('caronte.app-token', ValidateApplicationAccessToken::class);
         $router->aliasMiddleware('caronte.app-permissions', ValidateApplicationAccessPermissions::class);
 
@@ -139,6 +144,7 @@ class CaronteServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ManagementCaronte::class,
+                SyncScopes::class,
                 SyncPermissions::class,
                 SyncRoles::class,
                 ListTenants::class,
@@ -199,6 +205,14 @@ class CaronteServiceProvider extends ServiceProvider
             throw new InvalidArgumentException(
                 'Caronte: CARONTE_URL must use HTTPS unless CARONTE_ALLOW_HTTP_REQUESTS=true.'
             );
+        }
+
+        foreach (['caronte.application_token_ttl_seconds', 'caronte.application_group_token_ttl_seconds'] as $key) {
+            if ((int) config($key, 300) < 1) {
+                throw new InvalidArgumentException(
+                    sprintf('Caronte: %s must be greater than zero.', $key)
+                );
+            }
         }
 
         CaronteTenancy::validateConfig();

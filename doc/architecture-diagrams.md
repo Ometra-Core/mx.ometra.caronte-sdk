@@ -137,10 +137,13 @@ sequenceDiagram
     participant T as Service B (target)
 
     S->>S: CaronteApplicationToken::make()
-    Note right of S: base64( sha1(app_cn) : app_secret )
-    S->>T: HTTP request + X-Application-Token header
+    Note right of S: short-lived JWT signed with app secret
+    opt Application group configured
+        S->>S: CaronteApplicationToken::makeGroup()
+    end
+    S->>T: HTTP request + X-Application-Token (+ X-Group-Token)
     T->>T: ResolveApplicationContext middleware
-    T->>T: CaronteApplicationToken::matches(token)
+    T->>T: Validate app/group JWT headers
     alt Valid
         T->>T: Bind CaronteApplicationContext to IoC
         T-->>S: 200 OK
@@ -158,11 +161,15 @@ src/
 ├── Caronte.php                  # Main facade class (user token management)
 ├── CaronteServiceClient.php     # Inter-service HTTP client (public API)
 ├── CaronteUserToken.php         # JWT parse/validate/exchange
+├── CaronteProtectedApiAccessToken.php # Protected API bearer token validation
+├── CaronteApplicationAccessToken.php  # Deprecated compatibility alias
 ├── Api/
 │   ├── AuthApi.php              # Static proxy — auth endpoints
 │   ├── CaronteApiClient.php     # HTTP client for Caronte server
 │   ├── ClientApi.php            # Static proxy — user endpoints
-│   └── RoleApi.php              # Static proxy — role endpoints
+│   ├── RoleApi.php              # Static proxy — role endpoints
+│   ├── ScopeApi.php             # Static proxy — protected API scope endpoints
+│   └── PermissionApi.php        # Deprecated compatibility alias
 ├── Console/Commands/            # Artisan commands
 ├── Contracts/                   # SendsTwoFactorChallenge, SendsPasswordRecovery
 ├── Facades/                     # Caronte facade alias
@@ -171,7 +178,7 @@ src/
 │   └── PermissionHelper.php
 ├── Http/
 │   ├── Controllers/             # Auth, Management, User, Role controllers
-│   └── Middleware/              # ValidateUserToken, ValidateUserRoles, ResolveApplicationContext
+│   └── Middleware/              # Session, roles, app auth, protected API token/scopes
 ├── Mail/                        # Mailable classes for host-delivery mode
 ├── Models/                      # CaronteUser, CaronteUserMetadata
 ├── Notifications/               # Default sender implementations
@@ -179,11 +186,13 @@ src/
 │   └── CaronteServiceProvider.php
 └── Support/
     ├── CaronteApplicationContext.php  # DTO bound by ResolveApplicationContext
-    ├── CaronteApplicationAccessContext.php  # DTO bound by ValidateApplicationAccessToken
+    ├── CaronteProtectedApiAccessContext.php # DTO bound by ValidateProtectedApiAccessToken
+    ├── CaronteApplicationAccessContext.php  # Deprecated compatibility alias
     ├── CaronteTenancy.php              # Tenancy mode validation and tenant binding
     ├── CaronteApplicationToken.php    # App token generation & validation
     ├── CaronteHttpClient.php          # Abstract HTTP base (template method)
     ├── CaronteResponse.php            # Normalised response DTO
     ├── ConfiguredRoles.php            # Reads config('caronte.roles')
-    └── ConfiguredPermissions.php      # Reads config('caronte.permissions')
+    ├── ConfiguredScopes.php           # Reads config('caronte.protected_api.scopes')
+    └── ConfiguredPermissions.php      # Deprecated compatibility alias
 ```

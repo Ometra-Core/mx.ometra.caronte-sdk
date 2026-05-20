@@ -96,7 +96,9 @@ The package also registers middleware aliases that can be used on host app route
 | -------------------------------------- | ------------------------------------------------------------- |
 | `caronte.session`                      | Validate user JWT from session or bearer token                |
 | `caronte.roles:<role>`                 | Require user role; `root` is accepted                         |
-| `caronte.application`                  | Validate incoming `X-Application-Token` for app-to-app calls  |
+| `caronte.application`                  | Validate incoming app-to-app JWT headers                      |
 | `caronte.application:tenant_required`  | Same as above, but requires `X-Tenant-Id`                     |
-| `caronte.app-token`                    | Validate an `ApplicationToken` JWT for external API consumers |
-| `caronte.app-permissions:<permission>` | Require an application-token permission                       |
+| `caronte.protected-api-token`          | Validate a Protected API Access Token from `Authorization`    |
+| `caronte.protected-api-scopes:<scope>` | Require a protected API scope                                 |
+| `caronte.app-token`                    | Deprecated alias for `caronte.protected-api-token`            |
+| `caronte.app-permissions:<permission>` | Deprecated alias for `caronte.protected-api-scopes:<scope>`   |

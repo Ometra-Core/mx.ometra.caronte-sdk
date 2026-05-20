@@ -24,54 +24,61 @@ Roles are user-facing authorization values.
 
 `root` always satisfies role checks.
 
-## Application API Permissions
+## Protected API Scopes
 
-Permissions are not user roles. They describe operations an external application may perform against this application's API.
+Protected API scopes are not user roles. They describe operations an external client may perform against this host application's API.
 
-1. Define permissions in `config/caronte.php`.
-2. Run `php artisan caronte:permissions:sync`.
-3. A tenant admin uses Caronte Admin to generate an `ApplicationToken` with a subset of those permissions.
-4. This application protects API routes with `caronte.app-token` and `caronte.app-permissions:<permission>`.
+1. Define scopes in `config/caronte.php` under `protected_api.scopes`.
+2. Run `php artisan caronte:protected-api:scopes:sync`.
+3. Caronte server/admin issues a Protected API Access Token for a target app, tenant, and approved scope list.
+4. This application protects API routes with `caronte.protected-api-token` and `caronte.protected-api-scopes:<scope>`.
 
 Example:
 
 ```php
-'permissions' => [
-    'invoices.read' => 'Read invoices',
-    'invoices.write' => 'Write invoices',
+'protected_api' => [
+    'scopes' => [
+        'invoices.read' => 'Read invoices',
+        'invoices.write' => 'Write invoices',
+    ],
 ],
 ```
 
 ```php
 Route::middleware([
-    'caronte.app-token',
-    'caronte.app-permissions:invoices.read',
+    'caronte.protected-api-token',
+    'caronte.protected-api-scopes:invoices.read',
 ])->get('/api/invoices', InvoiceController::class);
 ```
 
-## Application Tokens
+## Protected API Access Tokens
 
-`ApplicationTokens` are JWT credentials created in Caronte Admin for a tenant and target app. They are intended for external applications consuming this app's API.
+Protected API Access Tokens are JWT credentials issued by Caronte server/admin for a tenant, target host app, and approved scope list. External clients receive these tokens from Caronte and call this host app with `Authorization: Bearer <protected-api-access-token>`.
+
+The host SDK validates Protected API Access Tokens. It does not issue production tokens for third-party clients.
 
 Validation rules:
 
-- `token_audience` must be `application_token`.
+- `token_audience` must be `protected_api_access`.
 - `app_id` must match this app.
+- `aud` must be this app id.
 - Signature is verified with `CARONTE_APP_SECRET`.
 - `tenant_id` must be present.
-- `permissions` must be an array.
+- `scopes` must be an array.
 - `exp`, `nbf`, and `iat` must be valid.
 
-After `caronte.app-token` passes, `CaronteApplicationAccessContext` is available from the container.
+After `caronte.protected-api-token` passes, `CaronteProtectedApiAccessContext` is available from the container.
+
+Deprecated compatibility names such as `CaronteApplicationAccess*`, `permissions`, `caronte.app-token`, and `caronte.app-permissions` remain only for this migration window and must be removed in the next major version.
 
 ## App-To-App Credentials
 
 `caronte.application` validates `X-Application-Token` for service-to-service calls.
 
-- Individual app token: `base64(app_id:app_secret)`
-- Group token: `base64(group_id:application_group_secret)`
+- Individual app token: short-lived JWT signed with `CARONTE_APP_SECRET`.
+- Group token: short-lived JWT in `X-Group-Token` signed with `CARONTE_APPLICATION_GROUP_SECRET`.
 
-Group credentials only identify group membership for app-to-app calls. They do not create permissions by themselves.
+Grouped app-to-app calls send both `X-Application-Token` and `X-Group-Token`. The group JWT identifies group membership and source app traceability; it does not grant Protected API scopes by itself.
 
 ## Local User Synchronization
 

@@ -11,6 +11,8 @@ return [
     'app_secret' => env('CARONTE_APP_SECRET', ''),
     'application_group_id' => env('CARONTE_APPLICATION_GROUP_ID', ''),
     'application_group_secret' => env('CARONTE_APPLICATION_GROUP_SECRET', ''),
+    'application_token_ttl_seconds' => (int) env('CARONTE_APPLICATION_TOKEN_TTL_SECONDS', 300),
+    'application_group_token_ttl_seconds' => (int) env('CARONTE_APPLICATION_GROUP_TOKEN_TTL_SECONDS', 300),
 
     /*
     |--------------------------------------------------------------------------
@@ -101,8 +103,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Application API Permissions
+    | Protected API Scopes
     |--------------------------------------------------------------------------
+    */
+    'protected_api' => [
+        'scopes' => [
+            // 'invoices.read' => 'Read invoices through this application API',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Deprecated Protected API Permissions Alias
+    |--------------------------------------------------------------------------
+    |
+    | Use protected_api.scopes for new integrations. This compatibility key
+    | will be removed in the next major version.
     */
     'permissions' => [
         // 'invoices.read' => 'Read invoices through this application API',

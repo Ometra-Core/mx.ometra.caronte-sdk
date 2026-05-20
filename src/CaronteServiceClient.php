@@ -15,7 +15,8 @@ use Ometra\Caronte\Support\CaronteHttpClient;
  *
  * When calling a service with different Caronte credentials, provide its
  * `appCn` and `appSecret` so the token is accepted by that service's
- * ResolveApplicationContext middleware.
+ * ResolveApplicationContext middleware. The secret is used only to sign the
+ * outgoing JWT and is never placed directly in the request headers.
  *
  * Usage:
  *   // Same-credentials service:
@@ -44,7 +45,7 @@ class CaronteServiceClient extends CaronteHttpClient
     protected function makeApplicationToken(): string
     {
         if ($this->appCn !== null && $this->appSecret !== null) {
-            return base64_encode(sha1(strtolower(trim($this->appCn))) . ':' . $this->appSecret);
+            return CaronteApplicationToken::makeFor($this->appCn, $this->appSecret);
         }
 
         return CaronteApplicationToken::make();

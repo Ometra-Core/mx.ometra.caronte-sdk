@@ -29,9 +29,7 @@ abstract class CaronteHttpClient
         array $payload = [],
         array $query = [],
     ): array {
-        $headers = [
-            'X-Application-Token' => $this->makeApplicationToken(),
-        ];
+        $headers = $this->applicationHeaders();
 
         $tenantId = $this->tenantContextId();
 
@@ -55,8 +53,7 @@ abstract class CaronteHttpClient
         array $payload = [],
         array $query = [],
     ): array {
-        $headers = [
-            'X-Application-Token' => $this->makeApplicationToken(),
+        $headers = $this->applicationHeaders() + [
             'X-User-Token' => Caronte::getToken()->toString(),
         ];
 
@@ -78,6 +75,31 @@ abstract class CaronteHttpClient
      * Generate the X-Application-Token header value.
      */
     abstract protected function makeApplicationToken(): string;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function applicationHeaders(): array
+    {
+        $headers = [
+            'X-Application-Token' => $this->makeApplicationToken(),
+        ];
+
+        $groupToken = $this->makeGroupToken();
+
+        if (is_string($groupToken) && $groupToken !== '') {
+            $headers['X-Group-Token'] = $groupToken;
+        }
+
+        return $headers;
+    }
+
+    protected function makeGroupToken(): ?string
+    {
+        return CaronteApplicationToken::hasGroup()
+            ? CaronteApplicationToken::makeGroup()
+            : null;
+    }
 
     private function tenantContextId(): ?string
     {

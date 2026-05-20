@@ -49,9 +49,36 @@ class AuthContractTest extends TestCase
 
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/auth/login'
-                && $request->hasHeader('X-Application-Token', CaronteApplicationToken::make())
+                && $this->hasValidApplicationTokenHeader($request)
                 && $request['email'] === 'root@example.com'
                 && $request['password'] === 'Password123!';
+        });
+    }
+
+    public function test_login_sends_application_and_group_tokens_when_group_is_configured(): void
+    {
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $token = $this->makeToken();
+
+        Http::fake([
+            'https://caronte.test/api/auth/login' => Http::response([
+                'status' => 200,
+                'message' => 'Token generated',
+                'data' => ['token' => $token],
+            ], 200),
+        ]);
+
+        $this->post('/login', [
+            'email' => 'root@example.com',
+            'password' => 'Password123!',
+        ])->assertRedirect('/');
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://caronte.test/api/auth/login'
+                && $this->hasValidApplicationTokenHeader($request)
+                && $this->hasValidGroupTokenHeader($request);
         });
     }
 
@@ -489,7 +516,7 @@ class AuthContractTest extends TestCase
 
         Http::assertSent(function ($request) use ($token): bool {
             return $request->url() === 'https://caronte.test/api/auth/current-user'
-                && $request->hasHeader('X-Application-Token', CaronteApplicationToken::make())
+                && $this->hasValidApplicationTokenHeader($request)
                 && $request->hasHeader('X-User-Token', $token);
         });
     }
@@ -537,7 +564,7 @@ class AuthContractTest extends TestCase
 
         Http::assertSent(function ($request) use ($token): bool {
             return $request->url() === 'https://caronte.test/api/auth/current-user'
-                && $request->hasHeader('X-Application-Token', CaronteApplicationToken::make())
+                && $this->hasValidApplicationTokenHeader($request)
                 && $request->hasHeader('X-User-Token', $token)
                 && $request->hasHeader('X-Tenant-Id', 'mobig');
         });
@@ -560,7 +587,7 @@ class AuthContractTest extends TestCase
         Http::assertSent(function ($request) use ($token): bool {
             return $request->url() === 'https://caronte.test/api/auth/logout'
                 && $request->method() === 'POST'
-                && $request->hasHeader('X-Application-Token', CaronteApplicationToken::make())
+                && $this->hasValidApplicationTokenHeader($request)
                 && $request->hasHeader('X-User-Token', $token);
         });
     }
@@ -591,7 +618,7 @@ class AuthContractTest extends TestCase
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/provisioning/tenants'
                 && $request->method() === 'POST'
-                && $request->hasHeader('X-Application-Token', CaronteApplicationToken::make())
+                && $this->hasValidApplicationTokenHeader($request)
                 && $request['external_id'] === 'external-account-1'
                 && $request['tenant']['name'] === 'External Account'
                 && $request['admin']['email'] === 'owner@example.com';

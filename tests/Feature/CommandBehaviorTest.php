@@ -44,37 +44,90 @@ class CommandBehaviorTest extends TestCase
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/applications/roles'
                 && $request->method() === 'PUT'
-                && $request->hasHeader('X-Application-Token', CaronteApplicationToken::make())
+                && $this->hasValidApplicationTokenHeader($request)
                 && in_array('root', array_column($request['roles'], 'name'), true)
                 && in_array('admin', array_column($request['roles'], 'name'), true);
         });
     }
 
-    public function test_permissions_sync_command_normalizes_configured_permissions_and_calls_sync_endpoint(): void
+    public function test_roles_sync_command_sends_group_token_when_group_is_configured(): void
     {
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        Http::fake([
+            'https://caronte.test/api/applications/roles' => Http::response([
+                'status' => 200,
+                'message' => 'Roles synchronized',
+                'data' => [],
+            ], 200),
+        ]);
+
+        $this->artisan('caronte:roles:sync')
+            ->expectsOutput('Roles synchronized')
+            ->assertExitCode(0);
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://caronte.test/api/applications/roles'
+                && $this->hasValidApplicationTokenHeader($request)
+                && $this->hasValidGroupTokenHeader($request);
+        });
+    }
+
+    public function test_protected_api_scopes_sync_command_normalizes_configured_scopes_and_calls_sync_endpoint(): void
+    {
+        config()->set('caronte.protected_api.scopes', [
+            'invoices.read' => 'Read invoices',
+            ['scope' => 'invoices.write', 'description' => 'Write invoices'],
+        ]);
+
+        Http::fake([
+            'https://caronte.test/api/applications/scopes' => Http::response([
+                'status' => 200,
+                'message' => 'Protected API scopes synchronized',
+                'data' => ['scopes' => []],
+            ], 200),
+        ]);
+
+        $this->artisan('caronte:protected-api:scopes:sync')
+            ->expectsOutput('Protected API scopes synchronized')
+            ->assertExitCode(0);
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://caronte.test/api/applications/scopes'
+                && $request->method() === 'PUT'
+                && $this->hasValidApplicationTokenHeader($request)
+                && in_array('invoices.read', array_column($request['scopes'], 'scope'), true)
+                && in_array('invoices.write', array_column($request['scopes'], 'scope'), true);
+        });
+    }
+
+    public function test_legacy_permissions_sync_command_maps_permissions_to_scopes_endpoint(): void
+    {
+        config()->set('caronte.protected_api.scopes', []);
         config()->set('caronte.permissions', [
             'invoices.read' => 'Read invoices',
             ['permission' => 'invoices.write', 'description' => 'Write invoices'],
         ]);
 
         Http::fake([
-            'https://caronte.test/api/applications/permissions' => Http::response([
+            'https://caronte.test/api/applications/scopes' => Http::response([
                 'status' => 200,
-                'message' => 'Application permissions retrieved',
-                'data' => ['permissions' => []],
+                'message' => 'Protected API scopes synchronized',
+                'data' => ['scopes' => []],
             ], 200),
         ]);
 
         $this->artisan('caronte:permissions:sync')
-            ->expectsOutput('Application permissions retrieved')
+            ->expectsOutput('Protected API scopes synchronized')
             ->assertExitCode(0);
 
         Http::assertSent(function ($request): bool {
-            return $request->url() === 'https://caronte.test/api/applications/permissions'
+            return $request->url() === 'https://caronte.test/api/applications/scopes'
                 && $request->method() === 'PUT'
-                && $request->hasHeader('X-Application-Token', CaronteApplicationToken::make())
-                && in_array('invoices.read', array_column($request['permissions'], 'permission'), true)
-                && in_array('invoices.write', array_column($request['permissions'], 'permission'), true);
+                && $this->hasValidApplicationTokenHeader($request)
+                && in_array('invoices.read', array_column($request['scopes'], 'scope'), true)
+                && in_array('invoices.write', array_column($request['scopes'], 'scope'), true);
         });
     }
 
@@ -96,7 +149,7 @@ class CommandBehaviorTest extends TestCase
 
         Http::assertSent(function ($request): bool {
             return str_starts_with($request->url(), 'https://caronte.test/api/users')
-                && $request->hasHeader('X-Application-Token', CaronteApplicationToken::make())
+                && $this->hasValidApplicationTokenHeader($request)
                 && $request->hasHeader('X-Tenant-Id', 'tenant-1')
                 && $request['app_users'] === 'false';
         });
@@ -156,7 +209,7 @@ class CommandBehaviorTest extends TestCase
 
         Http::assertSent(function ($request): bool {
             return str_starts_with($request->url(), 'https://caronte.test/api/tenants')
-                && $request->hasHeader('X-Application-Token', CaronteApplicationToken::make())
+                && $this->hasValidApplicationTokenHeader($request)
                 && $request['search'] === 'tenant';
         });
     }

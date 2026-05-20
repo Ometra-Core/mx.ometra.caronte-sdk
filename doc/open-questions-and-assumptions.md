@@ -28,7 +28,7 @@ The package assumes the Caronte server is reachable for login, token exchange, l
 
 ### A-2: JWT key strength
 
-`CARONTE_APP_SECRET` and `CARONTE_APPLICATION_GROUP_SECRET` must be at least 32 characters because token validation enforces `CaronteUserToken::MINIMUM_KEY_LENGTH`.
+`CARONTE_APP_SECRET` and `CARONTE_APPLICATION_GROUP_SECRET` must be at least 32 characters because token validation enforces minimum HMAC signing-key length.
 
 ### A-3: Single Caronte server per host application
 

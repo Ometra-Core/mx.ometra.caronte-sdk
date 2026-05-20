@@ -5,16 +5,22 @@ namespace Tests\Feature;
 use DateTimeImmutable;
 use DateTimeZone;
 use Equidna\BeeHive\Tenancy\TenantContext;
+use Equidna\Toolkit\Exceptions\UnprocessableEntityException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Lcobucci\JWT\Configuration;
+use Lcobucci\JWT\Encoding\ChainedFormatter;
 use Lcobucci\JWT\Encoding\JoseEncoder;
+use Lcobucci\JWT\Signer\Hmac\Sha256;
+use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Token\Parser;
 use Lcobucci\JWT\Token\Plain;
 use Ometra\Caronte\Oidc\OidcTokenValidator;
-use Ometra\Caronte\Support\CaronteApplicationContext;
 use Ometra\Caronte\Support\CaronteApplicationAccessContext;
+use Ometra\Caronte\Support\CaronteApplicationContext;
 use Ometra\Caronte\Support\CaronteApplicationToken;
+use Ometra\Caronte\Support\CaronteProtectedApiAccessContext;
 use Tests\TestCase;
 
 class MiddlewareBehaviorTest extends TestCase
@@ -44,6 +50,10 @@ class MiddlewareBehaviorTest extends TestCase
 
                 return response()->json([
                     'app_id' => $context->appId,
+                    'source_app_id' => $context->sourceAppId,
+                    'source_app_cn' => $context->sourceAppCn,
+                    'application_token_id' => $context->applicationTokenId,
+                    'group_token_id' => $context->groupTokenId,
                     'tenant_context' => app()->bound(TenantContext::class)
                         ? app(TenantContext::class)->get()
                         : null,
@@ -65,8 +75,19 @@ class MiddlewareBehaviorTest extends TestCase
         Route::middleware(['caronte.session', 'caronte.roles:admin'])
             ->get('/api/_caronte/role-check', fn() => response()->json(['ok' => true]));
 
-        Route::middleware(['caronte.app-token', 'caronte.app-permissions:invoices.read'])
+        Route::middleware(['caronte.protected-api-token', 'caronte.protected-api-scopes:invoices.read'])
             ->get('/api/_caronte/application-access-check', function () {
+                /** @var CaronteProtectedApiAccessContext $context */
+                $context = app(CaronteProtectedApiAccessContext::class);
+
+                return response()->json([
+                    'tenant_id' => $context->tenantId,
+                    'scopes' => $context->scopes,
+                ]);
+            });
+
+        Route::middleware(['caronte.app-token', 'caronte.app-permissions:invoices.read'])
+            ->get('/api/_caronte/application-access-legacy-check', function () {
                 /** @var CaronteApplicationAccessContext $context */
                 $context = app(CaronteApplicationAccessContext::class);
 
@@ -108,15 +129,146 @@ class MiddlewareBehaviorTest extends TestCase
         config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
 
         $this->getJson('/api/_caronte/application-only-check', [
-            'X-Application-Token' => CaronteApplicationToken::makeGroup(),
+            'X-Application-Token' => CaronteApplicationToken::make(),
+            'X-Group-Token' => CaronteApplicationToken::makeGroup(),
         ])
             ->assertOk()
-            ->assertJsonPath('app_id', CaronteApplicationToken::appId());
+            ->assertJsonPath('app_id', CaronteApplicationToken::appId())
+            ->assertJsonPath('source_app_id', CaronteApplicationToken::appId())
+            ->assertJsonPath('source_app_cn', CaronteApplicationToken::cn());
 
         /** @var CaronteApplicationContext $context */
         $context = app(CaronteApplicationContext::class);
         $this->assertTrue($context->authenticatedAsGroup);
         $this->assertSame('core-suite', $context->groupId);
+        $this->assertNotEmpty($context->applicationTokenId);
+        $this->assertNotEmpty($context->groupTokenId);
+    }
+
+    public function test_application_middleware_rejects_legacy_base64_application_tokens(): void
+    {
+        $this->getJson('/api/_caronte/application-only-check', [
+            'X-Application-Token' => base64_encode(CaronteApplicationToken::appId() . ':' . (string) config('caronte.app_secret')),
+        ])->assertStatus(401);
+    }
+
+    public function test_application_middleware_rejects_legacy_base64_group_tokens(): void
+    {
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $this->getJson('/api/_caronte/application-only-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
+            'X-Group-Token' => base64_encode('core-suite:group-secret-with-minimum-length-32'),
+        ])->assertStatus(401);
+    }
+
+    public function test_application_auth_token_contains_expected_jwt_claims(): void
+    {
+        $token = CaronteApplicationToken::validateApplicationToken(CaronteApplicationToken::make());
+
+        $this->assertSame('application_auth', $token->claims()->get('token_audience'));
+        $this->assertSame(CaronteApplicationToken::appId(), $token->claims()->get('app_id'));
+        $this->assertSame(CaronteApplicationToken::cn(), $token->claims()->get('app_cn'));
+        $this->assertTrue($token->claims()->has('jti'));
+        $this->assertTrue($token->claims()->has('exp'));
+    }
+
+    public function test_group_auth_token_contains_expected_jwt_claims(): void
+    {
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $token = CaronteApplicationToken::validateGroupToken(CaronteApplicationToken::makeGroup());
+
+        $this->assertSame('application_group_auth', $token->claims()->get('token_audience'));
+        $this->assertSame('core-suite', $token->claims()->get('group_id'));
+        $this->assertSame(CaronteApplicationToken::appId(), $token->claims()->get('source_app_id'));
+        $this->assertSame(CaronteApplicationToken::cn(), $token->claims()->get('source_app_cn'));
+        $this->assertTrue($token->claims()->has('jti'));
+        $this->assertTrue($token->claims()->has('exp'));
+    }
+
+    public function test_application_auth_token_rejects_expired_tokens(): void
+    {
+        $expired = CaronteApplicationToken::makeFor(
+            appCn: CaronteApplicationToken::cn(),
+            appSecret: (string) config('caronte.app_secret'),
+            issuedAt: new DateTimeImmutable('-10 minutes', new DateTimeZone('UTC')),
+        );
+
+        $this->expectException(UnprocessableEntityException::class);
+        $this->expectExceptionMessage('Application token has expired.');
+
+        CaronteApplicationToken::validateApplicationToken($expired);
+    }
+
+    public function test_group_auth_token_rejects_expired_tokens(): void
+    {
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $expired = CaronteApplicationToken::makeGroup(
+            issuedAt: new DateTimeImmutable('-10 minutes', new DateTimeZone('UTC')),
+        );
+
+        $this->expectException(UnprocessableEntityException::class);
+        $this->expectExceptionMessage('Application group token has expired.');
+
+        CaronteApplicationToken::validateGroupToken($expired);
+    }
+
+    public function test_application_auth_token_rejects_wrong_audience(): void
+    {
+        $wrongAudience = $this->makeApplicationAuthToken(['token_audience' => 'application']);
+
+        $this->expectException(UnprocessableEntityException::class);
+        $this->expectExceptionMessage('Invalid application token audience.');
+
+        CaronteApplicationToken::validateApplicationToken($wrongAudience);
+    }
+
+    public function test_application_auth_token_rejects_invalid_signature(): void
+    {
+        $token = CaronteApplicationToken::makeFor(
+            appCn: CaronteApplicationToken::cn(),
+            appSecret: 'different-secret-with-minimum-length-32'
+        );
+
+        $this->expectException(UnprocessableEntityException::class);
+        $this->expectExceptionMessage('Invalid application token signature or issuer.');
+
+        CaronteApplicationToken::validateApplicationToken($token);
+    }
+
+    public function test_group_auth_token_rejects_wrong_group(): void
+    {
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $token = CaronteApplicationToken::makeGroup();
+
+        config()->set('caronte.application_group_id', 'other-suite');
+
+        $this->expectException(UnprocessableEntityException::class);
+        $this->expectExceptionMessage('Application group token does not match the configured Caronte application group.');
+
+        CaronteApplicationToken::validateGroupToken($token);
+    }
+
+    public function test_group_auth_token_rejects_invalid_signature(): void
+    {
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $token = CaronteApplicationToken::makeGroup();
+
+        config()->set('caronte.application_group_secret', 'other-group-secret-with-minimum-length-32');
+
+        $this->expectException(UnprocessableEntityException::class);
+        $this->expectExceptionMessage('Invalid application group token signature or issuer.');
+
+        CaronteApplicationToken::validateGroupToken($token);
     }
 
     public function test_application_middleware_binds_tenant_context_for_the_request_lifecycle(): void
@@ -433,24 +585,137 @@ class MiddlewareBehaviorTest extends TestCase
             ->assertSessionMissing((string) config('caronte.session_key', 'caronte.user_token'));
     }
 
-    public function test_application_access_middleware_accepts_tokens_with_required_permission(): void
+    public function test_protected_api_access_middleware_accepts_tokens_with_required_scope(): void
     {
-        $token = $this->makeApplicationAccessToken(['invoices.read']);
+        $token = $this->makeProtectedApiAccessToken(['invoices.read']);
 
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/_caronte/application-access-check')
             ->assertOk()
             ->assertJsonPath('tenant_id', 'tenant-1')
-            ->assertJsonPath('permissions.0', 'invoices.read');
+            ->assertJsonPath('scopes.0', 'invoices.read');
     }
 
-    public function test_application_access_middleware_rejects_missing_permission(): void
+    public function test_protected_api_access_middleware_rejects_missing_scope(): void
     {
-        $token = $this->makeApplicationAccessToken(['invoices.write']);
+        $token = $this->makeProtectedApiAccessToken(['invoices.write']);
 
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/_caronte/application-access-check')
             ->assertStatus(403);
+    }
+
+    public function test_protected_api_access_middleware_rejects_expired_tokens(): void
+    {
+        $token = $this->makeProtectedApiAccessToken(
+            issuedAt: new DateTimeImmutable('-2 hours', new DateTimeZone('UTC')),
+            expiresAt: new DateTimeImmutable('-1 hour', new DateTimeZone('UTC')),
+        );
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/_caronte/application-access-check')
+            ->assertStatus(401);
+    }
+
+    public function test_protected_api_access_middleware_rejects_wrong_token_audience(): void
+    {
+        $token = $this->makeProtectedApiAccessToken(audience: 'application_auth');
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/_caronte/application-access-check')
+            ->assertStatus(401);
+    }
+
+    public function test_protected_api_access_middleware_rejects_wrong_jwt_audience(): void
+    {
+        $token = $this->makeProtectedApiAccessToken(jwtAudience: 'other-app-id');
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/_caronte/application-access-check')
+            ->assertStatus(401);
+    }
+
+    public function test_protected_api_access_middleware_rejects_invalid_signature(): void
+    {
+        $token = $this->makeProtectedApiAccessToken(['invoices.read']);
+
+        config()->set('caronte.app_secret', 'different-secret-with-minimum-length-32');
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/_caronte/application-access-check')
+            ->assertStatus(401);
+    }
+
+    public function test_legacy_application_access_aliases_accept_permissions_claim_temporarily(): void
+    {
+        $token = $this->makeApplicationAccessToken(['invoices.read']);
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/_caronte/application-access-legacy-check')
+            ->assertOk()
+            ->assertJsonPath('tenant_id', 'tenant-1')
+            ->assertJsonPath('permissions.0', 'invoices.read');
+    }
+
+    public function test_legacy_application_access_aliases_accept_permissions_claim_without_jwt_audience_temporarily(): void
+    {
+        $issuedAt = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $config = Configuration::forSymmetricSigner(
+            new Sha256(),
+            InMemory::plainText((string) config('caronte.app_secret'))
+        );
+
+        $token = $config->builder(ChainedFormatter::default())
+            ->issuedBy((string) config('caronte.issuer_id', ''))
+            ->issuedAt($issuedAt)
+            ->canOnlyBeUsedAfter($issuedAt)
+            ->expiresAt($issuedAt->modify('+1 year'))
+            ->identifiedBy('legacy-application-token-without-aud')
+            ->withClaim('token_audience', 'application_token')
+            ->withClaim('app_id', CaronteApplicationToken::appId())
+            ->withClaim('tenant_id', 'tenant-1')
+            ->withClaim('name', 'Legacy integration token')
+            ->withClaim('permissions', ['invoices.read'])
+            ->getToken($config->signer(), $config->signingKey())
+            ->toString();
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/_caronte/application-access-legacy-check')
+            ->assertOk()
+            ->assertJsonPath('tenant_id', 'tenant-1')
+            ->assertJsonPath('permissions.0', 'invoices.read');
+    }
+
+    /**
+     * @param  array<string, mixed>  $claimOverrides
+     */
+    private function makeApplicationAuthToken(array $claimOverrides = []): string
+    {
+        $issuedAt = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $expiresAt = $issuedAt->modify('+5 minutes');
+        $config = Configuration::forSymmetricSigner(
+            new Sha256(),
+            InMemory::plainText((string) config('caronte.app_secret'))
+        );
+
+        $claims = array_merge([
+            'token_audience' => 'application_auth',
+            'app_id' => CaronteApplicationToken::appId(),
+            'app_cn' => CaronteApplicationToken::cn(),
+        ], $claimOverrides);
+
+        return $config->builder(ChainedFormatter::default())
+            ->issuedBy((string) config('caronte.issuer_id', ''))
+            ->permittedFor(CaronteApplicationToken::appId())
+            ->identifiedBy('application-auth-token-1')
+            ->issuedAt($issuedAt)
+            ->canOnlyBeUsedAfter($issuedAt)
+            ->expiresAt($expiresAt)
+            ->withClaim('token_audience', $claims['token_audience'])
+            ->withClaim('app_id', $claims['app_id'])
+            ->withClaim('app_cn', $claims['app_cn'])
+            ->getToken($config->signer(), $config->signingKey())
+            ->toString();
     }
 
     private function fakeOidcValidator(): void

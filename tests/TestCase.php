@@ -60,6 +60,27 @@ abstract class TestCase extends Orchestra
         ]);
     }
 
+    protected function headerValue(object $request, string $name): string
+    {
+        $value = $request->header($name);
+
+        if (is_array($value)) {
+            return (string) ($value[0] ?? '');
+        }
+
+        return is_string($value) ? $value : '';
+    }
+
+    protected function hasValidApplicationTokenHeader(object $request): bool
+    {
+        return CaronteApplicationToken::matchType($this->headerValue($request, 'X-Application-Token')) === 'application';
+    }
+
+    protected function hasValidGroupTokenHeader(object $request): bool
+    {
+        return CaronteApplicationToken::matchType($this->headerValue($request, 'X-Group-Token')) === 'application_group';
+    }
+
     /**
      * @param  array<string, mixed>|null  $user
      */
@@ -169,13 +190,16 @@ abstract class TestCase extends Orchestra
     }
 
     /**
-     * @param  array<int, string>  $permissions
+     * @param  array<int, string>  $scopes
      */
-    protected function makeApplicationAccessToken(
-        array $permissions = ['invoices.read'],
+    protected function makeProtectedApiAccessToken(
+        array $scopes = ['invoices.read'],
         string $tenantId = 'tenant-1',
         ?DateTimeImmutable $issuedAt = null,
         ?DateTimeImmutable $expiresAt = null,
+        string $audience = 'protected_api_access',
+        string $scopeClaim = 'scopes',
+        ?string $jwtAudience = null,
     ): string {
         $issuedAt ??= new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $expiresAt ??= $issuedAt->modify('+1 year');
@@ -187,16 +211,38 @@ abstract class TestCase extends Orchestra
 
         return $config->builder(ChainedFormatter::default())
             ->issuedBy((string) config('caronte.issuer_id', ''))
+            ->permittedFor($jwtAudience ?? CaronteApplicationToken::appId())
             ->issuedAt($issuedAt)
             ->canOnlyBeUsedAfter($issuedAt)
             ->expiresAt($expiresAt)
-            ->identifiedBy('application-token-1')
-            ->withClaim('token_audience', 'application_token')
+            ->identifiedBy('protected-api-token-1')
+            ->withClaim('token_audience', $audience)
             ->withClaim('app_id', CaronteApplicationToken::appId())
             ->withClaim('tenant_id', $tenantId)
             ->withClaim('name', 'Integration token')
-            ->withClaim('permissions', $permissions)
+            ->withClaim($scopeClaim, $scopes)
             ->getToken($config->signer(), $config->signingKey())
             ->toString();
+    }
+
+    /**
+     * @deprecated Use makeProtectedApiAccessToken() instead.
+     *
+     * @param  array<int, string>  $permissions
+     */
+    protected function makeApplicationAccessToken(
+        array $permissions = ['invoices.read'],
+        string $tenantId = 'tenant-1',
+        ?DateTimeImmutable $issuedAt = null,
+        ?DateTimeImmutable $expiresAt = null,
+    ): string {
+        return $this->makeProtectedApiAccessToken(
+            scopes: $permissions,
+            tenantId: $tenantId,
+            issuedAt: $issuedAt,
+            expiresAt: $expiresAt,
+            audience: 'application_token',
+            scopeClaim: 'permissions',
+        );
     }
 }
