@@ -1,5 +1,28 @@
 # Breaking Changes
 
+## v4.2.0
+
+### Breaking status
+
+No breaking changes were introduced in this release.
+
+### Migration recommendations
+
+1. Prefer configuring protected API authorization under `protected_api.scopes` instead of legacy permission naming.
+2. Move route protection to protected API middleware aliases where applicable:
+    - `caronte.protected-api-token`
+    - `caronte.protected-api-scopes:*`
+3. Replace legacy permission sync usage with:
+
+```bash
+php artisan caronte:protected-api:scopes:sync
+```
+
+### Notes
+
+- Permission-oriented aliases and API compatibility shims are still available for migration windows.
+- Compatibility layers are expected to be removed in the next major release, so host apps should migrate during 4.x.
+
 ## v4.1.0
 
 ### What Changed

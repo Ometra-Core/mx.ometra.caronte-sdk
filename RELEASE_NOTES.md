@@ -1,3 +1,61 @@
+# Release v4.2.0 "Bulwark"
+
+> **Release date:** 2026-05-20
+> **Type:** Minor — protected API scope and external-access token capabilities.
+
+---
+
+## Summary
+
+v4.2.0 "Bulwark" introduces first-class protected API access management for host applications that expose APIs to external clients. The release adds dedicated protected API token and scope primitives, a focused scope-sync command, and updated middleware aliases to enforce scope-based access cleanly. Compatibility shims for legacy permission naming remain available so teams can migrate incrementally.
+
+The codename _Bulwark_ reflects this release's purpose: strengthening the boundary between external API consumers and protected host resources.
+
+---
+
+## Highlights
+
+- **Protected API access-token support** — dedicated token/context classes for validating external API clients.
+- **Scope-first authorization model** — canonical protected API configuration and middleware naming built around scopes.
+- **Operational migration path** — compatibility aliases retained temporarily for smoother upgrades from permission-oriented flows.
+- **Delivery readiness documentation** — new client/admin handover guides for implementation, deployment, and support teams.
+
+---
+
+## Added
+
+- `ScopeApi` and protected API support primitives (`CaronteProtectedApiAccessToken`, `CaronteProtectedApiAccessContext`, `ConfiguredScopes`).
+- Middleware pair for protected API validation and scope checks.
+- `caronte:protected-api:scopes:sync` Artisan command.
+- New handover docs:
+    - `doc/client-handover.md`
+    - `doc/admin-handover.md`
+
+## Changed
+
+- Canonical configuration moved to `protected_api.scopes` (legacy permission naming remains as compatibility).
+- Application/group JWT TTL controls and request header/audience handling were aligned to protected API flows.
+- Service provider aliases and command surface updated to emphasize protected API naming.
+- Documentation and feature tests expanded for protected API contract coverage.
+
+## Fixed
+
+- Reduced ambiguity between internal application permissions and external protected API scopes by introducing explicit protected API primitives and aliases.
+
+## Breaking
+
+- No breaking changes in this release.
+- See migration recommendations in [BREAKING_CHANGES.md](BREAKING_CHANGES.md).
+
+---
+
+## Full History
+
+See [CHANGELOG.md](CHANGELOG.md) for complete project history.
+See [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for migration guidance.
+
+---
+
 # Release v4.1.0 "Northstar"
 
 > **Release date:** 2026-05-14

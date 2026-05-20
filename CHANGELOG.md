@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No changes yet.
 
+## [4.2.0] - 2026-05-20 "Bulwark"
+
+### Added
+
+- **Protected API scopes and token model** — introduced first-class protected API scope support with dedicated components: `ScopeApi`, `CaronteProtectedApiAccessToken`, `CaronteProtectedApiAccessContext`, `ConfiguredScopes`, and `ValidateProtectedApiAccessToken` / `ValidateProtectedApiScopes` middleware.
+- **Protected API scope sync command** — added `caronte:protected-api:scopes:sync` for pushing configured protected API scopes to the Caronte server.
+- **Operational handover documentation** — new `doc/client-handover.md` and `doc/admin-handover.md` guides for implementation and operations handoff.
+
+### Changed
+
+- **Configuration model for external API authorization** — canonical scope configuration is now under `protected_api.scopes`; permission-oriented naming remains available only as a deprecated compatibility path for migration windows.
+- **Application/group token controls** — configuration now includes explicit TTL tuning for application and group JWT issuance windows.
+- **Header and audience alignment** — service/API clients and middleware were updated to align request headers, audience handling, and alias registration with protected API scope semantics.
+- **Documentation and tests refreshed** — deployment, routes, API, architecture, command, and test docs were updated alongside expanded feature coverage for protected API token and scope flows.
+
+### Deprecated
+
+- Legacy permission-oriented APIs and aliases remain temporarily available for migration compatibility, including permission naming in configuration and middleware/command compatibility shims. These are scheduled for removal in the next major release.
+
 ## [4.1.0] - 2026-05-14 "Northstar"
 
 ### Breaking Changes
