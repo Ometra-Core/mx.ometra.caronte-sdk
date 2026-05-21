@@ -1,3 +1,64 @@
+# Release v4.3.0 "Relay"
+
+> **Release date:** 2026-05-21
+> **Type:** Minor - delegated user context support for application middleware.
+
+---
+
+## Summary
+
+v4.3.0 "Relay" introduces delegated user-token handling for app-to-app protected routes. Application middleware can now require and validate a forwarded `X-User-Token`, bind the validated user context into the container, and use that context to resolve tenant identity more reliably. This release also includes a user-creation payload consistency fix and expanded middleware behavior coverage.
+
+The codename _Relay_ reflects delegated context handoff: an application can securely relay user identity to downstream protected routes.
+
+---
+
+## Highlights
+
+- **Forwarded user context binding** - new `CaronteForwardedUserContext` captures delegated user payload, tenant id, and token id.
+- **New middleware mode** - `caronte.application` now supports `user_required`, and combinations like `tenant_required,user_required`.
+- **Tenant resolution improvements** - tenant resolution can use forwarded-user tenant information when present.
+- **Behavior hardening** - missing/invalid forwarded tokens now produce explicit `401` responses when user delegation is required.
+- **Controller payload fix** - user creation now forwards `password_confirmation` from the request value.
+
+---
+
+## Added
+
+- `src/Support/CaronteForwardedUserContext.php`.
+- Forwarded user token parsing and container binding in `ResolveApplicationContext`.
+
+## Changed
+
+- `ResolveApplicationContext` now accepts variadic middleware modes and normalizes mode values.
+- Tenant resolution flow now integrates forwarded user tenant fallback.
+- Middleware feature tests expanded for delegated user/tenant mode combinations and error cases.
+
+## Fixed
+
+- `UserController::store()` now sends `password_confirmation` from request input to keep outgoing payloads consistent.
+
+## Removed
+
+- No removals in this release.
+
+## Deprecated
+
+- No new deprecations in this release.
+
+## Security
+
+- Explicit forwarded token validation paths reduce risk of accepting malformed delegated user context.
+
+---
+
+## Full History
+
+See [CHANGELOG.md](CHANGELOG.md) for complete project history.
+See [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for migration guidance.
+
+---
+
 # Release v4.2.0 "Bulwark"
 
 > **Release date:** 2026-05-20

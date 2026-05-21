@@ -11,6 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No changes yet.
 
+## [4.3.0] - 2026-05-21 "Relay"
+
+### Added
+
+- **Forwarded user-token context for application routes** - `ResolveApplicationContext` now supports a `user_required` mode that validates `X-User-Token` and binds a request-scoped `CaronteForwardedUserContext` containing user payload, tenant id, and token id (`jti`).
+- **Forwarded-user tenant fallback** - tenant resolution in application-context middleware now falls back to forwarded user tenant context when available, improving consistency for app-to-app calls that carry user delegation.
+
+### Changed
+
+- **Application-context middleware mode handling** - `ResolveApplicationContext` now accepts variadic mode arguments and normalizes them, allowing combinations such as `tenant_required,user_required`.
+- **Forwarded token error semantics** - when `user_required` is active, missing or invalid forwarded user tokens now return explicit `401` responses with focused error messages.
+- **Feature coverage expanded** - middleware feature tests now include forwarded-user binding, forwarded-user tenant resolution, invalid forwarded token rejection, and combined mode behavior.
+
+### Fixed
+
+- **User creation payload consistency** - `UserController::store()` now forwards `password_confirmation` directly from the incoming request value, avoiding mismatches in downstream payload construction.
+
+### Deprecated
+
+- No changes.
+
+### Security
+
+- Forwarded user-token validation hardening in application middleware reduces the risk of accepting malformed delegated user context.
+
 ## [4.2.0] - 2026-05-20 "Bulwark"
 
 ### Added

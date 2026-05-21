@@ -1,5 +1,20 @@
 # Breaking Changes
 
+## v4.3.0
+
+### Breaking status
+
+No breaking changes were introduced in this release.
+
+### Migration recommendations
+
+1. If delegated user context is required on app-to-app routes, include `user_required` in the application middleware mode list and pass `X-User-Token`.
+2. For routes requiring both delegated user context and tenant context, use `caronte.application:tenant_required,user_required` and provide `X-Tenant-Id` when the forwarded token does not include `tenant_id`.
+
+### Notes
+
+- New forwarded-user behavior is backward-compatible for existing `caronte.application` routes that do not opt into `user_required`.
+
 ## v4.2.0
 
 ### Breaking status
