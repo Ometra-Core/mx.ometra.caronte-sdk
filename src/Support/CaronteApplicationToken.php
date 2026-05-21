@@ -182,6 +182,7 @@ class CaronteApplicationToken
             'source_app_id',
             'source_app_cn',
         ]);
+
         static::assertAudience($token, static::GROUP_AUDIENCE, 'application group token');
         static::assertSignatureAndIssuer($token, $config, 'Invalid application group token signature or issuer.');
         static::assertTemporalClaims($token, 'Application group token');

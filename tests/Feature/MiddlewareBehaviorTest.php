@@ -20,6 +20,7 @@ use Ometra\Caronte\Oidc\OidcTokenValidator;
 use Ometra\Caronte\Support\CaronteApplicationAccessContext;
 use Ometra\Caronte\Support\CaronteApplicationContext;
 use Ometra\Caronte\Support\CaronteApplicationToken;
+use Ometra\Caronte\Support\CaronteForwardedUserContext;
 use Ometra\Caronte\Support\CaronteProtectedApiAccessContext;
 use Tests\TestCase;
 
@@ -57,6 +58,33 @@ class MiddlewareBehaviorTest extends TestCase
                     'tenant_context' => app()->bound(TenantContext::class)
                         ? app(TenantContext::class)->get()
                         : null,
+                ]);
+            });
+
+        Route::middleware(['caronte.application:user_required'])
+            ->get('/api/_caronte/forwarded-user-check', function () {
+                /** @var CaronteForwardedUserContext $context */
+                $context = app(CaronteForwardedUserContext::class);
+
+                return response()->json([
+                    'uri_user' => $context->user->uri_user ?? null,
+                    'tenant_id' => $context->tenantId,
+                    'token_id' => $context->tokenId,
+                    'tenant_context' => app()->bound(TenantContext::class)
+                        ? app(TenantContext::class)->get()
+                        : null,
+                ]);
+            });
+
+        Route::middleware(['caronte.application:tenant_required,user_required'])
+            ->get('/api/_caronte/forwarded-user-tenant-check', function () {
+                /** @var CaronteForwardedUserContext $context */
+                $context = app(CaronteForwardedUserContext::class);
+
+                return response()->json([
+                    'uri_user' => $context->user->uri_user ?? null,
+                    'tenant_id' => $context->tenantId,
+                    'tenant_context' => app(TenantContext::class)->get(),
                 ]);
             });
 
@@ -282,6 +310,19 @@ class MiddlewareBehaviorTest extends TestCase
             ->assertJsonPath('app_id', CaronteApplicationToken::appId());
     }
 
+    public function test_application_middleware_binds_tenant_context_from_forwarded_user_token(): void
+    {
+        $token = $this->makeToken();
+
+        $this->getJson('/api/_caronte/context-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
+            'X-User-Token' => $token,
+        ])
+            ->assertOk()
+            ->assertJsonPath('tenant_context', 'tenant-1')
+            ->assertJsonPath('app_id', CaronteApplicationToken::appId());
+    }
+
     public function test_single_tenant_application_middleware_binds_configured_tenant_without_header(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
@@ -312,13 +353,87 @@ class MiddlewareBehaviorTest extends TestCase
     {
         $token = $this->makeToken();
 
-        $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->getJson('/api/_caronte/context-check', [
-                'X-Application-Token' => CaronteApplicationToken::make(),
-                'X-Tenant-Id' => 'other-tenant',
-            ])
+        $this->getJson('/api/_caronte/context-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
+            'X-User-Token' => $token,
+            'X-Tenant-Id' => 'other-tenant',
+        ])
             ->assertStatus(403)
             ->assertJsonPath('message', 'Tenant override is not allowed.');
+    }
+
+    public function test_application_middleware_rejects_invalid_forwarded_user_token(): void
+    {
+        $this->getJson('/api/_caronte/application-only-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
+            'X-User-Token' => 'not-a-valid-token',
+        ])
+            ->assertStatus(401)
+            ->assertJsonPath('message', 'Invalid user token.');
+    }
+
+    public function test_application_middleware_requires_forwarded_user_token_when_requested(): void
+    {
+        $this->getJson('/api/_caronte/forwarded-user-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
+        ])
+            ->assertStatus(401)
+            ->assertJsonPath('message', 'No user token provided.');
+    }
+
+    public function test_application_middleware_binds_forwarded_user_context_when_required(): void
+    {
+        $token = $this->makeToken();
+
+        $this->getJson('/api/_caronte/forwarded-user-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
+            'X-User-Token' => $token,
+        ])
+            ->assertOk()
+            ->assertJsonPath('uri_user', 'user-123')
+            ->assertJsonPath('tenant_id', 'tenant-1')
+            ->assertJsonPath('token_id', 'user-token-1')
+            ->assertJsonPath('tenant_context', 'tenant-1');
+    }
+
+    public function test_application_middleware_requires_user_and_resolved_tenant_when_both_modes_are_used(): void
+    {
+        $this->getJson('/api/_caronte/forwarded-user-tenant-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
+            'X-Tenant-Id' => 'tenant-1',
+        ])
+            ->assertStatus(401)
+            ->assertJsonPath('message', 'No user token provided.');
+
+        $token = $this->makeToken([
+            'uri_user' => 'user-123',
+            'name' => 'Root User',
+            'email' => 'root@example.com',
+            'tenant_id' => null,
+            'roles' => [
+                [
+                    'name' => 'root',
+                    'app_id' => CaronteApplicationToken::appId(),
+                    'uri_applicationRole' => sha1(CaronteApplicationToken::appId() . 'root'),
+                ],
+            ],
+            'metadata' => [],
+        ]);
+
+        $this->getJson('/api/_caronte/forwarded-user-tenant-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
+            'X-User-Token' => $token,
+        ])->assertStatus(400);
+
+        $this->getJson('/api/_caronte/forwarded-user-tenant-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
+            'X-User-Token' => $token,
+            'X-Tenant-Id' => 'tenant-1',
+        ])
+            ->assertOk()
+            ->assertJsonPath('uri_user', 'user-123')
+            ->assertJsonPath('tenant_id', null)
+            ->assertJsonPath('tenant_context', 'tenant-1');
     }
 
     public function test_session_middleware_exchanges_expired_api_tokens_and_returns_the_refreshed_header(): void

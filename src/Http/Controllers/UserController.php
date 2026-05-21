@@ -49,7 +49,7 @@ class UserController extends BaseController
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => $validated['password'],
-                'password_confirmation' => $validated['password_confirmation'],
+                'password_confirmation' => $request->password_confirmation
             ]);
 
             $user = $response['data']['user'] ?? null;
