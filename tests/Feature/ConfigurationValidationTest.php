@@ -34,6 +34,18 @@ class ConfigurationValidationTest extends TestCase
         ConfiguredRoles::all();
     }
 
+    public function test_role_names_with_dots_are_allowed(): void
+    {
+        config()->set('caronte.roles', [
+            ['name' => 'Editor.Team', 'description' => 'Editor team role'],
+        ]);
+
+        $roles = ConfiguredRoles::keyedByName();
+
+        $this->assertArrayHasKey('editor.team', $roles);
+        $this->assertSame('Editor team role', $roles['editor.team']['description']);
+    }
+
     public function test_root_role_is_always_present_after_normalization(): void
     {
         config()->set('caronte.roles', [

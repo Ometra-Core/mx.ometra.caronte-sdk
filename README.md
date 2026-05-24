@@ -1,143 +1,59 @@
 # README (Root of the Project)
 
-> This documentation follows the project's Coding Standards and PHPDoc Style Guide.
-
----
+This documentation follows the project's Coding Standards and PHPDoc Style Guide.
 
 ## Project Overview
 
-`ometra/caronte-sdk` is a **Laravel package** that integrates any Laravel host application with the **Caronte** centralised authentication server. It handles:
+ometra/caronte-sdk is a Laravel package that integrates a host Laravel application with a centralized Caronte authentication server.
 
-- JWT user authentication (login, logout, 2FA, password recovery)
-- Automatic token validation and renewal on every request
-- Role-based access control tied to a central role registry
-- Protected API scope declaration and protected API access middleware
-- A ready-to-use management UI for users and roles
-- A server-side provisioning wrapper for Caronte tenant provisioning
-- Server-to-server inter-app communication via application tokens
+Main capabilities:
 
-**Primary audience:** Internal development teams adding Caronte authentication to a Laravel application.
+- User authentication via Caronte (login, logout, 2FA, password recovery)
+- User token validation and renewal middleware
+- Management UI for users and role synchronization
+- Application-to-application authentication middleware
+- Protected API access token validation and scope checks
+- Tenant-aware behavior for single-tenant and multi-tenant modes
 
----
+Primary audience: internal development teams integrating Caronte into Laravel applications.
 
 ## Project Type & Tech Summary
 
-| Item                    | Value                                               |
-| ----------------------- | --------------------------------------------------- |
-| **Type**                | Laravel Package (library)                           |
-| **PHP**                 | `^8.2`                                              |
-| **Laravel**             | `^12.0`                                             |
-| **JWT library**         | `lcobucci/jwt ^5.3` + `lcobucci/clock ^3.2`         |
-| **Database**            | MySQL / any Laravel-supported driver (via host app) |
-| **Cache**               | Host app cache (no package-level cache)             |
-| **Queue**               | None (all requests are synchronous)                 |
-| **External service**    | Caronte authentication server (HTTP API)            |
-| **Optional dependency** | `inertiajs/inertia-laravel ^2.0`                    |
+- Project type: Laravel package (library), not a standalone app
+- PHP version: ^8.2
+- Laravel version: ^12.0
+- JWT stack: lcobucci/jwt ^5.3 and lcobucci/clock ^3.2
+- HTTP integration: Laravel HTTP client via package support classes
+- Database: uses host app database connection; publishes package migrations for local user cache tables
+- Cache: host app cache (OIDC JWKS cache uses Laravel Cache)
+- Queue: no package-owned queue workers required
+- External services: Caronte server HTTP API, optional OIDC issuer endpoints
 
----
+## Quick Start (High-Level)
 
-## Quick Start
+1. Install package dependencies in your host app with composer.
+2. Publish package configuration and migrations.
+3. Set required environment variables for CARONTE_URL, CARONTE_APP_CN, and CARONTE_APP_SECRET.
+4. Run migrations in the host application.
+5. Add package middleware to protected host routes.
+6. Synchronize configured roles and protected API scopes.
+7. Verify authentication and management routes in a local environment.
 
-1. **Install the package**
-
-    ```bash
-    composer require ometra/caronte-sdk
-    ```
-
-2. **Publish the configuration**
-
-    ```bash
-    php artisan vendor:publish --tag=caronte:config
-    ```
-
-3. **Add the three required environment variables**
-
-    ```env
-    CARONTE_URL=https://your-caronte-server.example.com
-    CARONTE_APP_CN=your-app-canonical-name
-    CARONTE_APP_SECRET=a-secret-at-least-32-characters-long
-    CARONTE_TOKEN_REFRESH_LEEWAY_SECONDS=60
-    ```
-
-    Apps that belong to an internal application group can also share user tokens and app-to-app credentials:
-
-    ```env
-    CARONTE_APPLICATION_GROUP_ID=core-suite
-    CARONTE_APPLICATION_GROUP_SECRET=a-group-secret-at-least-32-characters-long
-    ```
-
-4. **Run migrations** (creates local user cache tables)
-
-    ```bash
-    php artisan migrate
-    ```
-
-5. **Protect routes** with the provided middleware:
-
-    ```php
-    Route::middleware(['caronte.session', 'caronte.roles:admin'])->group(...);
-    ```
-
-6. **Sync your configured roles** with the Caronte server:
-
-    ```bash
-    php artisan caronte:roles:sync
-    ```
-
-7. **Declare protected API scopes** if external applications will consume your API:
-
-    ```php
-    'protected_api' => [
-        'scopes' => [
-            'invoices.read' => 'Read invoices',
-            'invoices.write' => 'Write invoices',
-        ],
-    ],
-    ```
-
-    ```bash
-    php artisan caronte:protected-api:scopes:sync
-    ```
-
-8. **Protect external API routes** with Protected API Access Token middleware:
-
-    ```php
-    Route::middleware([
-        'caronte.protected-api-token',
-        'caronte.protected-api-scopes:invoices.read',
-    ])->get(...);
-    ```
-
-9. **Visit** the app-local management UI at `/caronte/management` (default).
-
-## Token Types
-
-- User JWTs authenticate humans and are checked by `caronte.session`.
-- User JWTs are read from phase-2 top-level claims first: `sub`, `aud`, `jti`, `tenant_id`, `roles`, `metadata`, `app_id`, and `token_audience`. The legacy nested `user` claim remains supported as a fallback.
-- `caronte.session` reads web user JWTs from session and API user JWTs from `Authorization: Bearer <user-jwt>`.
-- `caronte.session` renews expired or near-expiry user JWTs. JSON/API consumers must replace their local bearer token when a protected response includes `X-User-Token`.
-- `X-User-Token` is used for SDK forwarding and refreshed-token responses; it is not the primary incoming auth header for host API routes.
-- In OIDC mode, the SDK uses the session-stored OIDC refresh token to renew the ID token before redirecting users back to login.
-- Logout routes in the SDK may be called with `GET` or `POST`, but the SDK always calls the Caronte server logout endpoint with `POST`.
-- App-to-app credentials use a short-lived JWT in `X-Application-Token` and are checked by `caronte.application`.
-- Application-group credentials use a short-lived JWT in `X-Group-Token`; grouped calls also include `X-Application-Token`, and the group JWT carries source app traceability.
-- Protected API Access Tokens authenticate external clients consuming this host app's API and are checked by `caronte.protected-api-token` plus `caronte.protected-api-scopes:*`.
-- Legacy protected API names such as `CaronteApplicationAccess*`, `caronte.app-token`, `caronte.app-permissions`, `permissions`, and `caronte:permissions:sync` are deprecated compatibility names and must be removed in the next major version.
-
-See [Deployment Instructions](doc/deployment-instructions.md) for the full setup guide.
-
----
+Full steps: see doc/deployment-instructions.md.
 
 ## Documentation Index
 
 - [Deployment Instructions](doc/deployment-instructions.md)
-- [Client Handover](doc/client-handover.md)
-- [Admin Handover](doc/admin-handover.md)
 - [API Documentation](doc/api-documentation.md)
 - [Routes Documentation](doc/routes-documentation.md)
 - [Artisan Commands](doc/artisan-commands.md)
 - [Tests Documentation](doc/tests-documentation.md)
+- [Middleware Documentation](doc/middleware.md)
 - [Architecture Diagrams](doc/architecture-diagrams.md)
 - [Monitoring](doc/monitoring.md)
 - [Business Logic & Core Processes](doc/business-logic-and-core-processes.md)
 - [Open Questions & Assumptions](doc/open-questions-and-assumptions.md)
+
+## Standards Note
+
+Examples and references in these docs follow the project instructions for coding conventions and PHPDoc style, using the package namespace and folder structure as the source of truth.

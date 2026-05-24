@@ -1,3 +1,79 @@
+# Release v4.4.0 "Atlas"
+
+> **Release date:** 2026-05-24
+> **Type:** Minor - middleware context-resolution refactor, role validation enhancement, and documentation restructuring.
+
+---
+
+## Summary
+
+v4.4.0 "Atlas" strengthens middleware internals by extracting application, forwarded-user, and tenant resolution into dedicated resolver components while preserving route-level middleware contracts. It also improves role-management ergonomics by allowing dotted role names in both backend and frontend validation paths. Documentation was reorganized to provide a single middleware index plus one page per middleware alias for easier debugging and onboarding.
+
+The codename _Atlas_ represents this release's role as structural support: clearer internal boundaries in middleware logic and a stronger documentation foundation for maintainers.
+
+---
+
+## Highlights
+
+- **Resolver-based middleware internals** - `ResolveApplicationContext` now delegates responsibilities to focused support resolvers.
+- **Validation consistency for role names** - dots are now accepted in role names across server and browser validation.
+- **Operational middleware docs reworked** - middleware guidance moved to a split-per-alias structure with a central index.
+- **Edge-case coverage improvements** - middleware feature tests now cover grouped-token header requirements and static tenant resolver wrapper behavior.
+
+---
+
+## Added
+
+- `src/Support/CaronteApplicationContextResolver.php`
+- `src/Support/CaronteForwardedUserContextResolver.php`
+- `src/Support/CaronteTenantContextResolver.php`
+- `doc/middleware.md`
+- `doc/middleware/caronte.session.md`
+- `doc/middleware/caronte.roles.md`
+- `doc/middleware/caronte.application.md`
+- `doc/middleware/caronte.protected-api-token.md`
+- `doc/middleware/caronte.protected-api-scopes.md`
+- `doc/middleware/caronte.app-token.md`
+- `doc/middleware/caronte.app-permissions.md`
+
+## Changed
+
+- `src/Http/Middleware/ResolveApplicationContext.php` now orchestrates resolver services through constructor injection.
+- `README.md` documentation index now points to `doc/middleware.md`.
+- Documentation under `doc/` was refreshed and reorganized.
+
+## Fixed
+
+- Dotted role names are now accepted in:
+    - `src/Support/ConfiguredRoles.php`
+    - `resources/assets/js/caronte-management/roles.js`
+    - `resources/views/management/roles/modals/create.blade.php`
+- `tests/Feature/ConfigurationValidationTest.php` includes regression coverage for dotted role names.
+- `tests/Feature/MiddlewareBehaviorTest.php` includes additional edge-case checks for application middleware behavior.
+
+## Removed
+
+- `doc/middleware-documentation.md` (replaced by index + per-middleware files).
+- `doc/admin-handover.md`
+- `doc/client-handover.md`
+
+## Deprecated
+
+- No new deprecations in this release.
+
+## Security
+
+- No direct security-surface changes in this release.
+
+---
+
+## Full History
+
+See [CHANGELOG.md](CHANGELOG.md) for complete project history.
+See [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for migration guidance.
+
+---
+
 # Release v4.3.0 "Relay"
 
 > **Release date:** 2026-05-21

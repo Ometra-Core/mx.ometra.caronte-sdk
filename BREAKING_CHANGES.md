@@ -1,5 +1,20 @@
 # Breaking Changes
 
+## v4.4.0
+
+### Breaking status
+
+No breaking changes were introduced in this release.
+
+### Migration recommendations
+
+1. If host integrations validate role names client-side, allow dots (`.`) so validation matches SDK behavior.
+2. For middleware-focused operations, use the new index at `doc/middleware.md` and the per-alias pages under `doc/middleware/`.
+
+### Notes
+
+- `ResolveApplicationContext` internals were refactored into dedicated resolver classes without changing public middleware aliases.
+
 ## v4.3.0
 
 ### Breaking status

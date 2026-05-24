@@ -1,47 +1,71 @@
 # Open Questions & Assumptions
 
-This file tracks only unresolved items for the SDK package.
+## Standards Alignment
 
----
+1. Assumption: documentation was aligned to repository-level coding and PHPDoc conventions embedded in current project instructions.
 
-## Open Questions
+- Why it matters: naming and example style consistency.
+- Needed input: canonical, versioned Coding Standards Guide file path and PHPDoc guide artifact for explicit cross-reference.
 
-### OQ-API-VERSIONING: Caronte server API versioning
+## Deployment
 
-The SDK uses hardcoded Caronte API paths without a version prefix. Breaking server API changes still require a coordinated SDK release.
+1. Unknown: target deployment topology (VM, container, serverless) for host apps.
 
-### OQ-HOST-INFRA: Host application runtime defaults
+- Why it matters: final deployment and rollback runbooks differ.
+- Needed input: official platform and release strategy.
 
-This package relies on host-app choices for cache store, queue connection, and database engine. Documentation assumes Laravel defaults unless host policies override them.
+2. Unknown: mandatory host app cache backend in production when OIDC is enabled.
 
-### OQ-BRANCH-MAINLINE: Mainline branch naming
+- Why it matters: JWKS cache behavior and failure modes depend on cache durability.
+- Needed input: required cache backend policy.
 
-Repository automation currently references both `main` and `master` in different places. Release and CI branch policies should be unified to avoid confusion.
+## API and Contracts
 
----
+1. Assumption: Caronte API endpoint paths used in package API classes are authoritative.
 
-## Assumptions
+- Why it matters: docs reflect current client code, not external server docs.
+- Needed input: server-side API contract document version and backward compatibility guarantees.
 
-### A-1: Caronte server availability
+2. Unknown: guaranteed schema for all Caronte error payloads and tenant selection conflict payloads.
 
-The package assumes the Caronte server is reachable for login, token exchange, logout, provisioning, and management operations. Infrastructure should provide HA/load balancing when needed.
+- Why it matters: robust client-side error handling and integrator expectations.
+- Needed input: documented JSON schema per endpoint and status code.
 
-### A-2: JWT key strength
+## Routes and Security
 
-`CARONTE_APP_SECRET` and `CARONTE_APPLICATION_GROUP_SECRET` must be at least 32 characters because token validation enforces minimum HMAC signing-key length.
+1. Assumption: package routes remain web-routed even for JSON clients.
 
-### A-3: Single Caronte server per host application
+- Why it matters: middleware stack, CSRF behavior, and response mode expectations.
+- Needed input: whether dedicated API route registration is planned.
 
-The package reads a single `CARONTE_URL`. Multi-server setups must sit behind that URL.
+2. Unknown: long-term removal timeline for deprecated aliases:
 
-### A-4: `root` role is always trusted
+- caronte.permissions config
+- caronte:permissions:sync command
+- caronte.app-token and caronte.app-permissions middleware aliases
+- Why it matters: migration planning for integrators.
+- Needed input: target major release and deprecation policy dates.
 
-The `root` role satisfies all SDK role checks. The Caronte server should grant it only to fully trusted users.
+## Monitoring
 
-### A-5: Table prefix set before first migration
+1. Unknown: organization-standard alerts and SLOs for auth/authorization failures.
 
-If `caronte.table_prefix` changes after initial migration, tables must be renamed manually.
+- Why it matters: actionable monitoring setup in host apps.
+- Needed input: agreed thresholds for 401/403/error-rate/latency alerts.
 
-### A-6: Notification delivery mode is consistent
+2. Assumption: package relies on host logging and APM; no package-specific channel is required.
 
-Switching from server-delivered to host-delivered 2FA/password recovery requires configuring the sender classes before deployment.
+- Why it matters: troubleshooting ownership boundaries.
+- Needed input: whether maintainers want package-specific log channel recommendations.
+
+## Testing
+
+1. Unknown: required minimum coverage target for this package.
+
+- Why it matters: PR acceptance criteria and regression risk control.
+- Needed input: expected percentage or critical-path coverage requirements.
+
+2. Assumption: feature-level contract testing is the current preferred approach over granular unit tests for every support class.
+
+- Why it matters: future test design consistency.
+- Needed input: maintainer preference for expanding unit vs integration-style tests.

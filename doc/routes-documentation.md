@@ -1,104 +1,84 @@
 # Routes Documentation
 
-All routes are registered by `CaronteServiceProvider` inside the `web` middleware group. No API routes are provided.
+Package routes are loaded by Ometra\Caronte\Providers\CaronteServiceProvider from routes/web.php inside a web middleware group.
 
----
+## 1. Route Registration Model
 
-## Route Configuration
+- Service provider: Ometra\Caronte\Providers\CaronteServiceProvider
+- Loader: loadRoutesFrom(routes/web.php)
+- Route file: routes/web.php
+- Global route group:
+    - prefix: config(caronte.routes_prefix)
+    - name prefix: caronte.
 
-| Config key                        | Default              | Effect                       |
-| --------------------------------- | -------------------- | ---------------------------- |
-| `caronte.routes_prefix`           | empty string         | Prefix for all auth routes   |
-| `caronte.management.enabled`      | `true`               | Enables management routes    |
-| `caronte.management.route_prefix` | `caronte/management` | Prefix for management routes |
+Management routes are conditionally registered only when config(caronte.management.enabled) is true.
 
----
+## 2. Authentication Routes
 
-## Authentication Routes
+| Method   | URI Pattern               | Route Name                              | Controller Method                             | Middleware |
+| -------- | ------------------------- | --------------------------------------- | --------------------------------------------- | ---------- |
+| GET      | /{login_path}             | caronte.login.form                      | AuthController@loginForm                      | web        |
+| POST     | /{login_path}             | caronte.login                           | AuthController@login                          | web        |
+| GET,POST | /logout                   | caronte.logout                          | AuthController@logout                         | web        |
+| GET      | /oidc/login               | caronte.oidc.login                      | OidcAuthController@redirect                   | web        |
+| GET      | /oidc/callback            | caronte.oidc.callback                   | OidcAuthController@callback                   | web        |
+| POST     | /oidc/logout              | caronte.oidc.logout                     | OidcAuthController@logout                     | web        |
+| POST     | /two-factor               | caronte.twoFactor.request               | AuthController@twoFactorTokenRequest          | web        |
+| GET      | /two-factor/{token}       | caronte.twoFactor.login                 | AuthController@twoFactorTokenLogin            | web        |
+| GET      | /password/recover         | caronte.password.recover.form           | AuthController@passwordRecoverRequestForm     | web        |
+| POST     | /password/recover         | caronte.password.recover.request        | AuthController@passwordRecoverRequest         | web        |
+| GET      | /password/recover/{token} | caronte.password.recover.validate-token | AuthController@passwordRecoverTokenValidation | web        |
+| POST     | /password/recover/{token} | caronte.password.recover.submit         | AuthController@passwordRecover                | web        |
 
-These routes are always registered (cannot be disabled).
+Notes:
 
-| Method   | URI                                  | Name                                      | Middleware | Description                                                             |
-| -------- | ------------------------------------ | ----------------------------------------- | ---------- | ----------------------------------------------------------------------- |
-| GET      | `/{prefix}/login`                    | `caronte.login.form`                      | `web`      | Show login form                                                         |
-| POST     | `/{prefix}/login`                    | `caronte.login`                           | `web`      | Submit credentials                                                      |
-| GET/POST | `/{prefix}/logout`                   | `caronte.logout`                          | `web`      | Log out locally and revoke the server token via `POST /api/auth/logout` |
-| GET      | `/{prefix}/oidc/login`               | `caronte.oidc.login`                      | `web`      | Redirect to OIDC login when `auth_mode=oidc`                            |
-| GET      | `/{prefix}/oidc/callback`            | `caronte.oidc.callback`                   | `web`      | Consume OIDC callback                                                   |
-| POST     | `/{prefix}/oidc/logout`              | `caronte.oidc.logout`                     | `web`      | OIDC logout                                                             |
-| POST     | `/{prefix}/two-factor`               | `caronte.twoFactor.request`               | `web`      | Request 2FA challenge                                                   |
-| GET      | `/{prefix}/two-factor/{token}`       | `caronte.twoFactor.login`                 | `web`      | Consume 2FA token                                                       |
-| GET      | `/{prefix}/password/recover`         | `caronte.password.recover.form`           | `web`      | Show recovery form                                                      |
-| POST     | `/{prefix}/password/recover`         | `caronte.password.recover.request`        | `web`      | Request recovery link                                                   |
-| GET      | `/{prefix}/password/recover/{token}` | `caronte.password.recover.validate-token` | `web`      | Show new-password form after token validation                           |
-| POST     | `/{prefix}/password/recover/{token}` | `caronte.password.recover.submit`         | `web`      | Submit new password                                                     |
+- login_path is derived from config(caronte.login_url).
+- auth prefix is config(caronte.routes_prefix).
 
-Default `{prefix}`: empty string. With default config the login route is `/login`, logout is `/logout`, and 2FA is `/two-factor`.
+## 3. Management Routes
 
----
+Base prefix: config(caronte.management.route_prefix), default caronte/management.
 
-## Management Routes
+Common middleware for all management routes:
 
-Registered only when `caronte.management.enabled = true`.
+- caronte.session
+- caronte.roles:<roles from config(caronte.management.access_roles)>
 
-All management routes require:
+| Method | URI Pattern                                   | Route Name                               | Controller Method                        |
+| ------ | --------------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| GET    | /caronte/management                           | caronte.management.dashboard             | ManagementController@dashboard           |
+| POST   | /caronte/management/roles/sync                | caronte.management.roles.sync            | RoleController@sync                      |
+| POST   | /caronte/management/roles/create              | caronte.management.roles.create          | RoleController@unsupportedLegacyMutation |
+| POST   | /caronte/management/roles/update              | caronte.management.roles.update          | RoleController@unsupportedLegacyMutation |
+| POST   | /caronte/management/roles/delete              | caronte.management.roles.delete          | RoleController@unsupportedLegacyMutation |
+| GET    | /caronte/management/users/list                | caronte.management.users.list            | UserController@list                      |
+| POST   | /caronte/management/users                     | caronte.management.users.store           | UserController@store                     |
+| GET    | /caronte/management/users/{uri_user}          | caronte.management.users.show            | UserController@show                      |
+| POST   | /caronte/management/users/update              | caronte.management.users.update          | UserController@updateLegacy              |
+| PUT    | /caronte/management/users/{uri_user}          | caronte.management.users.update.direct   | UserController@update                    |
+| POST   | /caronte/management/users/delete              | caronte.management.users.delete          | UserController@deleteLegacy              |
+| DELETE | /caronte/management/users/{uri_user}          | caronte.management.users.delete.direct   | UserController@delete                    |
+| GET    | /caronte/management/users/{uri_user}/roles    | caronte.management.users.roles.list      | UserController@listRoles                 |
+| PUT    | /caronte/management/users/{uri_user}/roles    | caronte.management.users.roles.sync      | UserController@syncRoles                 |
+| POST   | /caronte/management/users/{uri_user}/metadata | caronte.management.users.metadata.store  | UserController@storeMetadata             |
+| DELETE | /caronte/management/users/{uri_user}/metadata | caronte.management.users.metadata.delete | UserController@deleteMetadata            |
 
-- `caronte.session` (ValidateUserToken)
-- `caronte.roles:{access_roles}` (ValidateUserRoles)
+## 4. Middleware Aliases Exposed by the Package
 
-### Current Routes
+Registered in CaronteServiceProvider:
 
-Use these names in new code.
+- caronte.session -> ValidateUserToken
+- caronte.roles -> ValidateUserRoles
+- caronte.application -> ResolveApplicationContext
+- caronte.protected-api-token -> ValidateProtectedApiAccessToken
+- caronte.protected-api-scopes -> ValidateProtectedApiScopes
+- caronte.app-token -> ValidateApplicationAccessToken (deprecated alias)
+- caronte.app-permissions -> ValidateApplicationAccessPermissions (deprecated alias)
 
-| Method | URI                                   | Name                                       | Description               |
-| ------ | ------------------------------------- | ------------------------------------------ | ------------------------- |
-| GET    | `/{mgmt_prefix}`                      | `caronte.management.dashboard`             | Management dashboard      |
-| POST   | `/{mgmt_prefix}/roles/sync`           | `caronte.management.roles.sync`            | Sync roles to Caronte     |
-| POST   | `/{mgmt_prefix}/users`                | `caronte.management.users.store`           | Create a user             |
-| GET    | `/{mgmt_prefix}/users/{uri}`          | `caronte.management.users.show`            | Show user detail          |
-| PUT    | `/{mgmt_prefix}/users/{uri}`          | `caronte.management.users.update.direct`   | Update user data          |
-| DELETE | `/{mgmt_prefix}/users/{uri}`          | `caronte.management.users.delete.direct`   | Delete user               |
-| GET    | `/{mgmt_prefix}/users/{uri}/roles`    | `caronte.management.users.roles.list`      | Return user roles as JSON |
-| PUT    | `/{mgmt_prefix}/users/{uri}/roles`    | `caronte.management.users.roles.sync`      | Sync user roles           |
-| POST   | `/{mgmt_prefix}/users/{uri}/metadata` | `caronte.management.users.metadata.store`  | Store user metadata       |
-| DELETE | `/{mgmt_prefix}/users/{uri}/metadata` | `caronte.management.users.metadata.delete` | Delete metadata key       |
+## 5. Host Application Expectations
 
-### Legacy Compatibility Routes
+As this is a package:
 
-These routes are kept for already-published Blade management views and older host integrations. Do not use them for new code unless you are maintaining a published legacy view.
-
-| Method | URI                           | Name                              | Description                                                                  |
-| ------ | ----------------------------- | --------------------------------- | ---------------------------------------------------------------------------- |
-| GET    | `/{mgmt_prefix}/users/list`   | `caronte.management.users.list`   | Legacy JSON user search endpoint                                             |
-| POST   | `/{mgmt_prefix}/users/update` | `caronte.management.users.update` | Legacy form endpoint; expects `uri_user` in the request body                 |
-| POST   | `/{mgmt_prefix}/users/delete` | `caronte.management.users.delete` | Legacy form endpoint; expects `uri_user` in the request body                 |
-| POST   | `/{mgmt_prefix}/roles/create` | `caronte.management.roles.create` | Legacy route name; redirects with a warning because roles are config-managed |
-| POST   | `/{mgmt_prefix}/roles/update` | `caronte.management.roles.update` | Legacy route name; redirects with a warning because roles are config-managed |
-| POST   | `/{mgmt_prefix}/roles/delete` | `caronte.management.roles.delete` | Legacy route name; redirects with a warning because roles are config-managed |
-
-Default `{mgmt_prefix}`: `caronte/management`
-
----
-
-## Notes
-
-- The `root` role is always treated as an access role regardless of `access_roles` configuration.
-- The management UI can render either Blade views or Inertia pages depending on `management.use_inertia`.
-- Views are loaded from `resources/views/vendor/caronte` if published, otherwise from the package.
-- If a host app has older published Blade views, legacy compatibility routes prevent `RouteNotFoundException` while the views are migrated or republished.
-- JSON vs redirect response mode is inferred from request expectations (`expectsJson`, `wantsJson`) and `api/*` path checks.
-
-## Middleware Aliases
-
-The package also registers middleware aliases that can be used on host app routes:
-
-| Alias                                  | Purpose                                                       |
-| -------------------------------------- | ------------------------------------------------------------- |
-| `caronte.session`                      | Validate user JWT from session or bearer token                |
-| `caronte.roles:<role>`                 | Require user role; `root` is accepted                         |
-| `caronte.application`                  | Validate incoming app-to-app JWT headers                      |
-| `caronte.application:tenant_required`  | Same as above, but requires `X-Tenant-Id`                     |
-| `caronte.protected-api-token`          | Validate a Protected API Access Token from `Authorization`    |
-| `caronte.protected-api-scopes:<scope>` | Require a protected API scope                                 |
-| `caronte.app-token`                    | Deprecated alias for `caronte.protected-api-token`            |
-| `caronte.app-permissions:<permission>` | Deprecated alias for `caronte.protected-api-scopes:<scope>`   |
+- Route prefixes and login path are host-configurable.
+- Host apps should use package middleware on their own API routes for app-to-app and protected API authorization.
+- No package routes are auto-mounted under routes/api.php.
