@@ -1,52 +1,85 @@
 # Tests Documentation
 
-## Overview
+## 1. Test Framework and Execution
 
-The package uses PHPUnit 11 through Orchestra Testbench 10.
+- Framework: PHPUnit (10 or 11 supported by composer constraints)
+- Testbench: orchestra/testbench for package testing
+- Test suite configured in phpunit.xml.dist:
+    - tests/Feature
 
-```bash
-composer test
-php vendor/bin/phpunit --filter MiddlewareBehaviorTest
-npm run typecheck
-```
+Run commands:
 
-## Feature Coverage
+- vendor/bin/phpunit
+- vendor/bin/phpunit tests/Feature/ConfigurationValidationTest.php
 
-| Area                                                                                  | Test file                           |
-| ------------------------------------------------------------------------------------- | ----------------------------------- |
-| Auth pages, login, logout, password recovery, 2FA                                     | `AuthContractTest`                  |
-| Commands for roles, protected API scopes, and users                                  | `CommandBehaviorTest`               |
-| Config validation for roles and management access                                     | `ConfigurationValidationTest`       |
-| Management UI routes                                                                  | `ManagementUiTest`                  |
-| Resolved tenancy, Inertia, and helper contracts                                       | `ResolvedOpenQuestionsTest`         |
-| Disabled management routes                                                            | `ManagementUiWhenDisabledTest`      |
-| Middleware: user session, roles, app auth token, group auth token, protected API access token | `MiddlewareBehaviorTest`            |
-| Route registration                                                                    | `RouteRegistrationTest`             |
-| Disabled route registration                                                           | `RouteRegistrationWhenDisabledTest` |
+## 2. Test Structure
 
-## Important Contracts Covered
+- Base class: Tests\TestCase
+    - Registers package providers
+    - Sets package config defaults
+    - Includes token helpers for user, application, group, and protected API tokens
+- Alternate base: Tests\DisabledManagementTestCase
+    - Same setup with management disabled
 
-- JWT app credentials and JWT group credentials are accepted by `caronte.application`.
-- Group user JWTs validate against group id and group secret.
-- Expired user JWTs trigger exchange.
-- Phase-2 user JWT claims are preferred and tokens without the legacy `user` claim are accepted.
-- SDK logout sends application and user tokens to the server logout endpoint.
-- `ProvisioningApi` wraps the server tenant provisioning endpoint.
-- `CaronteTenantResolver` reads tenant id from the authenticated user JWT.
-- Management dashboard supports Inertia responses when enabled.
-- `CaronteUserHelper` reads local cache name, email, and metadata values.
-- Role middleware rejects missing roles.
-- `caronte.protected-api-token` accepts valid Protected API Access Tokens.
-- `caronte.protected-api-scopes` rejects missing scopes.
-- `caronte:protected-api:scopes:sync` sends the configured protected API scope catalog to Caronte.
-- Legacy `caronte.app-token`, `caronte.app-permissions`, `caronte:permissions:sync`, and `permissions` terminology remains covered only as deprecated compatibility until the next major version.
+Main feature files:
 
-## Test Helpers
+- RouteRegistrationTest and RouteRegistrationWhenDisabledTest
+- MiddlewareBehaviorTest
+- AuthContractTest
+- ManagementUiTest and ManagementUiWhenDisabledTest
+- CommandBehaviorTest
+- ConfigurationValidationTest
+- ResolvedOpenQuestionsTest
 
-`tests/TestCase.php` provides:
+## 3. Coverage Overview
 
-- `makeToken()` for user JWTs.
-- `makeProtectedApiAccessToken()` for Protected API Access Token fixtures using `protected_api_access` and `scopes`.
-- `makeApplicationAccessToken()` only for legacy compatibility fixtures using `application_token` and `permissions`.
+Well covered:
 
-Both helpers sign tokens with the configured test secrets.
+- Route registration and management enable/disable behavior
+- Middleware behavior for:
+    - user session auth
+    - role checks
+    - application/group token context
+    - protected API token and scope checks
+- Command integration behavior (HTTP fakes and request assertions)
+- Authentication contract behavior against Caronte API endpoints
+- Configuration validation (tenancy mode, required config, role normalization)
+
+Moderate coverage:
+
+- Management UI rendering (Blade and Inertia variants)
+- Local user cache interaction helpers
+
+Lower coverage / gaps:
+
+- Dedicated unit tests for every support class are limited
+- End-to-end host integration scenarios are not part of package tests
+- OIDC edge cases are partially covered indirectly; deeper callback failure matrices may need expansion
+
+## 4. Test Conventions and Patterns
+
+- Use HTTP::fake for Caronte API boundary testing.
+- Use explicit assertions on outgoing headers:
+    - X-Application-Token
+    - X-Group-Token
+    - X-Tenant-Id
+- Prefer named route assertions and middleware behavior assertions.
+- Validate deprecated aliases while keeping migration path explicit.
+
+## 5. Adding New Tests
+
+Recommended pattern:
+
+1. Add new feature tests under tests/Feature.
+2. Extend Tests\TestCase unless management disabled behavior is required.
+3. Use helper token factories in TestCase to avoid duplicated JWT setup.
+4. Mock Caronte external calls with HTTP::fake and assert payload/header contracts.
+5. Keep test names behavior-focused and long-form for readability.
+
+## 6. Quality Gate Suggestion
+
+For package changes affecting auth, middleware, or API contracts:
+
+- Run full feature suite before merge.
+- Add at least one regression test per bugfix.
+- Include scenario tests for both JSON and redirect behaviors when controller responses depend on request mode.

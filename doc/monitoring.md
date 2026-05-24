@@ -1,82 +1,79 @@
 # Monitoring
 
-This package does not ship built-in metrics, health checks, or dashboards. Monitoring relies on the host application's infrastructure.
+This package does not include a dedicated monitoring stack. Operational visibility relies on host Laravel observability and Caronte server telemetry.
 
----
+## 1. Logging
 
-## 1. Log Points
+Package behavior:
 
-The package uses Laravel's `Log` facade (no custom channel). Look for these patterns in your application logs:
+- Uses exceptions and structured response envelopes.
+- Does not define a package-specific log channel.
+- Runtime logging therefore follows host app logging configuration.
 
-| Event | Log level | Context |
-|---|---|---|
-| Caronte server unreachable (after retries) | `error` | Exception from `CaronteHttpClient::request()` |
-| JWT validation failure | `warning` (host app decides) | `CaronteUserToken::validateToken()` returns `false` |
-| Config validation failure at boot | `critical` | `CaronteServiceProvider::validateCaronteConfig()` |
-| Application token mismatch | `warning` (host app decides) | `ResolveApplicationContext` middleware returns 401 |
+Operational recommendation:
 
-> The package itself does not write log entries. Wrap API calls in your own try/catch and log as needed.
+- Ensure host app logging captures:
+    - HTTP client failures to CARONTE_URL
+    - 401/403 spikes on package-protected routes
+    - middleware exceptions from token validation
 
----
+## 2. Runtime Signals to Monitor
 
-## 2. HTTP Retry Configuration
+### Authentication health
 
-The HTTP client retries failed requests automatically:
+- Login failure rate
+- Token validation failures
+- Unauthorized and forbidden response rates on package routes
 
-```php
-// config/caronte.php
-'http' => [
-    'timeout'     => 10,    // seconds per attempt
-    'retries'     => 2,     // total retry attempts after first failure
-    'retry_sleep' => 500,   // ms between retries
-],
-```
+### Integration health
 
-Tune these values based on your network conditions and the Caronte server SLA.
+- Outbound latency to Caronte API endpoints
+- Outbound error rates (4xx and 5xx from Caronte)
+- Retry frequency from package HTTP client
 
----
+### Tenant and authorization health
 
-## 3. Recommended Monitoring Setup
+- Tenant mismatch failures in single-tenant mode
+- Missing scope failures for protected API routes
+- Missing role failures on management routes
 
-### 3.1 Caronte Server Health
+### OIDC mode
 
-Add an external HTTP monitor to `{CARONTE_URL}/health` (or equivalent Caronte endpoint) to alert when the auth server is unavailable.
+- Callback failures (invalid state, token validation failures)
+- JWKS retrieval failures
+- Refresh token exchange failures
 
-### 3.2 Login Failure Rate
+## 3. Suggested Alerts
 
-Track failed login attempts via your host app's logging pipeline:
+- Critical: sustained inability to reach CARONTE_URL
+- Critical: large surge in 401 responses on core authenticated routes
+- High: repeated 403 responses from role/scope checks after deployment
+- High: OIDC callback failures above baseline
+- Medium: elevated retry counts on Caronte HTTP calls
 
-- Abnormal spikes indicate brute-force attempts or Caronte server issues.
-- The `AuthController` sets validation errors in the session on failure — these can be captured with Laravel Telescope or a custom event listener.
+## 4. Troubleshooting Checklist
 
-### 3.3 Token Exchange Failures
+1. Validate package configuration:
+    - caronte.url, caronte.app_cn, caronte.app_secret
+    - tenancy mode and tenant id
+2. Confirm token headers per scenario:
+    - X-Application-Token
+    - X-Group-Token when group mode is active
+    - X-Tenant-Id for tenant-required flows
+3. Check host route middleware order and composition.
+4. Inspect HTTP payload/response details from failed Caronte requests.
+5. Re-run role and scope synchronization commands after config changes.
 
-Monitor for 401/403 responses on protected routes. These indicate:
+## 5. Minimal Recommended Setup (if absent)
 
-- Expired tokens that could not be exchanged (Caronte server unreachable)
-- Role permission violations (`caronte.roles` middleware returning 403)
+- Centralized host app logs with request correlation IDs
+- Dashboard panels for package route 401/403/409 rates
+- Synthetic check that exercises a lightweight authenticated flow
+- Deployment step that executes:
+    - php artisan caronte:roles:sync
+    - php artisan caronte:protected-api:scopes:sync
 
-### 3.4 Database Table Growth
+## 6. Non-Applicable Items
 
-The `CaronteUser` and `CaronteUserMetadata` tables grow as users log in (when `update_local_user = true`). Monitor table size and add a retention policy if needed.
-
----
-
-## 4. Laravel Telescope
-
-If Telescope is installed in the host app, all HTTP requests to the Caronte server will appear in the **HTTP Client** tab, including:
-
-- Request URL, method, headers (token values will be visible — ensure Telescope is not enabled in production)
-- Response status and body
-- Retry attempts
-
----
-
-## 5. Alerting Recommendations
-
-| Condition | Suggested alert |
-|---|---|
-| Caronte server returns 5xx for > 1 min | PagerDuty / OpsGenie critical |
-| Login error rate > 10% over 5 min window | Slack warning |
-| Config boot exception | Deploy pipeline failure alert |
-| Management route 403 rate spike | Security review trigger |
+- No built-in Horizon/Telescope instrumentation in this package.
+- No package-owned queue workers to monitor.

@@ -1,229 +1,133 @@
 # Deployment Instructions
 
-## Prerequisites
+This package is integrated into a host Laravel application. Deployment guidance below is for the host app where ometra/caronte-sdk is installed.
 
-- PHP `^8.2`
-- Laravel `^12.0`
-- A running Caronte authentication server (external)
-- Database connection configured in the host application
+## 1. System Requirements
+
+- PHP: ^8.2
+- Laravel: ^12.0
 - Composer
+- Database supported by host Laravel app (package ships migrations for local user cache tables)
+- Network connectivity to CARONTE_URL
+- Optional for OIDC mode:
+    - Reachable OIDC issuer
+    - Working Laravel cache store for JWKS caching
 
----
+Relevant package dependencies:
 
-## 1. Installation
+- lcobucci/jwt and lcobucci/clock
+- inertiajs/inertia-laravel (optional UI mode)
+- laravel/prompts (interactive artisan commands)
 
-```bash
-composer require ometra/caronte-sdk
-```
+## 2. Environment Configuration
 
-The package auto-registers via Laravel's package discovery (`extra.laravel.providers`). No manual service-provider registration is required.
+Minimum required variables:
 
----
+- CARONTE_URL=https://caronte.example.com
+- CARONTE_APP_CN=your-app-canonical-name
+- CARONTE_APP_SECRET=YOUR_APP_SECRET_MIN_32_CHARS
 
-## 2. Configuration
+Common optional variables:
 
-### 2.1 Publish the config file
+- CARONTE_ISSUER_ID=caronte
+- CARONTE_ENFORCE_ISSUER=true
+- CARONTE_AUTH_MODE=legacy
+- CARONTE_LOGIN_URL=/login
+- CARONTE_SUCCESS_URL=/
+- CARONTE_SESSION_KEY=caronte.user_token
+- CARONTE_TENANCY_MODE=multi
+- CARONTE_TENANT_ID=tenant-id-when-single-tenant
+- CARONTE_MANAGEMENT_ENABLED=true
+- CARONTE_MANAGEMENT_ROUTE_PREFIX=caronte/management
+- CARONTE_MANAGEMENT_ACCESS_ROLES=root
+- CARONTE_MANAGEMENT_USE_INERTIA=false
+- CARONTE_HTTP_TIMEOUT=10
+- CARONTE_HTTP_RETRIES=1
+- CARONTE_HTTP_RETRY_SLEEP=150
+- CARONTE_TLS_VERIFY=true
+- CARONTE_ALLOW_HTTP_REQUESTS=false
 
-```bash
-php artisan vendor:publish --tag=caronte:config
-```
+Optional application-group auth:
 
-This creates `config/caronte.php` in the host application.
+- CARONTE_APPLICATION_GROUP_ID=group-id
+- CARONTE_APPLICATION_GROUP_SECRET=YOUR_GROUP_SECRET_MIN_32_CHARS
 
-### 2.2 Required environment variables
+Optional OIDC variables:
 
-At minimum, these values must be configured in `.env`:
+- CARONTE_OIDC_ISSUER=https://issuer.example.com
+- CARONTE_OIDC_CLIENT_ID=client-id
+- CARONTE_OIDC_CLIENT_SECRET=client-secret
+- CARONTE_OIDC_REDIRECT_URI=https://host.example.com/oidc/callback
+- CARONTE_OIDC_SCOPES=openid profile email
 
-```env
-CARONTE_URL=https://your-caronte-server.example.com
-CARONTE_APP_CN=your-app-canonical-name
-CARONTE_APP_SECRET=a-strong-secret-at-least-32-chars
-```
+## 3. Initial Setup in Host App
 
-| Variable                           | Required                | Description                                                |
-| ---------------------------------- | ----------------------- | ---------------------------------------------------------- |
-| `CARONTE_URL`                      | Yes                     | Base URL of the Caronte authentication server              |
-| `CARONTE_APP_CN`                   | Yes                     | Canonical name that identifies this application in Caronte |
-| `CARONTE_APP_SECRET`               | Yes                     | Signing secret for short-lived application JWTs            |
-| `CARONTE_ISSUER_ID`                | No                      | Overrides JWT issuer claim validation                      |
-| `CARONTE_APPLICATION_GROUP_ID`     | No                      | Application group id for grouped user/app tokens           |
-| `CARONTE_APPLICATION_GROUP_SECRET` | No                      | Signing secret for short-lived group JWTs                  |
-| `CARONTE_APPLICATION_TOKEN_TTL_SECONDS` | No                 | TTL for `X-Application-Token` JWTs, default `300`          |
-| `CARONTE_APPLICATION_GROUP_TOKEN_TTL_SECONDS` | No           | TTL for `X-Group-Token` JWTs, default `300`                |
-| `CARONTE_AUTH_MODE`                | No                      | `legacy`, `oidc`, or `dual`                                |
-| `CARONTE_TENANCY_MODE`             | No                      | `multi` (default) or `single`                              |
-| `CARONTE_TENANT_ID`                | Required in single mode | Tenant id enforced when `CARONTE_TENANCY_MODE=single`      |
+1. Install package:
 
-Most options have defaults in `config/caronte.php`. Use environment variables for deployment-specific values such as OIDC mode, TLS policy, management exposure, and notification delivery.
+    composer require ometra/caronte-sdk
 
-### 2.3 Key configuration options (excerpt)
+2. Publish config:
 
-```php
-return [
-    'use_2fa'               => false,        // Enable two-factor authentication
-    'allow_http_requests'   => false,        // Allow non-TLS (dev only)
-    'tls_verify'            => true,         // Verify TLS certificates
-    'update_local_user'     => false,        // Sync user to local DB after token validation
+    php artisan vendor:publish --tag=caronte:config
 
-    // 'server': Caronte sends; 'host': this app sends via Mailable classes
-    'notification_delivery' => 'server',
+3. Publish migrations (if you want host-owned migration files):
 
-    'routes_prefix' => 'caronte',
-    'success_url'   => '/',
-    'login_url'     => '/login',
+    php artisan vendor:publish --tag=caronte:migrations
 
-    'http' => [
-        'timeout'     => 10,   // seconds
-        'retries'     => 1,
-        'retry_sleep' => 150,  // ms between retries
-    ],
+4. Run migrations:
 
-    'roles' => [
-        'admin'  => 'Administrator',
-        'editor' => 'Content editor',
-    ],
+    php artisan migrate
 
-    'protected_api' => [
-        'scopes' => [
-            'invoices.read' => 'Read invoices through this application API',
-        ],
-    ],
+5. Optional publishing:
+    - php artisan vendor:publish --tag=caronte:views
+    - php artisan vendor:publish --tag=caronte-assets
+    - php artisan vendor:publish --tag=caronte:inertia
 
-    'management' => [
-        'enabled'      => true,
-        'route_prefix' => 'caronte/management',
-        'access_roles' => ['admin'],
-        'use_inertia'  => false,
-        'features'     => [
-            'metadata'         => false,
-            'profile_pictures' => false,
-        ],
-    ],
+6. Synchronize roles/scopes after configuring caronte.roles and caronte.protected_api.scopes:
+    - php artisan caronte:roles:sync
+    - php artisan caronte:protected-api:scopes:sync
 
-    'table_prefix' => '',   // Prefix for package DB tables
-];
-```
+## 4. Host Route Integration
 
----
+Use package middleware on host routes as needed:
 
-## 3. Database Migrations
+- caronte.session: validates user token and tenant access
+- caronte.roles:role1,role2: role checks
+- caronte.application[:tenant_required,user_required]: app-to-app context
+- caronte.protected-api-token + caronte.protected-api-scopes:scope: protected API access
 
-| Migration file            | Table created          |
-| ------------------------- | ---------------------- |
-| `users_table.php`         | `{prefix}Users`        |
-| `user_metadata_table.php` | `{prefix}UserMetadata` |
+## 5. Deployment Workflow (Staging/Production)
 
-```bash
-php artisan migrate
-```
+Recommended sequence in host app:
 
-To publish migration files for customisation:
+1. Pull code
+2. composer install --no-dev --prefer-dist --optimize-autoloader
+3. php artisan config:cache
+4. php artisan route:cache (only if your app supports route caching)
+5. php artisan migrate --force
+6. php artisan caronte:roles:sync
+7. php artisan caronte:protected-api:scopes:sync
+8. Restart PHP workers / FPM as applicable
 
-```bash
-php artisan vendor:publish --tag=caronte:migrations
-```
+Notes:
 
-> Set `table_prefix` before running the first migration.
+- Package itself does not require queue workers or scheduler entries.
+- If host app uses OIDC mode, ensure cache backend is healthy because JWKS are cached.
 
----
+## 6. Local Development
 
-## 4. Publishing Assets
+Typical local cycle:
 
-| Tag                  | Published to                     |
-| -------------------- | -------------------------------- |
-| `caronte:config`     | `config/caronte.php`             |
-| `caronte:views`      | `resources/views/vendor/caronte` |
-| `caronte:migrations` | `database/migrations`            |
-| `caronte:inertia`    | `resources/js/vendor/caronte`    |
-| `caronte-assets`     | `public/vendor/caronte`          |
+- Configure .env with Caronte credentials
+- php artisan migrate
+- php artisan test
+- Open /login and /caronte/management
 
-```bash
-# Publish everything at once
-php artisan vendor:publish --tag=caronte
-```
+If CARONTE_URL is http in local, set CARONTE_ALLOW_HTTP_REQUESTS=true explicitly.
 
-When `caronte.management.use_inertia=true`, publish `caronte:inertia` and compile the copied TSX components from the host application's frontend build. Blade mode does not require those Inertia assets.
+## 7. Assumptions
 
----
+- CI/CD, container images, and infrastructure automation belong to the host app.
+- No package-owned cron tasks are required.
 
-## 5. Middleware
-
-These aliases are registered automatically by `CaronteServiceProvider`:
-
-| Alias                                    | Purpose                                                                  |
-| ---------------------------------------- | ------------------------------------------------------------------------ |
-| `caronte.session`                        | Validates and auto-renews the user JWT                                   |
-| `caronte.roles`                          | Checks the user has the specified roles                                  |
-| `caronte.application`                    | Validates incoming app-to-app auth JWT headers                           |
-| `caronte.protected-api-token`            | Validates tenant-bound Protected API Access Tokens                       |
-| `caronte.protected-api-scopes`           | Checks scopes on a validated Protected API Access Token                  |
-| `caronte.app-token`                      | Deprecated alias for `caronte.protected-api-token`                       |
-| `caronte.app-permissions`                | Deprecated alias for `caronte.protected-api-scopes`                      |
-
-```php
-// Auth guard
-Route::middleware('caronte.session')->group(function () { ... });
-
-// Auth + role check
-Route::middleware(['caronte.session', 'caronte.roles:admin,editor'])->group(...);
-
-// Service-to-service
-Route::middleware('caronte.application')->group(function () { ... });
-
-// Service-to-service with mandatory tenant header
-Route::middleware('caronte.application:tenant_required')->group(function () { ... });
-
-// External API consumers
-Route::middleware([
-    'caronte.protected-api-token',
-    'caronte.protected-api-scopes:invoices.read',
-])->group(function () { ... });
-```
-
-For exact headers and token responsibilities, see [Client Handover](client-handover.md).
-
----
-
-## 6. Notification Setup (Host Delivery Mode)
-
-When `notification_delivery = 'host'`, the package dispatches emails itself. The sender classes are swappable:
-
-```php
-// config/caronte.php
-'two_factor_sender'        => \Ometra\Caronte\Notifications\LaravelTwoFactorChallengeSender::class,
-'password_recovery_sender' => \Ometra\Caronte\Notifications\LaravelPasswordRecoverySender::class,
-```
-
-Bind a custom implementation in your `AppServiceProvider`:
-
-```php
-use Ometra\Caronte\Contracts\SendsTwoFactorChallenge;
-
-$this->app->bind(SendsTwoFactorChallenge::class, YourCustomSender::class);
-```
-
----
-
-## 7. Initial Role Sync
-
-```bash
-# Preview
-php artisan caronte:roles:sync --dry-run
-
-# Apply
-php artisan caronte:roles:sync
-```
-
----
-
-## 8. Post-Deployment Checklist
-
-- [ ] `CARONTE_URL`, `CARONTE_APP_CN`, `CARONTE_APP_SECRET` present in `.env`
-- [ ] `php artisan migrate` completed
-- [ ] `php artisan caronte:roles:sync` completed
-- [ ] `php artisan caronte:protected-api:scopes:sync` completed if this app exposes protected APIs to external clients
-- [ ] Management UI accessible at `/{management.route_prefix}`
-- [ ] If using Inertia management UI, `caronte:inertia` assets are published and compiled by the host app
-- [ ] At least one user linked to `root` or a configured management access role via `caronte:users:roles:sync`
-- [ ] `tls_verify = true` for production
-- [ ] `allow_http_requests = false` for production
+Open items are tracked in doc/open-questions-and-assumptions.md.

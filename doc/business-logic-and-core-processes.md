@@ -1,121 +1,190 @@
 # Business Logic & Core Processes
 
-## Authentication Flow
+## 1. Domain Summary
 
-1. User submits credentials through the package auth routes.
-2. `AuthApi::login()` sends credentials to Caronte with `X-Application-Token`.
-3. Caronte returns a user JWT.
-4. The package stores the JWT in session for web requests or accepts it as bearer token for JSON/API requests.
-5. `caronte.session` validates the token on protected routes.
+Core business purpose: delegate authentication and authorization to Caronte while exposing Laravel-native middleware, routes, and management flows for host applications.
 
-User tokens can be app-scoped or group-scoped. Group-scoped tokens are validated with `CARONTE_APPLICATION_GROUP_SECRET` and must include the configured `CARONTE_APPLICATION_GROUP_ID`.
+Primary domains:
 
-The SDK reads phase-2 top-level JWT claims first: `sub`, `aud`, `jti`, `tenant_id`, `roles`, `metadata`, `app_id`, and `token_audience`. The legacy nested `user` claim remains supported as a fallback.
+- User authentication and session handling
+- Tenant-aware access control
+- Role and protected scope synchronization
+- Management UI for user lifecycle and assignments
+- App-to-app trust for internal service calls
 
-Logout is server-backed. The SDK web route accepts `GET` and `POST`, clears the local session, and calls the Caronte server with `POST /api/auth/logout` or `POST /api/auth/logoutAll`.
+## 2. Core Process: User Login and Session Establishment
 
-## Roles
+Why it exists:
 
-Roles are user-facing authorization values.
+- Host apps need a standardized login flow backed by Caronte-issued JWTs.
 
-1. Define roles in `config/caronte.php`.
-2. Run `php artisan caronte:roles:sync`.
-3. Protect routes with `caronte.roles:<role>`.
+Main components:
 
-`root` always satisfies role checks.
+- Ometra\Caronte\Http\Controllers\AuthController (src/Http/Controllers/AuthController.php)
+- Ometra\Caronte\Api\AuthApi (src/Api/AuthApi.php)
+- Ometra\Caronte\CaronteUserToken (src/CaronteUserToken.php)
+- Ometra\Caronte\Facades\Caronte (src/Facades/Caronte.php)
 
-## Protected API Scopes
+Flow:
 
-Protected API scopes are not user roles. They describe operations an external client may perform against this host application's API.
+1. Client posts credentials to package login route.
+2. AuthController validates request and invokes AuthApi::login.
+3. Caronte returns token or conflict (tenant selection required).
+4. Token is validated and saved in session for web requests.
+5. User is redirected/returned with standardized response envelope.
 
-1. Define scopes in `config/caronte.php` under `protected_api.scopes`.
-2. Run `php artisan caronte:protected-api:scopes:sync`.
-3. Caronte server/admin issues a Protected API Access Token for a target app, tenant, and approved scope list.
-4. This application protects API routes with `caronte.protected-api-token` and `caronte.protected-api-scopes:<scope>`.
+Business rules:
 
-Example:
+- Single-tenant mode rejects explicit tenant mismatches.
+- Pending login state has TTL for tenant selection continuation.
+- JSON/API clients receive response envelope instead of redirects.
 
-```php
-'protected_api' => [
-    'scopes' => [
-        'invoices.read' => 'Read invoices',
-        'invoices.write' => 'Write invoices',
-    ],
-],
+```mermaid
+sequenceDiagram
+  participant User
+  participant AuthController
+  participant AuthApi
+  participant CaronteServer
+  participant Session
+
+  User->>AuthController: POST /login (email, password, optional tenant)
+  AuthController->>AuthApi: login(...)
+  AuthApi->>CaronteServer: POST /api/auth/login
+  CaronteServer-->>AuthApi: token or tenant selection required
+  AuthApi-->>AuthController: normalized result
+  AuthController->>Session: save token when web request
+  AuthController-->>User: JSON success/failure or redirect
 ```
 
-```php
-Route::middleware([
-    'caronte.protected-api-token',
-    'caronte.protected-api-scopes:invoices.read',
-])->get('/api/invoices', InvoiceController::class);
+## 3. Core Process: Request Authorization via Middleware
+
+Why it exists:
+
+- Every protected request must validate identity, tenant, and privileges.
+
+Main components:
+
+- ValidateUserToken (src/Http/Middleware/ValidateUserToken.php)
+- ValidateUserRoles (src/Http/Middleware/ValidateUserRoles.php)
+- ResolveApplicationContext (src/Http/Middleware/ResolveApplicationContext.php)
+- ValidateProtectedApiAccessToken (src/Http/Middleware/ValidateProtectedApiAccessToken.php)
+- ValidateProtectedApiScopes (src/Http/Middleware/ValidateProtectedApiScopes.php)
+
+Flow variants:
+
+- User session flow: caronte.session then optional caronte.roles.
+- App-to-app flow: caronte.application with optional tenant_required/user_required.
+- Protected API flow: caronte.protected-api-token then caronte.protected-api-scopes.
+
+Business rules:
+
+- If user token was exchanged and request expects JSON, response includes X-User-Token.
+- Single-tenant mode binds tenant context and enforces tenant match.
+- Scope checks are strict for required middleware parameters.
+
+```mermaid
+flowchart TD
+  A[Incoming Request] --> B{Middleware stack}
+  B -->|caronte.session| C[Validate user token]
+  C --> D{Tenant mode}
+  D -->|single| E[Check tenant match and bind context]
+  D -->|multi| F[Continue]
+  E --> F
+  F --> G{Role middleware present?}
+  G -->|yes| H[Validate required roles]
+  G -->|no| I[Continue]
+  H --> I
+  I --> J[Controller]
 ```
 
-## Protected API Access Tokens
+## 4. Core Process: Role and Scope Synchronization
 
-Protected API Access Tokens are JWT credentials issued by Caronte server/admin for a tenant, target host app, and approved scope list. External clients receive these tokens from Caronte and call this host app with `Authorization: Bearer <protected-api-access-token>`.
+Why it exists:
 
-The host SDK validates Protected API Access Tokens. It does not issue production tokens for third-party clients.
+- Caronte must know app-defined roles/scopes for consistent access control.
 
-Validation rules:
+Main components:
 
-- `token_audience` must be `protected_api_access`.
-- `app_id` must match this app.
-- `aud` must be this app id.
-- Signature is verified with `CARONTE_APP_SECRET`.
-- `tenant_id` must be present.
-- `scopes` must be an array.
-- `exp`, `nbf`, and `iat` must be valid.
+- ConfiguredRoles (src/Support/ConfiguredRoles.php)
+- ConfiguredScopes (src/Support/ConfiguredScopes.php)
+- SyncRoles command (src/Console/Commands/Roles/SyncRoles.php)
+- SyncScopes command (src/Console/Commands/ProtectedApi/SyncScopes.php)
+- RoleApi and ScopeApi
 
-After `caronte.protected-api-token` passes, `CaronteProtectedApiAccessContext` is available from the container.
+Flow:
 
-Deprecated compatibility names such as `CaronteApplicationAccess*`, `permissions`, `caronte.app-token`, and `caronte.app-permissions` remain only for this migration window and must be removed in the next major version.
+1. Normalize role/scope definitions from config/caronte.php.
+2. Optionally run dry-run for preview.
+3. PUT normalized payload to Caronte endpoints.
+4. Management UI also previews remote mismatch state for roles.
 
-## App-To-App Credentials
+Business rules:
 
-`caronte.application` validates `X-Application-Token` for service-to-service calls.
+- Role names: lowercase normalization; allowed chars include letters, numbers, dot, underscore, hyphen.
+- root role is always present after normalization.
+- Legacy permissions alias maps to scopes and is deprecated.
 
-- Individual app token: short-lived JWT signed with `CARONTE_APP_SECRET`.
-- Group token: short-lived JWT in `X-Group-Token` signed with `CARONTE_APPLICATION_GROUP_SECRET`.
+```mermaid
+sequenceDiagram
+  participant DevOps
+  participant Artisan
+  participant Config
+  participant CaronteAPI
 
-Grouped app-to-app calls send both `X-Application-Token` and `X-Group-Token`. The group JWT identifies group membership and source app traceability; it does not grant Protected API scopes by itself.
+  DevOps->>Artisan: php artisan caronte:roles:sync
+  Artisan->>Config: read caronte.roles
+  Artisan->>Artisan: normalize names/descriptions
+  Artisan->>CaronteAPI: PUT /api/applications/roles
+  CaronteAPI-->>Artisan: sync result
+```
 
-## Local User Synchronization
+## 5. Core Process: Management UI User Lifecycle
 
-When `caronte.update_local_user=true`, the package updates the local `CaronteUser` cache from validated user JWTs. The host app should still treat Caronte as the source of truth for user identity and role assignments.
+Why it exists:
 
-## Tenant Resolution
+- Provide package-native administration for users linked to the host app.
 
-`CaronteTenantResolver` implements Bee Hive's `TenantResolverInterface`. It resolves the tenant from the currently authenticated Caronte user by calling `Caronte::getTenantId()`.
+Main components:
 
-The resolver depends on a valid user JWT in the current request/session. If no user token is available, or if the token has no tenant claim, tenant resolution fails with the same auth/tenant exception path used by `Caronte::getTenantId()`.
+- ManagementController
+- UserController
+- RoleController
+- ClientApi
 
-In `single` tenancy mode (`caronte.tenancy.mode=single`), the configured `caronte.tenancy.tenant_id` is mandatory and enforced in:
+Flow:
 
-- `AuthController` login path
-- `ValidateUserToken` middleware
-- `ResolveApplicationContext` middleware
+1. Authorized manager opens dashboard.
+2. Dashboard fetches users and role sync preview.
+3. Admin can create/update/delete users and synchronize role assignments.
+4. Optional metadata operations are available when feature flag is enabled.
 
-Any mismatch returns `403` and clears invalid user context when applicable.
+Key constraints:
 
-Local `CaronteUser` rows use `id_tenant` as the Bee Hive tenant key. During local user sync, the SDK temporarily binds `TenantContext` to the token tenant so `BelongsToTenant` writes and reads the correct local tenant cache.
+- Role creation/update/delete via UI are deprecated; source of truth is config/caronte.php + sync.
+- Metadata endpoints are gated by caronte.management.features.metadata.
 
-## Provisioning
+## 6. Secondary Process: OIDC Authentication Mode
 
-`ProvisioningApi::provisionTenant()` wraps `POST /api/provisioning/tenants`. Use it only from trusted server-side code configured with an application that has the Caronte platform permission `tenants.provision`.
+Why it exists:
 
-## Management UI
+- Allow standards-based auth with issuer endpoints where configured.
 
-The package's management UI remains app-local. The global Caronte administration console lives in `mx.ometra.caronte-admin` and manages tenants, applications, groups, application tokens, and global admin workflows.
+Main components:
 
-The app-local management UI supports Blade by default and Inertia when `caronte.management.use_inertia=true`. The Inertia components are published with `php artisan vendor:publish --tag=caronte:inertia`; host apps are responsible for compiling those assets in their own frontend pipeline.
+- OidcAuthController
+- OidcClient
+- OidcTokenValidator
+- OIDC support classes in src/Oidc
 
-## Local Helper APIs
+Rules:
 
-`CaronteUserHelper` is a read-only helper for the local user cache:
+- state and PKCE verifier are persisted in session for callback validation.
+- ID token validation is required before session token persistence.
+- OIDC refresh token is stored in session when provided.
 
-- `getUserName($uriUser)` returns the cached user's name or `User not found`.
-- `getUserEmail($uriUser)` returns the cached user's email or `User not found`.
-- `getUserMetadata($uriUser, $key)` returns the cached metadata value or `null`.
+## 7. Assumptions and Unknowns
 
-The helper reads the local `CaronteUser` and `CaronteUserMetadata` models, so Bee Hive tenant context applies. Use it only after the request has an authenticated tenant context or after explicitly binding `TenantContext`.
+- Downstream Caronte API error payload variability is outside this package contract.
+- Business semantics of some Caronte tenant and scope rules are server-defined.
+
+See doc/open-questions-and-assumptions.md.

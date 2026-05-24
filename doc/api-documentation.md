@@ -1,270 +1,190 @@
 # API Documentation
 
-This package exposes HTTP endpoints through `routes/web.php` and supports JSON or redirect-style responses depending on request expectations. There is no `routes/api.php` file in the package.
+This package does not define routes/api.php endpoints. It exposes HTTP endpoints through routes/web.php and returns JSON when clients send JSON expectations.
 
-## Authentication Endpoints
+All package responses follow the CaronteResponse envelope shape:
 
-### GET /{auth_prefix}/{login_path}
+- status: integer
+- message: string
+- data: mixed or null
+- errors: array (for failures)
 
-- Route name: `caronte.login.form`
-- Controller: `Ometra\Caronte\Http\Controllers\AuthController@loginForm`
+## 1. Authentication Endpoints
+
+Base prefix is dynamic:
+
+- auth_prefix = trim(config(caronte.routes_prefix), /)
+- login_path = path part of config(caronte.login_url)
+
+With default config, login resolves to /login.
+
+### 1.1 GET /{login_path}
+
+- Route name: caronte.login.form
+- Controller: Ometra\Caronte\Http\Controllers\AuthController@loginForm
+- Purpose: render login or two-factor login view (or redirect to OIDC login when auth_mode=oidc)
 - Auth: public
-- Purpose: render login form (or redirect to OIDC login when `caronte.auth_mode=oidc`)
 
-Response:
+### 1.2 POST /{login_path}
 
-- Web: Blade/Inertia page with branding and route metadata
-- JSON callers are not a target for this route
-
-### POST /{auth_prefix}/{login_path}
-
-- Route name: `caronte.login`
-- Controller: `Ometra\Caronte\Http\Controllers\AuthController@login`
+- Route name: caronte.login
+- Controller: AuthController@login
+- Purpose: password login or 2FA issue flow depending on config(caronte.use_2fa)
 - Auth: public
-- Purpose: user/password login, 2FA request path, and tenant-selection continuation
+- Request body:
+    - email: required email (except pending tenant selection continuation)
+    - password: required string for normal login
+    - tenant_id: optional string
+    - tenant_selection_token: optional string
+    - callback_url: optional string (plain URL or base64 encoded)
+- Success:
+    - 200 with token in data.token (JSON clients)
+    - redirect for browser clients
+- Failure examples:
+    - 409 tenant selection required with data.tenants
+    - 401/403 for auth/tenant errors
 
-Request body:
+### 1.3 GET|POST /logout
 
-- `email` required unless continuing a pending tenant-selection step
-- `password` required unless continuing a pending tenant-selection step
-- `tenant_id` optional (forced in single-tenant mode)
+- Route name: caronte.logout
+- Controller: AuthController@logout
+- Purpose: logout current user, optional all sessions
+- Request:
+    - all: optional boolean
 
-Status codes:
+### 1.4 OIDC
 
-- `200` success
-- `401/403/422` validation/auth/authorization failures
-- `409` tenant selection required (JSON callers)
+- GET /oidc/login (caronte.oidc.login): starts OIDC authorization code flow
+- GET /oidc/callback (caronte.oidc.callback): validates state, exchanges code, validates ID token, stores token
+- POST /oidc/logout (caronte.oidc.logout): clears local token and redirects to issuer logout endpoint
 
-Example JSON success:
+### 1.5 Two-Factor
 
-```json
+- POST /two-factor (caronte.twoFactor.request)
+    - body: email
+- GET /two-factor/{token} (caronte.twoFactor.login)
+    - consumes one-time token and returns authenticated session/token
+
+### 1.6 Password Recovery
+
+- GET /password/recover (caronte.password.recover.form)
+- POST /password/recover (caronte.password.recover.request)
+- GET /password/recover/{token} (caronte.password.recover.validate-token)
+- POST /password/recover/{token} (caronte.password.recover.submit)
+
+POST submit body:
+
+- password: required, min 8, confirmed
+- password_confirmation: required
+
+## 2. Management Endpoints
+
+Enabled only when config(caronte.management.enabled)=true.
+All management endpoints use middleware:
+
+- caronte.session
+- caronte.roles:<configured roles from config(caronte.management.access_roles)>
+
+Default management prefix: /caronte/management.
+
+### 2.1 Dashboard and Role Sync
+
+- GET /caronte/management (caronte.management.dashboard)
+    - Purpose: management dashboard
+- POST /caronte/management/roles/sync (caronte.management.roles.sync)
+    - Purpose: sync configured roles to Caronte server
+
+Legacy role mutation routes exist for compatibility and redirect with warning:
+
+- POST /roles/create (caronte.management.roles.create)
+- POST /roles/update (caronte.management.roles.update)
+- POST /roles/delete (caronte.management.roles.delete)
+
+### 2.2 Users
+
+- GET /users/list (caronte.management.users.list)
+    - Query:
+        - search: optional
+        - usersApp: optional boolean, default true
+    - Returns JSON
+
+- POST /users (caronte.management.users.store)
+    - Body:
+        - name, email, password, password_confirmation required
+        - roles optional array of configured role URIs
+
+- GET /users/{uri_user} (caronte.management.users.show)
+    - Returns user detail view
+
+- PUT /users/{uri_user} (caronte.management.users.update.direct)
+    - Body: name required
+
+- DELETE /users/{uri_user} (caronte.management.users.delete.direct)
+
+Legacy user mutation compatibility routes:
+
+- POST /users/update (caronte.management.users.update)
+- POST /users/delete (caronte.management.users.delete)
+
+Roles and metadata:
+
+- GET /users/{uri_user}/roles (caronte.management.users.roles.list)
+- PUT /users/{uri_user}/roles (caronte.management.users.roles.sync)
+- POST /users/{uri_user}/metadata (caronte.management.users.metadata.store)
+- DELETE /users/{uri_user}/metadata (caronte.management.users.metadata.delete)
+
+## 3. Package Middleware APIs for Host Routes
+
+These are not package-owned routes; they are middleware contracts host apps apply.
+
+### 3.1 caronte.application
+
+- Middleware class: Ometra\Caronte\Http\Middleware\ResolveApplicationContext
+- Headers:
+    - X-Application-Token required
+    - X-Group-Token optional when application group is enabled
+    - X-Tenant-Id required when tenant_required mode is used
+    - X-User-Token optional or required when user_required mode is used
+
+Modes:
+
+- tenant_required
+- user_required
+
+### 3.2 caronte.protected-api-token and caronte.protected-api-scopes
+
+- Validates bearer token as protected API access token
+- Scope middleware checks required scopes list
+
+Compatibility aliases (deprecated):
+
+- caronte.app-token
+- caronte.app-permissions
+
+## 4. Example JSON Response
+
+Success:
+
 {
-    "status": 200,
-    "message": "Login successful",
-    "data": {
-        "token": "<jwt>"
-    }
+"status": 200,
+"message": "Token generated",
+"data": {
+"token": "<jwt>"
 }
-```
-
-### GET|POST /{auth_prefix}/logout
-
-- Route name: `caronte.logout`
-- Controller: `Ometra\Caronte\Http\Controllers\AuthController@logout`
-- Auth: current user session/token
-- Purpose: clear local token and revoke server session
-
-Request:
-
-- Optional query/body `all=true` to call Caronte `logoutAll`
-
-Status codes:
-
-- `200` success (JSON)
-- `302` redirect (web)
-
-### POST /{auth_prefix}/two-factor
-
-- Route name: `caronte.twoFactor.request`
-- Controller: `Ometra\Caronte\Http\Controllers\AuthController@twoFactorTokenRequest`
-- Auth: public
-
-Request body:
-
-- `email` required
-
-### GET /{auth_prefix}/two-factor/{token}
-
-- Route name: `caronte.twoFactor.login`
-- Controller: `Ometra\Caronte\Http\Controllers\AuthController@twoFactorTokenLogin`
-- Auth: public
-
-Path params:
-
-- `token` required
-
-### GET|POST /{auth_prefix}/password/recover
-
-- Route names: `caronte.password.recover.form`, `caronte.password.recover.request`
-- Controller: `Ometra\Caronte\Http\Controllers\AuthController`
-- Auth: public
-
-Request body for POST:
-
-- `email` required
-
-### GET|POST /{auth_prefix}/password/recover/{token}
-
-- Route names: `caronte.password.recover.validate-token`, `caronte.password.recover.submit`
-- Controller: `Ometra\Caronte\Http\Controllers\AuthController`
-- Auth: public
-
-POST request body:
-
-- `password` required, min 8
-- `password_confirmation` required and must match
-
-### GET /{auth_prefix}/oidc/login
-
-- Route name: `caronte.oidc.login`
-- Controller: `Ometra\Caronte\Http\Controllers\OidcAuthController@redirect`
-- Auth: public
-- Purpose: start OIDC authorization-code flow with PKCE
-
-### GET /{auth_prefix}/oidc/callback
-
-- Route name: `caronte.oidc.callback`
-- Controller: `Ometra\Caronte\Http\Controllers\OidcAuthController@callback`
-- Auth: public
-- Purpose: consume authorization code, validate `id_token`, persist token
-
-### POST /{auth_prefix}/oidc/logout
-
-- Route name: `caronte.oidc.logout`
-- Controller: `Ometra\Caronte\Http\Controllers\OidcAuthController@logout`
-- Auth: current user session/token
-
-## Management Endpoints
-
-All management endpoints are conditionally enabled by `caronte.management.enabled` and protected by:
-
-- `caronte.session`
-- `caronte.roles:{configured access roles}`
-
-### GET /{management_prefix}
-
-- Route name: `caronte.management.dashboard`
-- Controller: `Ometra\Caronte\Http\Controllers\ManagementController@dashboard`
-- Purpose: render user/role management dashboard
-
-### POST /{management_prefix}/roles/sync
-
-- Route name: `caronte.management.roles.sync`
-- Controller: `Ometra\Caronte\Http\Controllers\RoleController@sync`
-- Purpose: synchronize configured roles to Caronte server
-
-### GET /{management_prefix}/users/list
-
-- Route name: `caronte.management.users.list`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@list`
-- Purpose: list users as JSON
-
-Query params:
-
-- `search` optional
-- `usersApp` optional boolean (defaults true)
-
-### POST /{management_prefix}/users
-
-- Route name: `caronte.management.users.store`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@store`
-- Purpose: create user and sync selected roles
-
-Request body:
-
-- `name` required
-- `email` required
-- `password` required
-- `password_confirmation` required
-- `roles[]` optional, each must match a configured role URI
-
-### GET /{management_prefix}/users/{uri_user}
-
-- Route name: `caronte.management.users.show`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@show`
-
-### PUT /{management_prefix}/users/{uri_user}
-
-- Route name: `caronte.management.users.update.direct`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@update`
-
-Request body:
-
-- `name` required
-
-### POST /{management_prefix}/users/update
-
-- Route name: `caronte.management.users.update`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@updateLegacy`
-
-Request body:
-
-- `uri_user` required
-- `name` required
-
-### DELETE /{management_prefix}/users/{uri_user}
-
-- Route name: `caronte.management.users.delete.direct`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@delete`
-
-### POST /{management_prefix}/users/delete
-
-- Route name: `caronte.management.users.delete`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@deleteLegacy`
-
-Request body:
-
-- `uri_user` required
-
-### GET /{management_prefix}/users/{uri_user}/roles
-
-- Route name: `caronte.management.users.roles.list`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@listRoles`
-- Purpose: JSON list of assigned roles
-
-### PUT /{management_prefix}/users/{uri_user}/roles
-
-- Route name: `caronte.management.users.roles.sync`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@syncRoles`
-
-Request body:
-
-- `roles[]` optional, each must match configured role URI
-
-### POST /{management_prefix}/users/{uri_user}/metadata
-
-- Route name: `caronte.management.users.metadata.store`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@storeMetadata`
-
-Request body:
-
-- `key` required
-- `value` optional
-
-### DELETE /{management_prefix}/users/{uri_user}/metadata
-
-- Route name: `caronte.management.users.metadata.delete`
-- Controller: `Ometra\Caronte\Http\Controllers\UserController@deleteMetadata`
-
-Request body:
-
-- `key` required
-
-## App-to-App and External Consumer Security Middleware
-
-The package does not register concrete API URIs for these middleware aliases, but host applications use them to protect their own API routes:
-
-- `caronte.application[:tenant_required]` validates short-lived `X-Application-Token` JWTs; grouped calls also validate `X-Group-Token`
-- `caronte.protected-api-token` validates bearer Protected API Access Tokens issued by Caronte server/admin
-- `caronte.protected-api-scopes:<scope>` checks protected API scopes
-- `caronte.app-token` and `caronte.app-permissions:<permission>` are deprecated compatibility aliases and must be removed in the next major version
-
-Example host route:
-
-```php
-Route::middleware([
-        'caronte.protected-api-token',
-        'caronte.protected-api-scopes:invoices.read',
-])->get('/api/invoices', InvoiceController::class);
-```
-
-External consumers call this route with:
-
-```http
-Authorization: Bearer <protected-api-access-token>
-Accept: application/json
-```
-
-Caronte server/admin is responsible for issuing Protected API Access Tokens.
-The host SDK validates them locally and does not expose a public production API
-for third-party token generation.
+}
+
+Failure:
+
+{
+"status": 403,
+"message": "User does not have access to this feature.",
+"errors": [
+"User does not have the required roles: admin"
+]
+}
+
+## 5. Notes
+
+- There is no package-shipped REST API versioning layer.
+- Public routes are web-routed and can still return JSON.
+- Unknown downstream schemas from Caronte server are tracked in doc/open-questions-and-assumptions.md.

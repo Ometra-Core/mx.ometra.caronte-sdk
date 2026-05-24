@@ -16,6 +16,7 @@ use Lcobucci\JWT\Signer\Hmac\Sha256;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Token\Parser;
 use Lcobucci\JWT\Token\Plain;
+use Ometra\Caronte\Http\Middleware\ResolveApplicationContext;
 use Ometra\Caronte\Oidc\OidcTokenValidator;
 use Ometra\Caronte\Support\CaronteApplicationAccessContext;
 use Ometra\Caronte\Support\CaronteApplicationContext;
@@ -171,6 +172,18 @@ class MiddlewareBehaviorTest extends TestCase
         $this->assertSame('core-suite', $context->groupId);
         $this->assertNotEmpty($context->applicationTokenId);
         $this->assertNotEmpty($context->groupTokenId);
+    }
+
+    public function test_application_middleware_requires_application_token_when_group_token_is_provided(): void
+    {
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $this->getJson('/api/_caronte/application-only-check', [
+            'X-Group-Token' => CaronteApplicationToken::makeGroup(),
+        ])
+            ->assertStatus(401)
+            ->assertJsonPath('message', 'No application token provided.');
     }
 
     public function test_application_middleware_rejects_legacy_base64_application_tokens(): void
@@ -360,6 +373,18 @@ class MiddlewareBehaviorTest extends TestCase
         ])
             ->assertStatus(403)
             ->assertJsonPath('message', 'Tenant override is not allowed.');
+    }
+
+    public function test_application_tenant_static_wrapper_still_binds_tenant_context(): void
+    {
+        $request = Request::create('/api/_caronte/context-check', 'GET', [], [], [], [
+            'HTTP_X_TENANT_ID' => 'tenant-1',
+        ]);
+
+        $response = ResolveApplicationContext::resolveTenant($request, true);
+
+        $this->assertNull($response);
+        $this->assertSame('tenant-1', app(TenantContext::class)->get());
     }
 
     public function test_application_middleware_rejects_invalid_forwarded_user_token(): void

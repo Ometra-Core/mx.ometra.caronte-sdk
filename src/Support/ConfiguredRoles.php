@@ -140,7 +140,7 @@ class ConfiguredRoles
             throw new InvalidArgumentException('Configured role names cannot be empty.');
         }
 
-        if (!preg_match('/^[a-z0-9_-]+$/', $normalized)) {
+        if (!preg_match('/^[a-z0-9_.-]+$/', $normalized)) {
             throw new InvalidArgumentException(
                 sprintf('Configured role [%s] contains invalid characters.', $name)
             );

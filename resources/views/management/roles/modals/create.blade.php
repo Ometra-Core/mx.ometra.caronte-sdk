@@ -12,14 +12,14 @@
                     <div class="mb-3">
                         <label for="roleNameInput" class="form-label fw-semibold">Role Name:</label>
                         <input name="name" type="text" class="form-control" id="roleNameInput" required>
-                        <small class="form-text text-muted">Alphanumeric only, no spaces (e.g., admin, editor, moderator)</small>
+                        <small class="form-text text-muted">Use letters, numbers, dots, underscores, or hyphens; no spaces (e.g., admin, editor.team, moderator)</small>
                     </div>
                     <div class="mb-3">
                         <label for="roleDescriptionInput" class="form-label fw-semibold">Description:</label>
                         <textarea name="description" class="form-control" id="roleDescriptionInput" rows="3"></textarea>
                         <small class="form-text text-muted">Optional: Brief description of role purpose</small>
                     </div>
-                    
+
                     <div class="d-flex justify-content-end gap-2">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="fa-solid fa-xmark me-2"></i>Cancel

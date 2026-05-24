@@ -4,89 +4,38 @@ namespace Ometra\Caronte\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Ometra\Caronte\CaronteUserToken;
-use Ometra\Caronte\Support\CaronteApplicationToken;
 use Ometra\Caronte\Support\CaronteApplicationContext;
+use Ometra\Caronte\Support\CaronteApplicationContextResolver;
 use Ometra\Caronte\Support\CaronteForwardedUserContext;
-use Ometra\Caronte\Support\CaronteResponse;
-use Ometra\Caronte\Support\CaronteTenancy;
+use Ometra\Caronte\Support\CaronteForwardedUserContextResolver;
+use Ometra\Caronte\Support\CaronteTenantContextResolver;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 class ResolveApplicationContext
 {
     private const TENANT_REQUIRED = 'tenant_required';
     private const USER_REQUIRED = 'user_required';
 
+    public function __construct(
+        private readonly CaronteApplicationContextResolver $applicationContextResolver,
+        private readonly CaronteForwardedUserContextResolver $forwardedUserContextResolver,
+        private readonly CaronteTenantContextResolver $tenantContextResolver,
+    ) {
+        //
+    }
+
     public function handle(Request $request, Closure $next, string ...$modes): Response
     {
-        $applicationToken = trim((string) $request->header('X-Application-Token'));
-        $groupToken       = trim((string) $request->header('X-Group-Token'));
+        $applicationContext = $this->applicationContextResolver->resolve($request);
 
-        if ($applicationToken === '' && $groupToken === '') {
-            return CaronteResponse::unauthorized(
-                message: 'No application token provided.',
-                errors: ['X-Application-Token or X-Group-Token header is required.']
-            );
-        }
-
-        if ($groupToken !== '') {
-            if ($applicationToken === '') {
-                return CaronteResponse::unauthorized(
-                    message: 'No application token provided.',
-                    errors: ['X-Application-Token header is required when X-Group-Token is provided.']
-                );
-            }
-
-            try {
-                $decodedApplicationToken = CaronteApplicationToken::decodeApplicationToken($applicationToken);
-                $validatedGroupToken = CaronteApplicationToken::validateGroupToken($groupToken);
-            } catch (Throwable) {
-                return CaronteResponse::unauthorized(
-                    message: 'Invalid application token.',
-                    errors: ['The provided X-Application-Token or X-Group-Token is invalid.']
-                );
-            }
-
-            $sourceAppId = (string) $validatedGroupToken->claims()->get('source_app_id');
-            $sourceAppCn = (string) $validatedGroupToken->claims()->get('source_app_cn');
-
-            app()->instance(CaronteApplicationContext::class, new CaronteApplicationContext(
-                appCn: CaronteApplicationToken::cn(),
-                appId: CaronteApplicationToken::appId(),
-                applicationToken: $applicationToken,
-                authenticatedAsGroup: true,
-                groupId: (string) $validatedGroupToken->claims()->get('group_id'),
-                sourceAppId: $sourceAppId,
-                sourceAppCn: $sourceAppCn,
-                groupTokenId: (string) $validatedGroupToken->claims()->get('jti'),
-                applicationTokenId: (string) $decodedApplicationToken->claims()->get('jti'),
-            ));
-        } else {
-            try {
-                $validatedApplicationToken = CaronteApplicationToken::validateApplicationToken($applicationToken);
-            } catch (Throwable) {
-                return CaronteResponse::unauthorized(
-                    message: 'Invalid application token.',
-                    errors: ['The provided X-Application-Token does not match the configured application.']
-                );
-            }
-
-            app()->instance(CaronteApplicationContext::class, new CaronteApplicationContext(
-                appCn: (string) $validatedApplicationToken->claims()->get('app_cn'),
-                appId: (string) $validatedApplicationToken->claims()->get('app_id'),
-                applicationToken: $applicationToken,
-                authenticatedAsGroup: false,
-                groupId: null,
-                sourceAppId: (string) $validatedApplicationToken->claims()->get('app_id'),
-                sourceAppCn: (string) $validatedApplicationToken->claims()->get('app_cn'),
-                groupTokenId: null,
-                applicationTokenId: (string) $validatedApplicationToken->claims()->get('jti'),
-            ));
+        if ($applicationContext instanceof Response) {
+            return $applicationContext;
         }
 
         $modes = static::normalizeModes($modes);
-        $forwardedUserContext = static::resolveForwardedUserContext(
+        app()->instance(CaronteApplicationContext::class, $applicationContext);
+
+        $forwardedUserContext = $this->forwardedUserContextResolver->resolve(
             request: $request,
             required: in_array(self::USER_REQUIRED, $modes, true)
         );
@@ -95,7 +44,11 @@ class ResolveApplicationContext
             return $forwardedUserContext;
         }
 
-        $tenantResponse = static::resolveTenant(
+        if ($forwardedUserContext instanceof CaronteForwardedUserContext) {
+            app()->instance(CaronteForwardedUserContext::class, $forwardedUserContext);
+        }
+
+        $tenantResponse = $this->tenantContextResolver->resolve(
             request: $request,
             required: in_array(self::TENANT_REQUIRED, $modes, true),
             forwardedUserContext: $forwardedUserContext
@@ -108,60 +61,15 @@ class ResolveApplicationContext
         return $next($request);
     }
 
+    /**
+     * @deprecated Use CaronteTenantContextResolver::resolve() instead.
+     */
     public static function resolveTenant(
         Request $request,
         bool $required,
         ?CaronteForwardedUserContext $forwardedUserContext = null,
-    ): ?Response
-    {
-        $tenantId = trim((string) $request->header('X-Tenant-Id'));
-        $authenticatedTenantId = $forwardedUserContext?->tenantId;
-
-        if (CaronteTenancy::isSingleTenant()) {
-            $configuredTenantId = CaronteTenancy::requireConfiguredTenantId();
-
-            if ($tenantId !== '' && $tenantId !== $configuredTenantId) {
-                return CaronteResponse::forbidden(
-                    message: 'Tenant mismatch.',
-                    errors: ['Tenant mismatch.']
-                );
-            }
-
-            if ($authenticatedTenantId !== null && $authenticatedTenantId !== $configuredTenantId) {
-                return CaronteResponse::forbidden(
-                    message: 'Tenant mismatch.',
-                    errors: ['Tenant mismatch.']
-                );
-            }
-
-            CaronteTenancy::bindTenantContext($configuredTenantId);
-
-            return null;
-        }
-
-        if ($authenticatedTenantId !== null) {
-            if ($tenantId !== '' && $tenantId !== $authenticatedTenantId) {
-                return CaronteResponse::forbidden(
-                    message: 'Tenant override is not allowed.',
-                    errors: ['X-Tenant-Id must match the authenticated user tenant.']
-                );
-            }
-
-            $tenantId = $authenticatedTenantId;
-        }
-
-        if ($tenantId === '') {
-            return $required
-                ? CaronteResponse::badRequest(
-                    message: 'tenant_id is required',
-                    errors: ['X-Tenant-Id header is required.']
-                )
-                : null;
-        }
-
-        CaronteTenancy::bindTenantContext($tenantId);
-
-        return null;
+    ): ?Response {
+        return (new CaronteTenantContextResolver())->resolve($request, $required, $forwardedUserContext);
     }
 
     /**
@@ -174,51 +82,5 @@ class ResolveApplicationContext
             fn(string $mode): string => strtolower(trim($mode)),
             $modes
         )));
-    }
-
-    private static function resolveForwardedUserContext(
-        Request $request,
-        bool $required,
-    ): CaronteForwardedUserContext|Response|null
-    {
-        $userToken = trim((string) $request->header('X-User-Token'));
-
-        if ($userToken === '') {
-            return $required
-                ? CaronteResponse::unauthorized(
-                    message: 'No user token provided.',
-                    errors: ['X-User-Token header is required.']
-                )
-                : null;
-        }
-
-        try {
-            $token = CaronteUserToken::validateToken($userToken, skipExchange: true);
-            $user = CaronteUserToken::userPayload($token);
-        } catch (Throwable) {
-            return CaronteResponse::unauthorized(
-                message: 'Invalid user token.',
-                errors: ['The provided X-User-Token is invalid.']
-            );
-        }
-
-        $tenantId = isset($user->tenant_id) && trim((string) $user->tenant_id) !== ''
-            ? trim((string) $user->tenant_id)
-            : null;
-
-        $tokenId = $token->claims()->has('jti')
-            ? trim((string) $token->claims()->get('jti'))
-            : null;
-
-        $context = new CaronteForwardedUserContext(
-            userToken: $userToken,
-            user: $user,
-            tenantId: $tenantId,
-            tokenId: $tokenId !== '' ? $tokenId : null,
-        );
-
-        app()->instance(CaronteForwardedUserContext::class, $context);
-
-        return $context;
     }
 }

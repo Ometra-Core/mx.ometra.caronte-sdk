@@ -11,6 +11,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No changes yet.
 
+## [4.4.0] - 2026-05-24 "Atlas"
+
+### Added
+
+- **Application-context resolver components** — introduced `CaronteApplicationContextResolver`, `CaronteForwardedUserContextResolver`, and `CaronteTenantContextResolver` to isolate token, forwarded-user, and tenant resolution concerns.
+- **Middleware documentation index and split pages** — added a root middleware index (`doc/middleware.md`) and one document per middleware alias in `doc/middleware/` for focused operations and debugging guidance.
+
+### Changed
+
+- **ResolveApplicationContext orchestration** — `ResolveApplicationContext` now delegates context resolution to dedicated support resolvers via constructor injection while preserving middleware behavior.
+- **Backward-compatibility wrapper retained** — static `ResolveApplicationContext::resolveTenant()` remains available and now delegates to `CaronteTenantContextResolver`.
+- **Documentation structure refresh** — documentation set was reorganized and updated, including middleware docs extraction and README documentation-index link updates.
+
+### Fixed
+
+- **Role naming validation parity (backend + frontend)** — role names now accept dots (`.`) in addition to letters, numbers, underscores, and hyphens in both `ConfiguredRoles` validation and management UI client-side checks.
+- **Role creation guidance updated** — management modal helper text now reflects accepted role-name characters.
+- **Coverage for middleware edge cases** — feature tests now include grouped-token missing-application-token rejection and static tenant resolver wrapper behavior.
+
+### Removed
+
+- **Operational handover documents removed** — `doc/admin-handover.md` and `doc/client-handover.md` were removed from the documentation tree.
+
+### Deprecated
+
+- No changes.
+
+### Security
+
+- No changes.
+
 ## [4.3.0] - 2026-05-21 "Relay"
 
 ### Added
