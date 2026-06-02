@@ -1,3 +1,55 @@
+# Release v4.5.0 "Suite"
+
+> **Release date:** 2026-06-02
+> **Type:** Minor - suite user-access API, CLI, and management UI.
+
+---
+
+## Summary
+
+v4.5.0 "Suite" adds SDK support for Caronte application-group user management. Applications granted suite permissions by the server can list group roles, list tenant users, and synchronize non-root user roles for apps in the same suite.
+
+## Highlights
+
+- New `GroupApi` for `/api/application-groups/current` server endpoints.
+- New CLI commands for suite role listing, suite user listing, and suite role synchronization.
+- Management UI now includes a "Suite access" mode with app-grouped roles and root-role protection.
+- Optional actor-token forwarding supports server-side audit attribution.
+
+## Added
+
+- `src/Api/GroupApi.php`.
+- `caronte:groups:roles:list`.
+- `caronte:groups:users:list`.
+- `caronte:groups:users:roles:sync`.
+- Management route `caronte.management.suite.users.applications.roles.sync`.
+
+## Changed
+
+- `CaronteHttpClient::applicationRequest()` now supports optional forwarded actor-token behavior for suite role synchronization.
+- The interactive `caronte:admin` hub now includes suite role and user management actions.
+
+## Deprecated
+
+- No new deprecations in this release.
+
+## Removed
+
+- No removals in this release.
+
+## Security
+
+- The UI and CLI only send roles marked manageable by Caronte; reserved roles such as `root` stay out of suite sync payloads.
+
+---
+
+## Full History
+
+See [CHANGELOG.md](CHANGELOG.md) for complete project history.
+See [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for migration guidance.
+
+---
+
 # Release v4.4.0 "Atlas"
 
 > **Release date:** 2026-05-24

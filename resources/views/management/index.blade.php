@@ -1,6 +1,8 @@
 @extends('caronte::layouts.base')
 
-@php($branding = $branding ?? config('caronte.ui.branding', []))
+@php
+    $branding = $branding ?? config('caronte.ui.branding', []);
+@endphp
 
 @section('body_class', 'caronte-management-shell')
 
@@ -156,6 +158,79 @@
                     </form>
                 </div>
             </div>
+        </div>
+
+        <div class="caronte-card mt-4">
+            <div class="caronte-card__header">
+                <h2>Suite access</h2>
+                <p>Manage non-root roles for applications in the configured application group.</p>
+            </div>
+
+            @if (!($suite_access['enabled'] ?? false))
+                <div class="alert alert-warning mb-0">
+                    {{ $suite_access['error'] ?? 'Suite access is not available for this application.' }}
+                </div>
+            @elseif (empty($suite_access['applications']) || empty($suite_access['users']))
+                <div class="text-muted">No suite applications or users matched the current filters.</div>
+            @else
+                <div class="accordion" id="suiteAccessAccordion">
+                    @foreach ($suite_access['users'] as $suiteUser)
+                        <div class="accordion-item">
+                            <h3 class="accordion-header" id="suite-user-{{ $suiteUser['uri_user'] }}">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#suite-collapse-{{ $suiteUser['uri_user'] }}">
+                                    {{ $suiteUser['name'] ?? '' }} · {{ $suiteUser['email'] ?? '' }}
+                                </button>
+                            </h3>
+                            <div id="suite-collapse-{{ $suiteUser['uri_user'] }}" class="accordion-collapse collapse" data-bs-parent="#suiteAccessAccordion">
+                                <div class="accordion-body">
+                                    <div class="row g-3">
+                                        @foreach ($suite_access['applications'] as $suiteApp)
+                                            @php
+                                                $manageableRoles = collect($suiteApp['roles'] ?? [])
+                                                    ->filter(fn ($role) => ($role['manageable'] ?? true) !== false)
+                                                    ->values();
+                                                $assignedRoleUris = collect($suiteUser['roles'] ?? [])
+                                                    ->where('app_id', $suiteApp['app_id'])
+                                                    ->pluck('uri_applicationRole')
+                                                    ->all();
+                                                $syncUrl = str_replace(
+                                                    ['__USER__', '__APP__'],
+                                                    [$suiteUser['uri_user'], $suiteApp['app_id']],
+                                                    $routes['suiteRolesSync']
+                                                );
+                                            @endphp
+                                            <div class="col-12 col-lg-6">
+                                                <form method="POST" action="{{ $syncUrl }}" class="border rounded p-3 h-100">
+                                                    @csrf
+                                                    @method('PUT')
+                                                    <div class="fw-semibold mb-2">{{ $suiteApp['name'] ?? $suiteApp['app_id'] }}</div>
+                                                    @forelse ($manageableRoles as $role)
+                                                        <label class="caronte-checkbox">
+                                                            <input
+                                                                type="checkbox"
+                                                                name="roles[]"
+                                                                value="{{ $role['uri_applicationRole'] }}"
+                                                                @checked(in_array($role['uri_applicationRole'], $assignedRoleUris, true))
+                                                            >
+                                                            <span>
+                                                                <strong>{{ $role['name'] }}</strong>
+                                                                <small>{{ $role['description'] ?? '' }}</small>
+                                                            </span>
+                                                        </label>
+                                                    @empty
+                                                        <div class="text-muted small mb-3">Only reserved roles are defined for this app.</div>
+                                                    @endforelse
+                                                    <button type="submit" class="btn caronte-btn-secondary btn-sm mt-2">Save suite roles</button>
+                                                </form>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </div>
 @endsection

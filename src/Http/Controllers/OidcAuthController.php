@@ -14,15 +14,24 @@ use Symfony\Component\HttpFoundation\Response;
 
 class OidcAuthController extends BaseController
 {
+    private const CALLBACK_URL_SESSION_KEY = 'caronte.oidc.callback_url';
+
     public function redirect(Request $request, OidcClient $client): RedirectResponse
     {
         $state = Base64Url::encode(random_bytes(32));
         $nonce = Base64Url::encode(random_bytes(32));
         $verifier = Pkce::verifier();
+        $callbackUrl = $request->query('callback_url');
 
         $request->session()->put('caronte.oidc.state', $state);
         $request->session()->put('caronte.oidc.nonce', $nonce);
         $request->session()->put('caronte.oidc.code_verifier', $verifier);
+
+        if (is_string($callbackUrl) && trim($callbackUrl) !== '') {
+            $request->session()->put(self::CALLBACK_URL_SESSION_KEY, $callbackUrl);
+        } else {
+            $request->session()->forget(self::CALLBACK_URL_SESSION_KEY);
+        }
 
         return redirect()->away($client->authorizationUrl($state, $nonce, $verifier));
     }
@@ -53,7 +62,7 @@ class OidcAuthController extends BaseController
             return CaronteResponse::success(
                 message: 'OIDC login successful',
                 data: ['token_type' => $tokens['token_type'] ?? 'Bearer'],
-                forwardUrl: (string) config('caronte.success_url', '/')
+                forwardUrl: $this->forwardUrl($request->session()->pull(self::CALLBACK_URL_SESSION_KEY))
             );
         } catch (\Throwable $exception) {
             Caronte::clearToken();
@@ -78,5 +87,22 @@ class OidcAuthController extends BaseController
         ]));
 
         return redirect()->away($url);
+    }
+
+    private function forwardUrl(mixed $candidate): string
+    {
+        $value = is_string($candidate) ? trim($candidate) : '';
+
+        if ($value !== '') {
+            $decoded = base64_decode($value, true);
+
+            if (is_string($decoded) && $decoded !== '') {
+                return $decoded;
+            }
+
+            return $value;
+        }
+
+        return (string) config('caronte.success_url', '/');
     }
 }

@@ -1,5 +1,20 @@
 # Breaking Changes
 
+## v4.5.0
+
+### Breaking status
+
+No breaking changes were introduced in this release.
+
+### Migration recommendations
+
+1. If you automate suite role synchronization, ensure payload roles come from Caronte-manageable suite roles and keep reserved roles (for example, `root`) excluded.
+2. If you need server-side audit attribution for suite updates, pass the acting user's token so the server can attribute role-sync operations.
+
+### Notes
+
+- The release adds suite user-access capabilities (Group API, CLI commands, and management UI mode) without changing existing middleware aliases or baseline auth flows.
+
 ## v4.4.0
 
 ### Breaking status

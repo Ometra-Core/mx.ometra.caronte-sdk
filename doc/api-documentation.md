@@ -133,6 +133,14 @@ Roles and metadata:
 - POST /users/{uri_user}/metadata (caronte.management.users.metadata.store)
 - DELETE /users/{uri_user}/metadata (caronte.management.users.metadata.delete)
 
+Suite access:
+
+- PUT /suite/users/{uri_user}/applications/{app_id}/roles (caronte.management.suite.users.applications.roles.sync)
+    - Body: roles array of manageable role URIs for the target application
+    - Uses GroupApi to call Caronte `/api/application-groups/current/users/{uri_user}/applications/{app_id}/roles`
+    - Sends the current user token as optional actor token when available
+    - Rejects roles that are not part of the target app's manageable group-role catalog
+
 ## 3. Package Middleware APIs for Host Routes
 
 These are not package-owned routes; they are middleware contracts host apps apply.
@@ -187,4 +195,5 @@ Failure:
 
 - There is no package-shipped REST API versioning layer.
 - Public routes are web-routed and can still return JSON.
+- `GroupApi` wraps Caronte server suite endpoints under `/api/application-groups/current`.
 - Unknown downstream schemas from Caronte server are tracked in doc/open-questions-and-assumptions.md.

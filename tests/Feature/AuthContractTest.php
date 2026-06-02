@@ -55,6 +55,46 @@ class AuthContractTest extends TestCase
         });
     }
 
+    public function test_login_redirects_back_to_intended_protected_route(): void
+    {
+        Route::middleware(['web', 'caronte.session'])
+            ->get('/reports/monthly', fn() => response('ok'));
+
+        $redirectToLogin = $this->get('/reports/monthly?tab=roles');
+
+        $redirectToLogin->assertRedirect();
+
+        $location = (string) $redirectToLogin->baseResponse->headers->get('Location');
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+        $this->assertSame('/login', parse_url($location, PHP_URL_PATH));
+        $this->assertArrayHasKey('callback_url', $query);
+
+        $callbackUrl = base64_decode((string) $query['callback_url'], true);
+
+        $this->assertIsString($callbackUrl);
+        $this->assertSame('/reports/monthly', parse_url($callbackUrl, PHP_URL_PATH));
+        $this->assertSame('tab=roles', parse_url($callbackUrl, PHP_URL_QUERY));
+
+        $token = $this->makeToken();
+
+        Http::fake([
+            'https://caronte.test/api/auth/login' => Http::response([
+                'status' => 200,
+                'message' => 'Token generated',
+                'data' => ['token' => $token],
+            ], 200),
+        ]);
+
+        $this->post('/login', [
+            'email' => 'root@example.com',
+            'password' => 'Password123!',
+            'callback_url' => $query['callback_url'],
+        ])->assertRedirect($callbackUrl);
+
+        $this->assertSame($token, session(config('caronte.session_key')));
+    }
+
     public function test_login_sends_application_and_group_tokens_when_group_is_configured(): void
     {
         config()->set('caronte.application_group_id', 'core-suite');

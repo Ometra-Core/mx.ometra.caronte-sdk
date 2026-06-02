@@ -11,6 +11,7 @@ Main capabilities:
 - User authentication via Caronte (login, logout, 2FA, password recovery)
 - User token validation and renewal middleware
 - Management UI for users and role synchronization
+- Suite access management for application groups with non-root role synchronization
 - Application-to-application authentication middleware
 - Protected API access token validation and scope checks
 - Tenant-aware behavior for single-tenant and multi-tenant modes
@@ -40,6 +41,22 @@ Primary audience: internal development teams integrating Caronte into Laravel ap
 7. Verify authentication and management routes in a local environment.
 
 Full steps: see doc/deployment-instructions.md.
+
+## Suite Access
+
+Applications that belong to a Caronte `ApplicationGroup` can use the SDK to manage tenant user access across the suite after the server grants these Caronte platform permissions to the application:
+
+- `groups.roles.read`
+- `groups.users.read`
+- `groups.user_roles.write`
+
+The SDK exposes `Ometra\Caronte\Api\GroupApi` with:
+
+- `showGroupRoles()`
+- `showGroupUsers(string $search = '')`
+- `syncGroupUserRoles(string $uriUser, string $appId, array $roleUris, ?string $actorToken = null)`
+
+The management UI includes a "Suite access" mode that lists tenant users, groups roles by application, and prevents selecting roles marked as non-manageable such as `root`.
 
 ## Documentation Index
 

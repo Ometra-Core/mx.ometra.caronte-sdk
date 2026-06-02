@@ -28,8 +28,13 @@ abstract class CaronteHttpClient
         string $endpoint,
         array $payload = [],
         array $query = [],
+        ?string $userToken = null,
     ): array {
         $headers = $this->applicationHeaders();
+
+        if (is_string($userToken) && trim($userToken) !== '') {
+            $headers['X-User-Token'] = trim($userToken);
+        }
 
         $tenantId = $this->tenantContextId();
 

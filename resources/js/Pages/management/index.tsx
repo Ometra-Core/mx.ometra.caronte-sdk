@@ -1,4 +1,4 @@
-import type { Branding, Paginated, Role, Routes, User } from "../../types";
+import type { Branding, Paginated, Role, Routes, SuiteAccess, User } from "../../types";
 
 type ManagementIndexProps = {
   branding?: Branding;
@@ -8,6 +8,7 @@ type ManagementIndexProps = {
   configured_roles?: Role[];
   missing_roles?: Role[];
   outdated_roles?: Role[];
+  suite_access?: SuiteAccess;
   routes?: Routes;
   csrf_token?: string;
 };
@@ -20,6 +21,7 @@ export default function ManagementIndex({
   configured_roles = [],
   missing_roles = [],
   outdated_roles = [],
+  suite_access = { enabled: false, applications: [], users: [] },
   routes = {},
   csrf_token,
 }: ManagementIndexProps) {
@@ -216,6 +218,79 @@ export default function ManagementIndex({
             </form>
           </div>
         </div>
+      </div>
+
+      <div className="caronte-card mt-4">
+        <div className="caronte-card__header">
+          <h2>Suite access</h2>
+          <p>Manage non-root roles for applications in the configured application group.</p>
+        </div>
+
+        {!suite_access.enabled ? (
+          <div className="alert alert-warning mb-0">
+            {suite_access.error || "Suite access is not available for this application."}
+          </div>
+        ) : (suite_access.applications || []).length === 0 || (suite_access.users || []).length === 0 ? (
+          <div className="text-muted">No suite applications or users matched the current filters.</div>
+        ) : (
+          <div className="row g-3">
+            {(suite_access.users || []).map((user) => (
+              <div className="col-12" key={user.uri_user}>
+                <div className="border rounded p-3">
+                  <div className="fw-semibold mb-3">
+                    {user.name} · {user.email}
+                  </div>
+                  <div className="row g-3">
+                    {(suite_access.applications || []).map((application) => {
+                      const manageableRoles = (application.roles || []).filter(
+                        (role) => role.manageable !== false,
+                      );
+                      const assignedRoleUris = (user.roles || [])
+                        .filter((role) => role.app_id === application.app_id)
+                        .map((role) => role.uri_applicationRole);
+                      const action = (routes.suiteRolesSync || "")
+                        .replace("__USER__", user.uri_user || "")
+                        .replace("__APP__", application.app_id);
+
+                      return (
+                        <form method="POST" action={action} className="col-12 col-lg-6" key={application.app_id}>
+                          <input type="hidden" name="_token" value={csrf_token} />
+                          <input type="hidden" name="_method" value="PUT" />
+                          <div className="border rounded p-3 h-100">
+                            <div className="fw-semibold mb-2">{application.name || application.app_id}</div>
+                            {manageableRoles.length === 0 ? (
+                              <div className="text-muted small mb-3">Only reserved roles are defined for this app.</div>
+                            ) : (
+                              <div className="caronte-checkbox-list">
+                                {manageableRoles.map((role) => (
+                                  <label className="caronte-checkbox" key={role.uri_applicationRole}>
+                                    <input
+                                      type="checkbox"
+                                      name="roles[]"
+                                      value={role.uri_applicationRole}
+                                      defaultChecked={assignedRoleUris.includes(role.uri_applicationRole)}
+                                    />
+                                    <span>
+                                      <strong>{role.name}</strong>
+                                      <small>{role.description}</small>
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                            <button type="submit" className="btn caronte-btn-secondary btn-sm mt-2">
+                              Save suite roles
+                            </button>
+                          </div>
+                        </form>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

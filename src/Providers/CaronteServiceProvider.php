@@ -10,6 +10,9 @@ use Inertia\Inertia;
 use Ometra\Caronte\Api\CaronteApiClient;
 use Ometra\Caronte\Caronte;
 use Ometra\Caronte\Console\Commands\ManagementCaronte;
+use Ometra\Caronte\Console\Commands\Groups\ListGroupRoles;
+use Ometra\Caronte\Console\Commands\Groups\ListGroupUsers;
+use Ometra\Caronte\Console\Commands\Groups\SyncGroupUserRoles;
 use Ometra\Caronte\Console\Commands\Permissions\SyncPermissions;
 use Ometra\Caronte\Console\Commands\ProtectedApi\SyncScopes;
 use Ometra\Caronte\Console\Commands\Roles\SyncRoles;
@@ -147,6 +150,9 @@ class CaronteServiceProvider extends ServiceProvider
                 SyncScopes::class,
                 SyncPermissions::class,
                 SyncRoles::class,
+                ListGroupRoles::class,
+                ListGroupUsers::class,
+                SyncGroupUserRoles::class,
                 ListTenants::class,
                 ShowTenant::class,
                 ListUsers::class,
