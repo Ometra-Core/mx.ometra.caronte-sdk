@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use Equidna\BeeHive\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Http;
+use Ometra\Caronte\Api\GroupApi;
 use Ometra\Caronte\Support\CaronteApplicationToken;
 use Tests\DisabledManagementTestCase;
 use Tests\TestCase;
@@ -211,6 +213,163 @@ class CommandBehaviorTest extends TestCase
             return str_starts_with($request->url(), 'https://caronte.test/api/tenants')
                 && $this->hasValidApplicationTokenHeader($request)
                 && $request['search'] === 'tenant';
+        });
+    }
+
+    public function test_group_roles_list_command_calls_group_roles_endpoint_with_group_token(): void
+    {
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        Http::fake([
+            'https://caronte.test/api/application-groups/current/roles' => Http::response([
+                'status' => 200,
+                'message' => 'Application group roles retrieved',
+                'data' => [
+                    'applications' => [
+                        [
+                            'app_id' => 'billing-app',
+                            'name' => 'Billing',
+                            'roles' => [
+                                [
+                                    'uri_applicationRole' => 'role-billing-viewer',
+                                    'name' => 'billing.viewer',
+                                    'manageable' => true,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $this->artisan('caronte:groups:roles:list')
+            ->expectsTable(
+                ['Application', 'Role', 'URI', 'Manageable'],
+                [['Billing', 'billing.viewer', 'role-billing-viewer', 'yes']]
+            )
+            ->assertExitCode(0);
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://caronte.test/api/application-groups/current/roles'
+                && $this->hasValidApplicationTokenHeader($request)
+                && $this->hasValidGroupTokenHeader($request);
+        });
+    }
+
+    public function test_group_users_list_command_sends_tenant_header(): void
+    {
+        Http::fake([
+            'https://caronte.test/api/application-groups/current/users*' => Http::response([
+                'status' => 200,
+                'message' => 'Application group users retrieved',
+                'data' => [
+                    'users' => [
+                        [
+                            'uri_user' => 'user-1',
+                            'tenant_id' => 'tenant-1',
+                            'name' => 'Jane Doe',
+                            'email' => 'jane@example.com',
+                            'roles' => [['name' => 'billing.viewer']],
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $this->artisan('caronte:groups:users:list', [
+            '--tenant' => 'tenant-1',
+            '--search' => 'jane',
+        ])
+            ->expectsTable(
+                ['URI', 'Tenant', 'Name', 'Email', 'Group roles'],
+                [['user-1', 'tenant-1', 'Jane Doe', 'jane@example.com', '1']]
+            )
+            ->assertExitCode(0);
+
+        Http::assertSent(function ($request): bool {
+            return str_starts_with($request->url(), 'https://caronte.test/api/application-groups/current/users')
+                && $request->hasHeader('X-Tenant-Id', 'tenant-1')
+                && $request['search'] === 'jane';
+        });
+    }
+
+    public function test_group_user_roles_sync_command_uses_group_role_catalog_and_blocks_root_choices(): void
+    {
+        Http::fake([
+            'https://caronte.test/api/application-groups/current/roles' => Http::response([
+                'status' => 200,
+                'message' => 'Application group roles retrieved',
+                'data' => [
+                    'applications' => [
+                        [
+                            'app_id' => 'billing-app',
+                            'name' => 'Billing',
+                            'roles' => [
+                                [
+                                    'uri_applicationRole' => 'role-root',
+                                    'name' => 'root',
+                                    'manageable' => false,
+                                ],
+                                [
+                                    'uri_applicationRole' => 'role-billing-viewer',
+                                    'name' => 'billing.viewer',
+                                    'manageable' => true,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
+            'https://caronte.test/api/application-groups/current/users/user-1/applications/billing-app/roles' => Http::response([
+                'status' => 200,
+                'message' => 'Application group user roles synchronized',
+                'data' => ['roles' => []],
+            ], 200),
+        ]);
+
+        $this->artisan('caronte:groups:users:roles:sync', [
+            'uri_user' => 'user-1',
+            '--tenant' => 'tenant-1',
+            '--app' => 'billing-app',
+            '--role' => ['billing.viewer'],
+        ])
+            ->expectsOutput('Application group user roles synchronized')
+            ->assertExitCode(0);
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://caronte.test/api/application-groups/current/users/user-1/applications/billing-app/roles'
+                && $request->method() === 'PUT'
+                && $request->hasHeader('X-Tenant-Id', 'tenant-1')
+                && $request['roles'] === ['role-billing-viewer'];
+        });
+    }
+
+    public function test_group_api_sync_can_send_optional_actor_token(): void
+    {
+        $tenantContext = new TenantContext();
+        $tenantContext->set('tenant-1');
+        app()->instance(TenantContext::class, $tenantContext);
+
+        Http::fake([
+            'https://caronte.test/api/application-groups/current/users/user-1/applications/billing-app/roles' => Http::response([
+                'status' => 200,
+                'message' => 'Application group user roles synchronized',
+                'data' => ['roles' => []],
+            ], 200),
+        ]);
+
+        GroupApi::syncGroupUserRoles(
+            uriUser: 'user-1',
+            appId: 'billing-app',
+            roleUris: ['role-billing-viewer'],
+            actorToken: 'actor-token'
+        );
+
+        Http::assertSent(function ($request): bool {
+            return $request->hasHeader('X-User-Token', 'actor-token')
+                && $request->hasHeader('X-Tenant-Id', 'tenant-1')
+                && $request['roles'] === ['role-billing-viewer'];
         });
     }
 

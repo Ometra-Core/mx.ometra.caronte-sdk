@@ -8,6 +8,7 @@ use Illuminate\Support\Collection;
 use Illuminate\View\View;
 use Inertia\Response as InertiaResponse;
 use Ometra\Caronte\Api\ClientApi;
+use Ometra\Caronte\Api\GroupApi;
 use Ometra\Caronte\Api\RoleApi;
 use Ometra\Caronte\Facades\Caronte;
 use Ometra\Caronte\Support\CaronteResponse;
@@ -24,6 +25,7 @@ class ManagementController extends BaseController
             $users = collect(is_array($response['data']) ? $response['data'] : []);
             $paginator = $this->paginateUsers($users, $request);
             $preview = $this->previewRoleSync();
+            $suiteAccess = $this->suiteAccess($search);
             $configuredRoles = ConfiguredRoles::all();
 
             return $this->toView('management.index', [
@@ -36,6 +38,7 @@ class ManagementController extends BaseController
                 'remote_roles' => array_values($preview['remote']),
                 'missing_roles' => $preview['missing'],
                 'outdated_roles' => $preview['outdated'],
+                'suite_access' => $suiteAccess,
                 'features' => config('caronte.management.features', []),
                 'csrf_token' => csrf_token(),
                 'routes' => [
@@ -43,6 +46,10 @@ class ManagementController extends BaseController
                     'rolesSync' => route('caronte.management.roles.sync'),
                     'usersStore' => route('caronte.management.users.store'),
                     'usersShow' => route('caronte.management.users.show', ['uri_user' => '__USER__']),
+                    'suiteRolesSync' => route('caronte.management.suite.users.applications.roles.sync', [
+                        'uri_user' => '__USER__',
+                        'app_id' => '__APP__',
+                    ]),
                     'logout' => route('caronte.logout'),
                 ],
             ], true);
@@ -105,5 +112,34 @@ class ManagementController extends BaseController
         }
 
         return compact('configured', 'remote', 'missing', 'outdated');
+    }
+
+    /**
+     * @return array{enabled: bool, error: string|null, applications: array<int, mixed>, users: array<int, mixed>}
+     */
+    private function suiteAccess(string $search): array
+    {
+        try {
+            $rolesResponse = GroupApi::showGroupRoles();
+            $usersResponse = GroupApi::showGroupUsers($search);
+
+            return [
+                'enabled' => true,
+                'error' => null,
+                'applications' => is_array($rolesResponse['data']['applications'] ?? null)
+                    ? $rolesResponse['data']['applications']
+                    : [],
+                'users' => is_array($usersResponse['data']['users'] ?? null)
+                    ? $usersResponse['data']['users']
+                    : [],
+            ];
+        } catch (\Throwable $exception) {
+            return [
+                'enabled' => false,
+                'error' => $exception->getMessage(),
+                'applications' => [],
+                'users' => [],
+            ];
+        }
     }
 }

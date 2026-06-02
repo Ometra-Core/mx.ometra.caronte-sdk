@@ -54,5 +54,10 @@ if (config('caronte.management.enabled')) {
             Route::put('users/{uri_user}/roles', [UserController::class, 'syncRoles'])->name('users.roles.sync');
             Route::post('users/{uri_user}/metadata', [UserController::class, 'storeMetadata'])->name('users.metadata.store');
             Route::delete('users/{uri_user}/metadata', [UserController::class, 'deleteMetadata'])->name('users.metadata.delete');
+
+            Route::put(
+                'suite/users/{uri_user}/applications/{app_id}/roles',
+                [UserController::class, 'syncGroupRoles']
+            )->name('suite.users.applications.roles.sync');
         });
 }

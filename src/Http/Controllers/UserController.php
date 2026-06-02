@@ -8,6 +8,8 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Inertia\Response as InertiaResponse;
 use Ometra\Caronte\Api\ClientApi;
+use Ometra\Caronte\Api\GroupApi;
+use Ometra\Caronte\Facades\Caronte;
 use Ometra\Caronte\Support\CaronteResponse;
 use Ometra\Caronte\Support\ConfiguredRoles;
 use Symfony\Component\HttpFoundation\Response;
@@ -183,6 +185,34 @@ class UserController extends BaseController
         }
     }
 
+    public function syncGroupRoles(Request $request, string $uri_user, string $app_id): Response
+    {
+        $roleUris = $this->manageableGroupRoleUris($app_id);
+
+        $validated = $request->validate([
+            'roles' => ['array'],
+            'roles.*' => ['string', Rule::in($roleUris)],
+        ]);
+
+        try {
+            $response = GroupApi::syncGroupUserRoles(
+                uriUser: $uri_user,
+                appId: $app_id,
+                roleUris: array_values($validated['roles'] ?? []),
+                actorToken: Caronte::getToken()->toString()
+            );
+
+            return redirect()
+                ->route('caronte.management.dashboard')
+                ->with('success', $response['message']);
+        } catch (Exception $exception) {
+            return CaronteResponse::handleException(
+                exception: $exception,
+                forwardUrl: route('caronte.management.dashboard')
+            );
+        }
+    }
+
     public function storeMetadata(Request $request, string $uri_user): Response
     {
         if (!config('caronte.management.features.metadata', true)) {
@@ -270,5 +300,35 @@ class UserController extends BaseController
             fn(array $role): string => $role['uri_applicationRole'],
             ConfiguredRoles::all()
         ));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function manageableGroupRoleUris(string $appId): array
+    {
+        $response = GroupApi::showGroupRoles();
+        $applications = $response['data']['applications'] ?? [];
+
+        foreach ((array) $applications as $application) {
+            if (!is_array($application) || (string) ($application['app_id'] ?? '') !== $appId) {
+                continue;
+            }
+
+            return array_values(array_filter(array_map(
+                function (array $role): ?string {
+                    if (($role['manageable'] ?? true) === false) {
+                        return null;
+                    }
+
+                    return is_string($role['uri_applicationRole'] ?? null)
+                        ? $role['uri_applicationRole']
+                        : null;
+                },
+                (array) ($application['roles'] ?? [])
+            )));
+        }
+
+        return [];
     }
 }

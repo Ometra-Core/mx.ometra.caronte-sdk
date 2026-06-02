@@ -14,8 +14,10 @@ export type TenantOption = {
 
 export type Role = {
   uri_applicationRole: string;
+  app_id?: string;
   name: string;
   description?: string;
+  manageable?: boolean;
 };
 
 export type UserMetadata = {
@@ -27,6 +29,7 @@ export type User = {
   uri_user?: string;
   name?: string;
   email?: string;
+  roles?: Role[];
   metadata?: UserMetadata[];
 };
 
@@ -37,4 +40,17 @@ export type Paginated<T> = {
 
 export type FeatureFlags = {
   metadata?: boolean;
+};
+
+export type SuiteApplication = {
+  app_id: string;
+  name?: string;
+  roles?: Role[];
+};
+
+export type SuiteAccess = {
+  enabled: boolean;
+  error?: string | null;
+  applications?: SuiteApplication[];
+  users?: User[];
 };

@@ -25,6 +25,12 @@ class AuthController extends BaseController
     public function loginForm(Request $request): View|InertiaResponse|RedirectResponse
     {
         if (config('caronte.auth_mode') === 'oidc') {
+            $callbackUrl = $request->query('callback_url');
+
+            if (is_string($callbackUrl) && trim($callbackUrl) !== '') {
+                return redirect()->route('caronte.oidc.login', ['callback_url' => $callbackUrl]);
+            }
+
             return redirect()->route('caronte.oidc.login');
         }
 

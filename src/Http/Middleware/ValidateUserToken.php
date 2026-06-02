@@ -24,7 +24,7 @@ class ValidateUserToken
                 return CaronteResponse::forbidden(
                     message: 'User does not have access to this application.',
                     errors: ['User does not have access to this application.'],
-                    forwardUrl: (string) config('caronte.login_url')
+                    forwardUrl: $this->loginForwardUrl($request)
                 );
             }
 
@@ -39,7 +39,7 @@ class ValidateUserToken
                     return CaronteResponse::forbidden(
                         message: 'Tenant is required for this application.',
                         errors: ['Tenant is required for this application.'],
-                        forwardUrl: (string) config('caronte.login_url')
+                        forwardUrl: $this->loginForwardUrl($request)
                     );
                 }
 
@@ -49,7 +49,7 @@ class ValidateUserToken
                     return CaronteResponse::forbidden(
                         message: 'Tenant mismatch.',
                         errors: ['Tenant mismatch.'],
-                        forwardUrl: (string) config('caronte.login_url')
+                        forwardUrl: $this->loginForwardUrl($request)
                     );
                 }
 
@@ -71,8 +71,31 @@ class ValidateUserToken
 
             return CaronteResponse::unauthorized(
                 message: $exception->getMessage(),
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: $this->loginForwardUrl($request)
             );
         }
+    }
+
+    private function loginForwardUrl(Request $request): string
+    {
+        $loginUrl = (string) config('caronte.login_url');
+
+        if (! $this->shouldRememberIntendedUrl($request)) {
+            return $loginUrl;
+        }
+
+        $separator = str_contains($loginUrl, '?') ? '&' : '?';
+
+        return $loginUrl . $separator . http_build_query([
+            'callback_url' => base64_encode($request->fullUrl()),
+        ]);
+    }
+
+    private function shouldRememberIntendedUrl(Request $request): bool
+    {
+        return in_array($request->method(), ['GET', 'HEAD'], true)
+            && ! $request->expectsJson()
+            && ! $request->wantsJson()
+            && ! $request->is('api/*');
     }
 }

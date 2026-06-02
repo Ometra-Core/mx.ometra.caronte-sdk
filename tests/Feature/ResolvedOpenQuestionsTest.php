@@ -49,6 +49,16 @@ class ResolvedOpenQuestionsTest extends TestCase
                     ['uri_applicationRole' => 'role-root', 'name' => 'root', 'description' => 'Default super administrator role'],
                 ],
             ], 200),
+            'https://caronte.test/api/application-groups/current/roles' => Http::response([
+                'status' => 200,
+                'message' => 'Application group roles retrieved',
+                'data' => ['applications' => []],
+            ], 200),
+            'https://caronte.test/api/application-groups/current/users*' => Http::response([
+                'status' => 200,
+                'message' => 'Application group users retrieved',
+                'data' => ['users' => []],
+            ], 200),
         ]);
 
         $this->withSession([
@@ -59,6 +69,7 @@ class ResolvedOpenQuestionsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('component', 'management/index')
             ->assertJsonPath('props.tenant_id', 'tenant-1')
+            ->assertJsonPath('props.suite_access.enabled', true)
             ->assertJsonPath('props.users.data.0.email', 'jane@example.com');
     }
 

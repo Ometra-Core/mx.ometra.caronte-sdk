@@ -638,24 +638,76 @@ class MiddlewareBehaviorTest extends TestCase
             'metadata' => [],
         ]);
 
-        $this->withSession([(string) config('caronte.session_key', 'caronte.user_token') => $token])
+        $response = $this->withSession([(string) config('caronte.session_key', 'caronte.user_token') => $token])
             ->from('/dashboard')
             ->get('/_caronte/session-check')
-            ->assertRedirect('/login')
             ->assertSessionHasErrors([
                 'general' => 'User does not have access to this application.',
             ])
             ->assertSessionMissing((string) config('caronte.session_key', 'caronte.user_token'));
+
+        $response->assertRedirect();
+        $this->assertSame('/_caronte/session-check', parse_url($this->decodedCallbackUrlFromRedirect($response), PHP_URL_PATH));
+    }
+
+    public function test_web_session_middleware_redirects_to_login_with_intended_callback(): void
+    {
+        $response = $this->get('/_caronte/session-check?tab=roles');
+
+        $response->assertRedirect();
+
+        $callbackUrl = $this->decodedCallbackUrlFromRedirect($response);
+
+        $this->assertSame('/_caronte/session-check', parse_url($callbackUrl, PHP_URL_PATH));
+        $this->assertSame('tab=roles', parse_url($callbackUrl, PHP_URL_QUERY));
     }
 
     public function test_inertia_session_middleware_uses_location_response_for_expired_sessions(): void
     {
-        $this->get('/_caronte/session-check', [
+        $response = $this->get('/_caronte/session-check', [
             'X-Inertia' => 'true',
         ])
             ->assertStatus(409)
-            ->assertHeader('X-Inertia-Location', '/login')
             ->assertSessionMissing((string) config('caronte.session_key', 'caronte.user_token'));
+
+        $location = (string) $response->baseResponse->headers->get('X-Inertia-Location');
+        $this->assertSame('/login', parse_url($location, PHP_URL_PATH));
+        $this->assertSame('/_caronte/session-check', parse_url($this->callbackUrlFromLoginUrl($location), PHP_URL_PATH));
+    }
+
+    public function test_oidc_login_preserves_intended_callback_through_successful_callback(): void
+    {
+        config()->set('caronte.auth_mode', 'oidc');
+        config()->set('caronte.oidc.issuer', 'https://caronte.test');
+        config()->set('caronte.oidc.client_id', 'test-app-id');
+        config()->set('caronte.oidc.client_secret', 'oidc-secret');
+        config()->set('caronte.oidc.redirect_uri', 'https://client.test/oidc/callback');
+
+        $this->fakeOidcValidator();
+
+        $targetUrl = 'https://client.test/reports/monthly?tab=roles';
+        $token = $this->makeOidcToken();
+
+        Http::fake([
+            'https://caronte.test/oauth/token' => Http::response([
+                'token_type' => 'Bearer',
+                'id_token' => $token,
+                'refresh_token' => 'new-refresh-token',
+            ], 200),
+        ]);
+
+        $this->get('/login?callback_url=' . urlencode(base64_encode($targetUrl)))
+            ->assertRedirectContains('/oidc/login?callback_url=');
+
+        $this->get('/oidc/login?callback_url=' . urlencode(base64_encode($targetUrl)))
+            ->assertRedirectContains('https://caronte.test/oauth/authorize');
+
+        $state = (string) session('caronte.oidc.state');
+
+        $this->get('/oidc/callback?state=' . urlencode($state) . '&code=code-123')
+            ->assertRedirect($targetUrl)
+            ->assertSessionHas((string) config('caronte.session_key', 'caronte.user_token'), $token)
+            ->assertSessionMissing('caronte.oidc.callback_url');
     }
 
     public function test_single_tenant_session_middleware_binds_configured_tenant(): void
@@ -903,5 +955,27 @@ class MiddlewareBehaviorTest extends TestCase
             ->withClaim('metadata', [])
             ->getToken($config->signer(), $config->signingKey())
             ->toString();
+    }
+
+    private function decodedCallbackUrlFromRedirect(mixed $response): string
+    {
+        $location = (string) $response->baseResponse->headers->get('Location');
+
+        $this->assertSame('/login', parse_url($location, PHP_URL_PATH));
+
+        return $this->callbackUrlFromLoginUrl($location);
+    }
+
+    private function callbackUrlFromLoginUrl(string $location): string
+    {
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+        $this->assertArrayHasKey('callback_url', $query);
+
+        $callbackUrl = base64_decode((string) $query['callback_url'], true);
+
+        $this->assertIsString($callbackUrl);
+
+        return $callbackUrl;
     }
 }

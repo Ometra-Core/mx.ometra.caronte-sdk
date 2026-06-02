@@ -11,6 +11,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No changes yet.
 
+## [4.5.0] - 2026-06-02 "Suite"
+
+### Added
+
+- **GroupApi** for Caronte suite access endpoints: `showGroupRoles()`, `showGroupUsers()`, and `syncGroupUserRoles()`.
+- **Suite access CLI commands**: `caronte:groups:roles:list`, `caronte:groups:users:list`, and `caronte:groups:users:roles:sync`.
+- **Management UI Suite access mode** that lists tenant users, shows suite apps/roles grouped by application, and blocks non-manageable roles such as `root`.
+- **Optional actor token forwarding** for suite role sync through `X-User-Token`.
+- **Feature coverage** for GroupApi headers/payloads, CLI commands, management route registration, and suite UI rendering.
+
+### Changed
+
+- `CaronteHttpClient::applicationRequest()` can now forward an optional user token while preserving existing API call signatures.
+- The interactive `caronte:admin` hub now includes suite role and user management actions.
+
+### Security
+
+- Suite role sync validates selected roles against the server-provided manageable group role catalog before sending the request.
+
+### Deprecated
+
+- No changes.
+
+### Removed
+
+- No changes.
+
 ## [4.4.0] - 2026-05-24 "Atlas"
 
 ### Added

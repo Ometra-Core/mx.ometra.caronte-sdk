@@ -17,6 +17,9 @@ This package registers custom commands only when running in console.
 | caronte:users:update {uri_user?}     | Update user display name                                 |
 | caronte:users:delete {uri_user?}     | Delete user                                              |
 | caronte:users:roles:sync {uri_user?} | Sync user roles                                          |
+| caronte:groups:roles:list            | List roles visible in the current application group      |
+| caronte:groups:users:list            | List tenant users with application-group role context    |
+| caronte:groups:users:roles:sync {uri_user?} | Sync non-root suite roles for one user/app       |
 
 ## 2. Detailed Commands
 
@@ -107,6 +110,34 @@ Example:
     - --role=\*
     - --clear
 
+### caronte:groups:roles:list
+
+- Class: Ometra\Caronte\Console\Commands\Groups\ListGroupRoles
+- Lists applications and roles returned by Caronte's current application-group role catalog.
+- Requires the application to have `groups.roles.read`.
+
+### caronte:groups:users:list
+
+- Class: Ometra\Caronte\Console\Commands\Groups\ListGroupUsers
+- Options:
+    - --tenant=
+    - --search=
+- Lists tenant users and their roles across the current application group.
+- Requires `groups.users.read`.
+
+### caronte:groups:users:roles:sync
+
+- Class: Ometra\Caronte\Console\Commands\Groups\SyncGroupUserRoles
+- Arguments/options:
+    - {uri_user?}
+    - --tenant=
+    - --app=
+    - --role=\*
+    - --clear
+- Syncs non-root roles for one user in one application from the current application group.
+- Role arguments can use either role URI or role name from the group catalog.
+- Requires `groups.roles.read` to resolve the catalog and `groups.user_roles.write` to sync roles.
+
 ## 3. Scheduling
 
 No command scheduling is defined by this package. Host applications may schedule any command if needed.
@@ -115,4 +146,5 @@ No command scheduling is defined by this package. Host applications may schedule
 
 - Most commands rely on Caronte server connectivity.
 - User and tenant commands require tenant context for tenant-scoped endpoints.
+- Group user commands require tenant context and Caronte suite permissions on the calling application.
 - Role/scope sync should be part of deployment or release workflows when config changes.
