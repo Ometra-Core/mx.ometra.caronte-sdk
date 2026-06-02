@@ -24,9 +24,29 @@ v4.5.0 "Suite" adds SDK support for Caronte application-group user management. A
 - `caronte:groups:users:roles:sync`.
 - Management route `caronte.management.suite.users.applications.roles.sync`.
 
+## Changed
+
+- `CaronteHttpClient::applicationRequest()` now supports optional forwarded actor-token behavior for suite role synchronization.
+- The interactive `caronte:admin` hub now includes suite role and user management actions.
+
+## Deprecated
+
+- No new deprecations in this release.
+
+## Removed
+
+- No removals in this release.
+
 ## Security
 
 - The UI and CLI only send roles marked manageable by Caronte; reserved roles such as `root` stay out of suite sync payloads.
+
+---
+
+## Full History
+
+See [CHANGELOG.md](CHANGELOG.md) for complete project history.
+See [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for migration guidance.
 
 ---
 
