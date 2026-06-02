@@ -7,7 +7,7 @@ use InvalidArgumentException;
 
 final class CaronteTenancy
 {
-    public const MODE_MULTI = 'multi';
+    public const MODE_MULTI  = 'multi';
     public const MODE_SINGLE = 'single';
 
     public static function mode(): string
