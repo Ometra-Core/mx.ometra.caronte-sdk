@@ -23,6 +23,7 @@ use Ometra\Caronte\Support\CaronteApplicationContext;
 use Ometra\Caronte\Support\CaronteApplicationToken;
 use Ometra\Caronte\Support\CaronteForwardedUserContext;
 use Ometra\Caronte\Support\CaronteProtectedApiAccessContext;
+use Ometra\Caronte\Support\CaronteResponse;
 use Tests\TestCase;
 
 class MiddlewareBehaviorTest extends TestCase
@@ -100,6 +101,13 @@ class MiddlewareBehaviorTest extends TestCase
                         : null,
                 ]);
             });
+
+        Route::middleware(['web'])
+            ->post('/_caronte/inertia-forward-error', fn() => CaronteResponse::unprocessable(
+                message: 'Validation failed.',
+                errors: ['email' => ['Invalid email.']],
+                forwardUrl: '/login'
+            ));
 
         Route::middleware(['caronte.session', 'caronte.roles:admin'])
             ->get('/api/_caronte/role-check', fn() => response()->json(['ok' => true]));
@@ -673,6 +681,31 @@ class MiddlewareBehaviorTest extends TestCase
         $location = (string) $response->baseResponse->headers->get('X-Inertia-Location');
         $this->assertSame('/login', parse_url($location, PHP_URL_PATH));
         $this->assertSame('/_caronte/session-check', parse_url($this->callbackUrlFromLoginUrl($location), PHP_URL_PATH));
+    }
+
+    public function test_inertia_forward_error_preserves_errors_and_input(): void
+    {
+        $response = $this->post('/_caronte/inertia-forward-error', [
+            'name' => 'Jane Doe',
+            'email' => 'not-an-email',
+            'password' => 'secret',
+        ], [
+            'X-Inertia' => 'true',
+        ])
+            ->assertStatus(409)
+            ->assertSessionHas('status', 422)
+            ->assertSessionHas('message', 'Validation failed.')
+            ->assertSessionHas('error', 'Validation failed.')
+            ->assertSessionHasErrors([
+                'email' => 'Invalid email.',
+            ]);
+
+        $location = (string) $response->baseResponse->headers->get('X-Inertia-Location');
+
+        $this->assertSame('/login', parse_url($location, PHP_URL_PATH));
+        $this->assertSame('Jane Doe', session()->getOldInput('name'));
+        $this->assertSame('not-an-email', session()->getOldInput('email'));
+        $this->assertNull(session()->getOldInput('password'));
     }
 
     public function test_oidc_login_preserves_intended_callback_through_successful_callback(): void

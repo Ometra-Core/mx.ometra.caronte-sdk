@@ -165,10 +165,6 @@ class CaronteResponse
         $sanitizedErrors = static::sanitizeErrors($status, $errors);
         $destination = $forwardUrl ?: url()->previous();
 
-        if ($forwardUrl !== null && static::isInertiaRequest()) {
-            return Inertia::location($destination);
-        }
-
         $response = redirect()->to($destination, 302, static::stringHeaders($headers))
             ->with([
                 'status' => $status,
@@ -177,7 +173,7 @@ class CaronteResponse
             ]);
 
         if ($status >= 400) {
-            return $response
+            $response = $response
                 ->with('error', $sanitizedMessage)
                 ->withErrors($sanitizedErrors === [] ? ['general' => [$sanitizedMessage]] : static::redirectErrors($sanitizedErrors))
                 ->withInput(request()->except([
@@ -186,9 +182,15 @@ class CaronteResponse
                     'current_password',
                     'new_password',
                 ]));
+        } else {
+            $response = $response->with('success', $sanitizedMessage);
         }
 
-        return $response->with('success', $sanitizedMessage);
+        if ($forwardUrl !== null && static::isInertiaRequest()) {
+            return Inertia::location($response);
+        }
+
+        return $response;
     }
 
     private static function sanitizeMessage(int $status, string $message): string
