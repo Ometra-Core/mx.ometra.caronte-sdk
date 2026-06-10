@@ -1,3 +1,52 @@
+# Release v4.5.1
+
+> **Release date:** 2026-06-10
+> **Type:** Patch - Inertia response handling bug fix.
+
+---
+
+## Summary
+
+v4.5.1 is a patch release addressing a bug in Inertia response handling when forwarding error responses with validation errors. This fix ensures that error messages, validation errors, and input data are properly preserved in the session before redirecting to the forwarded URL, while maintaining compatibility with Inertia's location-based response handling.
+
+## Highlights
+
+- ✅ **Fixed Inertia error response forwarding** — validation errors and input data now properly persist in session
+- ✅ **Comprehensive test coverage** — new test case validates error preservation through Inertia redirects
+- ✅ **No breaking changes** — fully backward-compatible patch
+
+## Fixed
+
+- **Inertia response handling for error redirects** — `CaronteResponse::redirect()` now correctly passes the response object to `Inertia::location()` for error responses with forwarded URLs. Previously, error messages and validation errors would be lost when Inertia::location() was called after the response was constructed. The fix restructures the response building to:
+    1. First set error messages and input data on the response
+    2. Then wrap the complete response with `Inertia::location()` if needed
+       This ensures all session data (errors, messages, input) is properly flashed before the redirect.
+
+## Added
+
+- New feature test `test_inertia_forward_error_preserves_errors_and_input()` validates error preservation through Inertia redirects.
+
+## Deprecated
+
+- No changes.
+
+## Removed
+
+- No changes.
+
+## Security
+
+- No changes.
+
+---
+
+## Full History
+
+See [CHANGELOG.md](CHANGELOG.md) for complete project history.
+See [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for migration guidance.
+
+---
+
 # Release v4.5.0 "Suite"
 
 > **Release date:** 2026-06-02

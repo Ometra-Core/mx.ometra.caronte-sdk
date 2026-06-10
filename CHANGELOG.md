@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No changes yet.
 
+## [4.5.1] - 2026-06-10
+
+### Fixed
+
+- **Inertia response handling for error redirects** — `CaronteResponse::redirect()` now correctly passes the response object to `Inertia::location()` for error responses with forwarded URLs, ensuring validation errors and input data are properly preserved in session before redirect.
+
+### Security
+
+- No changes.
+
 ## [4.5.0] - 2026-06-02 "Suite"
 
 ### Added
