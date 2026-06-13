@@ -22,6 +22,7 @@ use Ometra\Caronte\Caronte as CaronteClass;
  * @method static void clearToken()
  * @method static void setTokenWasExchanged()
  * @method static bool tokenWasExchanged()
+ * @method static void resetTokenWasExchanged()
  * @method static string echo(string $message)
  * @method static void updateUserData(\stdClass|string $user)
  *

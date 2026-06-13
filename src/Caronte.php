@@ -31,6 +31,12 @@ final class Caronte
 
     public function getToken(): Plain
     {
+        $cachedToken = $this->cachedRequestToken();
+
+        if ($cachedToken instanceof Plain) {
+            return $cachedToken;
+        }
+
         $token = $this->rawToken();
 
         if (!is_string($token) || $token === '') {
@@ -102,6 +108,11 @@ final class Caronte
     public function tokenWasExchanged(): bool
     {
         return $this->newToken;
+    }
+
+    public function resetTokenWasExchanged(): void
+    {
+        $this->newToken = false;
     }
 
     public function echo(string $message): string
@@ -206,6 +217,17 @@ final class Caronte
         }
 
         return request()->session()->get((string) config('caronte.session_key', 'caronte.user_token'));
+    }
+
+    private function cachedRequestToken(): ?Plain
+    {
+        if (! app()->bound('request')) {
+            return null;
+        }
+
+        $token = request()->attributes->get('caronte.user_token');
+
+        return $token instanceof Plain ? $token : null;
     }
 
     private function hasRequestSession(): bool

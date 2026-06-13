@@ -16,6 +16,8 @@ class ValidateUserToken
 {
     public function handle(Request $request, Closure $next): Response
     {
+        Caronte::resetTokenWasExchanged();
+
         try {
             $token = Caronte::getToken();
             $request->attributes->set('caronte.user_token', $token);
@@ -76,6 +78,8 @@ class ValidateUserToken
                 message: $exception->getMessage(),
                 forwardUrl: $this->loginForwardUrl($request)
             );
+        } finally {
+            Caronte::resetTokenWasExchanged();
         }
     }
 

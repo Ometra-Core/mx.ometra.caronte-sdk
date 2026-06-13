@@ -1,6 +1,6 @@
 # API Documentation
 
-This package does not define routes/api.php endpoints. It exposes HTTP endpoints through routes/web.php and returns JSON when clients send JSON expectations.
+This package exposes browser authentication routes through routes/web.php and JSON-only client authentication routes through routes/api.php.
 
 All package responses follow the CaronteResponse envelope shape:
 
@@ -94,11 +94,8 @@ Base path: `/api/caronte/auth`
 - POST `/api/caronte/auth/logout` (caronte.api.auth.logout)
     - Auth: `Authorization: Bearer <user_jwt>` with `caronte.session`
     - Revokes the current user token through Caronte
-- POST `/api/caronte/auth/exchange` (caronte.api.auth.exchange)
-    - Auth: `Authorization: Bearer <user_jwt>`
-    - Success: refreshed `data.token`
 
-API clients should update their stored token when any protected API response includes the `X-User-Token` header.
+Token renewal is passive for API clients. When a protected route using `caronte.session` refreshes a token, the response includes `X-User-Token`; clients should replace their stored token with that header value.
 
 ## 2. Management Endpoints
 

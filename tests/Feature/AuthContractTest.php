@@ -102,6 +102,14 @@ class AuthContractTest extends TestCase
             ->assertJsonPath('message', 'Invalid credentials.');
     }
 
+    public function test_api_login_validation_errors_are_json_without_accept_header(): void
+    {
+        $this->post('/api/caronte/auth/login', [])
+            ->assertStatus(422)
+            ->assertHeader('Content-Type', 'application/json')
+            ->assertJsonValidationErrors(['email', 'password']);
+    }
+
     public function test_api_login_returns_tenant_selection_payload(): void
     {
         Http::fake([
@@ -227,10 +235,13 @@ class AuthContractTest extends TestCase
         });
     }
 
-    public function test_api_exchange_returns_refreshed_token(): void
+    public function test_api_logout_uses_refreshed_token_when_bearer_was_exchanged(): void
     {
-        $oldToken = $this->makeToken();
-        $newToken = $this->makeToken([
+        $expiredToken = $this->makeToken(
+            issuedAt: new DateTimeImmutable('-30 minutes', new DateTimeZone('UTC')),
+            expiresAt: new DateTimeImmutable('-5 minutes', new DateTimeZone('UTC'))
+        );
+        $freshToken = $this->makeToken([
             'uri_user' => 'user-123',
             'name' => 'Root User',
             'email' => 'root@example.com',
@@ -251,20 +262,34 @@ class AuthContractTest extends TestCase
             'https://caronte.test/api/auth/exchange' => Http::response([
                 'status' => 200,
                 'message' => 'Token exchanged',
-                'data' => ['token' => $newToken],
+                'data' => ['token' => $freshToken],
+            ], 200),
+            'https://caronte.test/api/auth/logout' => Http::response([
+                'status' => 200,
+                'message' => 'Logout successful',
+                'data' => [],
             ], 200),
         ]);
 
-        $this->withHeader('Authorization', 'Bearer ' . $oldToken)
-            ->postJson('/api/caronte/auth/exchange')
+        $this->withHeader('Authorization', 'Bearer ' . $expiredToken)
+            ->postJson('/api/caronte/auth/logout')
             ->assertOk()
-            ->assertJsonPath('data.token', $newToken);
+            ->assertJsonPath('message', 'Logout successful');
 
-        Http::assertSent(function ($request) use ($oldToken): bool {
+        Http::assertSentCount(2);
+
+        Http::assertSent(function ($request) use ($expiredToken): bool {
             return $request->url() === 'https://caronte.test/api/auth/exchange'
                 && $request->method() === 'POST'
                 && $this->hasValidApplicationTokenHeader($request)
-                && $request->hasHeader('X-User-Token', $oldToken);
+                && $request->hasHeader('X-User-Token', $expiredToken);
+        });
+
+        Http::assertSent(function ($request) use ($freshToken): bool {
+            return $request->url() === 'https://caronte.test/api/auth/logout'
+                && $request->method() === 'POST'
+                && $this->hasValidApplicationTokenHeader($request)
+                && $request->hasHeader('X-User-Token', $freshToken);
         });
     }
 

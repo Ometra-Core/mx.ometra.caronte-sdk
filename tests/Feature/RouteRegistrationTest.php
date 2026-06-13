@@ -14,7 +14,7 @@ class RouteRegistrationTest extends TestCase
         $this->assertTrue(Route::has('caronte.api.auth.login'));
         $this->assertTrue(Route::has('caronte.api.auth.me'));
         $this->assertTrue(Route::has('caronte.api.auth.logout'));
-        $this->assertTrue(Route::has('caronte.api.auth.exchange'));
+        $this->assertFalse(Route::has('caronte.api.auth.exchange'));
         $this->assertTrue(Route::has('caronte.management.dashboard'));
         $this->assertTrue(Route::has('caronte.management.roles.sync'));
         $this->assertTrue(Route::has('caronte.management.roles.create'));

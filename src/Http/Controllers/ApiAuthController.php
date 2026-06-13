@@ -110,7 +110,7 @@ class ApiAuthController extends BaseController
 
     public function logout(Request $request): Response
     {
-        $userToken = (string) $request->bearerToken();
+        $userToken = Caronte::getToken()->toString();
 
         if ($userToken === '') {
             return CaronteResponse::unauthorized('Token not found');
@@ -122,31 +122,6 @@ class ApiAuthController extends BaseController
             return CaronteResponse::success(
                 message: $response['message'],
                 data: $response['data']
-            );
-        } catch (CaronteApiException $exception) {
-            return CaronteResponse::handleException(
-                exception: $exception,
-                errors: $exception->errors()
-            );
-        }
-    }
-
-    public function exchange(Request $request): Response
-    {
-        $userToken = (string) $request->bearerToken();
-
-        if ($userToken === '') {
-            return CaronteResponse::unauthorized('Token not found');
-        }
-
-        try {
-            $response = AuthApi::exchange($userToken);
-            $tokenString = (string) data_get($response, 'data.token', '');
-            $token = CaronteUserToken::validateToken($tokenString, skipExchange: true);
-
-            return CaronteResponse::success(
-                message: $response['message'],
-                data: ['token' => $token->toString()]
             );
         } catch (CaronteApiException $exception) {
             return CaronteResponse::handleException(
