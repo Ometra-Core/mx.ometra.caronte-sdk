@@ -4,6 +4,7 @@ namespace Ometra\Caronte\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Ometra\Caronte\CaronteUserToken;
 use Ometra\Caronte\Facades\Caronte;
 use Ometra\Caronte\Helpers\PermissionHelper;
 use Ometra\Caronte\Support\CaronteResponse;
@@ -17,6 +18,8 @@ class ValidateUserToken
     {
         try {
             $token = Caronte::getToken();
+            $request->attributes->set('caronte.user_token', $token);
+            $request->attributes->set('caronte.user', CaronteUserToken::userPayload($token));
 
             if (!PermissionHelper::hasApplication()) {
                 Caronte::clearToken();

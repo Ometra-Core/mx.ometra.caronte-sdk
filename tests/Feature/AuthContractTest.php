@@ -55,6 +55,219 @@ class AuthContractTest extends TestCase
         });
     }
 
+    public function test_api_login_returns_token_without_persisting_session(): void
+    {
+        $token = $this->makeToken();
+
+        Http::fake([
+            'https://caronte.test/api/auth/login' => Http::response([
+                'status' => 200,
+                'message' => 'Token generated',
+                'data' => ['token' => $token],
+            ], 200),
+        ]);
+
+        $this->postJson('/api/caronte/auth/login', [
+            'email' => 'root@example.com',
+            'password' => 'Password123!',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.token', $token);
+
+        $this->assertFalse(session()->has((string) config('caronte.session_key')));
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://caronte.test/api/auth/login'
+                && $this->hasValidApplicationTokenHeader($request)
+                && $request['email'] === 'root@example.com'
+                && $request['password'] === 'Password123!';
+        });
+    }
+
+    public function test_api_login_returns_json_error_for_invalid_credentials(): void
+    {
+        Http::fake([
+            'https://caronte.test/api/auth/login' => Http::response([
+                'status' => 401,
+                'message' => 'Invalid credentials.',
+                'errors' => ['Invalid credentials.'],
+            ], 401),
+        ]);
+
+        $this->postJson('/api/caronte/auth/login', [
+            'email' => 'root@example.com',
+            'password' => 'wrong-password',
+        ])
+            ->assertStatus(401)
+            ->assertJsonPath('message', 'Invalid credentials.');
+    }
+
+    public function test_api_login_returns_tenant_selection_payload(): void
+    {
+        Http::fake([
+            'https://caronte.test/api/auth/login' => Http::response([
+                'status' => 409,
+                'message' => 'Tenant selection required.',
+                'errors' => [
+                    'code' => 'tenant_selection_required',
+                    'tenants' => [
+                        ['tenant_id' => 'tenant-a', 'name' => 'Tenant A', 'global' => false],
+                        ['tenant_id' => 'tenant-b', 'name' => 'Tenant B', 'global' => false],
+                    ],
+                    'tenant_selection_token' => 'selection-token',
+                ],
+            ], 409),
+        ]);
+
+        $this->postJson('/api/caronte/auth/login', [
+            'email' => 'shared@example.com',
+            'password' => 'Password123!',
+        ])
+            ->assertStatus(409)
+            ->assertJsonPath('data.tenants.0.tenant_id', 'tenant-a')
+            ->assertJsonPath('data.tenant_selection_token', 'selection-token');
+
+        $this->assertFalse(session()->has('caronte.pending_login'));
+    }
+
+    public function test_api_login_accepts_tenant_selection_token_without_reposting_password(): void
+    {
+        $token = $this->makeToken();
+
+        Http::fake([
+            'https://caronte.test/api/auth/login' => Http::response([
+                'status' => 200,
+                'message' => 'Token generated',
+                'data' => ['token' => $token],
+            ], 200),
+        ]);
+
+        $this->postJson('/api/caronte/auth/login', [
+            'email' => 'shared@example.com',
+            'tenant_id' => 'tenant-b',
+            'tenant_selection_token' => 'selection-token',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.token', $token);
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://caronte.test/api/auth/login'
+                && $request['email'] === 'shared@example.com'
+                && ($request['tenant_id'] ?? null) === 'tenant-b'
+                && ($request['tenant_selection_token'] ?? null) === 'selection-token'
+                && ! array_key_exists('password', $request->data());
+        });
+    }
+
+    public function test_api_me_returns_authenticated_user_payload(): void
+    {
+        $token = $this->makeToken();
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/caronte/auth/me')
+            ->assertOk()
+            ->assertJsonPath('data.user.uri_user', 'user-123')
+            ->assertJsonPath('data.user.email', 'root@example.com')
+            ->assertJsonPath('data.tenant_id', 'tenant-1')
+            ->assertJsonPath('data.roles.0.name', 'root');
+    }
+
+    public function test_api_me_requires_bearer_token(): void
+    {
+        $this->getJson('/api/caronte/auth/me')
+            ->assertStatus(401)
+            ->assertJsonPath('message', 'Token not found');
+    }
+
+    public function test_api_me_rejects_user_without_access_to_host_application(): void
+    {
+        $token = $this->makeToken([
+            'uri_user' => 'user-foreign',
+            'name' => 'Foreign User',
+            'email' => 'foreign@example.com',
+            'tenant_id' => 'tenant-1',
+            'roles' => [
+                [
+                    'name' => 'viewer',
+                    'app_id' => 'other-app-id',
+                    'uri_applicationRole' => sha1('other-app-id' . 'viewer'),
+                ],
+            ],
+            'metadata' => [],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->getJson('/api/caronte/auth/me')
+            ->assertStatus(403)
+            ->assertJsonPath('message', 'User does not have access to this application.');
+    }
+
+    public function test_api_logout_revokes_bearer_token(): void
+    {
+        $token = $this->makeToken();
+
+        Http::fake([
+            'https://caronte.test/api/auth/logout' => Http::response([
+                'status' => 200,
+                'message' => 'Logout successful',
+                'data' => [],
+            ], 200),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer ' . $token)
+            ->postJson('/api/caronte/auth/logout')
+            ->assertOk()
+            ->assertJsonPath('message', 'Logout successful');
+
+        Http::assertSent(function ($request) use ($token): bool {
+            return $request->url() === 'https://caronte.test/api/auth/logout'
+                && $request->method() === 'POST'
+                && $this->hasValidApplicationTokenHeader($request)
+                && $request->hasHeader('X-User-Token', $token);
+        });
+    }
+
+    public function test_api_exchange_returns_refreshed_token(): void
+    {
+        $oldToken = $this->makeToken();
+        $newToken = $this->makeToken([
+            'uri_user' => 'user-123',
+            'name' => 'Root User',
+            'email' => 'root@example.com',
+            'tenant_id' => 'tenant-1',
+            'roles' => [
+                [
+                    'name' => 'root',
+                    'app_id' => CaronteApplicationToken::appId(),
+                    'uri_applicationRole' => sha1(CaronteApplicationToken::appId() . 'root'),
+                ],
+            ],
+            'metadata' => [
+                ['scope' => CaronteApplicationToken::appId(), 'key' => 'theme', 'value' => 'dark'],
+            ],
+        ]);
+
+        Http::fake([
+            'https://caronte.test/api/auth/exchange' => Http::response([
+                'status' => 200,
+                'message' => 'Token exchanged',
+                'data' => ['token' => $newToken],
+            ], 200),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer ' . $oldToken)
+            ->postJson('/api/caronte/auth/exchange')
+            ->assertOk()
+            ->assertJsonPath('data.token', $newToken);
+
+        Http::assertSent(function ($request) use ($oldToken): bool {
+            return $request->url() === 'https://caronte.test/api/auth/exchange'
+                && $request->method() === 'POST'
+                && $this->hasValidApplicationTokenHeader($request)
+                && $request->hasHeader('X-User-Token', $oldToken);
+        });
+    }
+
     public function test_login_redirects_back_to_intended_protected_route(): void
     {
         Route::middleware(['web', 'caronte.session'])

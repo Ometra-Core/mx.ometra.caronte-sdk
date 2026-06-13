@@ -7,10 +7,12 @@ use Equidna\Toolkit\Exceptions\UnauthorizedException;
 use Equidna\Toolkit\Helpers\RouteHelper;
 use Exception;
 use Lcobucci\JWT\Token\Plain;
-use Ometra\Caronte\CaronteUserToken;
 use Ometra\Caronte\Exceptions\TenantMissingException;
 use Ometra\Caronte\Models\CaronteUser;
+use Ometra\Caronte\Support\CaronteApplicationToken;
+use RuntimeException;
 use stdClass;
+use Throwable;
 
 final class Caronte
 {
@@ -22,7 +24,7 @@ final class Caronte
             $this->getToken();
 
             return true;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return false;
         }
     }
@@ -45,7 +47,7 @@ final class Caronte
             $user = CaronteUserToken::userPayload($token);
 
             if (!$user instanceof stdClass) {
-                throw new \RuntimeException('Invalid user payload.');
+                throw new RuntimeException('Invalid user payload.');
             }
 
             return $user;
@@ -76,7 +78,7 @@ final class Caronte
 
     public function saveToken(string $token): void
     {
-        if (!app()->bound('session')) {
+        if (! $this->hasRequestSession()) {
             return;
         }
 
@@ -85,7 +87,7 @@ final class Caronte
 
     public function clearToken(): void
     {
-        if (!app()->bound('session')) {
+        if (! $this->hasRequestSession()) {
             return;
         }
 
@@ -151,7 +153,7 @@ final class Caronte
                     [
                         'uri_user' => $user->uri_user,
                         'tenant_id' => $tenantId,
-                        'scope' => $item->scope ?? \Ometra\Caronte\Support\CaronteApplicationToken::appId(),
+                        'scope' => $item->scope ?? CaronteApplicationToken::appId(),
                         'key' => $item->key,
                     ],
                     [
@@ -199,10 +201,23 @@ final class Caronte
             return request()->bearerToken();
         }
 
-        if (!app()->bound('session')) {
+        if (! $this->hasRequestSession()) {
             return null;
         }
 
         return request()->session()->get((string) config('caronte.session_key', 'caronte.user_token'));
+    }
+
+    private function hasRequestSession(): bool
+    {
+        if (! app()->bound('request')) {
+            return false;
+        }
+
+        try {
+            return request()->hasSession();
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

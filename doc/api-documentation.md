@@ -77,6 +77,29 @@ POST submit body:
 - password: required, min 8, confirmed
 - password_confirmation: required
 
+### 1.7 API Client Authentication
+
+These endpoints are JSON-only routes for mobile, Python, CLI, and other public user clients. They do not render views, persist Laravel sessions, or require cookies/CSRF.
+
+Base path: `/api/caronte/auth`
+
+- POST `/api/caronte/auth/login` (caronte.api.auth.login)
+    - Auth: public
+    - Body: `email`, `password`, optional `tenant_id`, optional `tenant_selection_token`
+    - Success: `200` with `data.token`
+    - Multi-tenant selection: `409` with `data.tenants` and `data.tenant_selection_token`
+- GET `/api/caronte/auth/me` (caronte.api.auth.me)
+    - Auth: `Authorization: Bearer <user_jwt>` with `caronte.session`
+    - Success: authenticated user, tenant id, roles, and metadata
+- POST `/api/caronte/auth/logout` (caronte.api.auth.logout)
+    - Auth: `Authorization: Bearer <user_jwt>` with `caronte.session`
+    - Revokes the current user token through Caronte
+- POST `/api/caronte/auth/exchange` (caronte.api.auth.exchange)
+    - Auth: `Authorization: Bearer <user_jwt>`
+    - Success: refreshed `data.token`
+
+API clients should update their stored token when any protected API response includes the `X-User-Token` header.
+
 ## 2. Management Endpoints
 
 Enabled only when config(caronte.management.enabled)=true.
