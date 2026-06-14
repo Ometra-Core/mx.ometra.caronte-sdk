@@ -7,6 +7,7 @@ Core business purpose: delegate authentication and authorization to Caronte whil
 Primary domains:
 
 - User authentication and session handling
+- Stateless client authentication endpoints for public consumers
 - Tenant-aware access control
 - Role and protected scope synchronization
 - Management UI for user lifecycle and assignments
@@ -38,6 +39,7 @@ Business rules:
 - Single-tenant mode rejects explicit tenant mismatches.
 - Pending login state has TTL for tenant selection continuation.
 - JSON/API clients receive response envelope instead of redirects.
+- API clients do not persist Laravel session state and should replace stored bearer tokens from `X-User-Token` when middleware refreshes a credential.
 
 ```mermaid
 sequenceDiagram
@@ -79,6 +81,7 @@ Flow variants:
 Business rules:
 
 - If user token was exchanged and request expects JSON, response includes X-User-Token.
+- Middleware caches the validated token on the request so downstream auth flows reuse the same credential instance.
 - Single-tenant mode binds tenant context and enforces tenant match.
 - Scope checks are strict for required middleware parameters.
 
