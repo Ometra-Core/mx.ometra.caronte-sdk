@@ -2,6 +2,7 @@
 
 namespace Ometra\Caronte\Support;
 
+use Equidna\Toolkit\Helpers\RouteHelper;
 use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -121,7 +122,7 @@ class CaronteResponse
         array $headers = [],
         ?string $forwardUrl = null
     ): SymfonyResponse {
-        if (static::wantsJson()) {
+        if (RouteHelper::wantsJson()) {
             return static::json($status, $message, $errors, $data, $headers);
         }
 
@@ -200,19 +201,6 @@ class CaronteResponse
         }
 
         return $message;
-    }
-
-    private static function wantsJson(): bool
-    {
-        if (! app()->bound('request')) {
-            return false;
-        }
-
-        $request = request();
-
-        return $request->expectsJson()
-            || $request->wantsJson()
-            || $request->is('api/*');
     }
 
     private static function isInertiaRequest(): bool

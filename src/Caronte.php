@@ -208,7 +208,7 @@ final class Caronte
 
     private function rawToken(): ?string
     {
-        if (RouteHelper::isApi() || request()->is('api/*')) {
+        if (RouteHelper::isApi()) {
             return request()->bearerToken();
         }
 

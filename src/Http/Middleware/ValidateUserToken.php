@@ -3,6 +3,7 @@
 namespace Ometra\Caronte\Http\Middleware;
 
 use Closure;
+use Equidna\Toolkit\Helpers\RouteHelper;
 use Illuminate\Http\Request;
 use Ometra\Caronte\CaronteUserToken;
 use Ometra\Caronte\Facades\Caronte;
@@ -65,7 +66,7 @@ class ValidateUserToken
 
             if (
                 Caronte::tokenWasExchanged()
-                && ($request->expectsJson() || $request->wantsJson() || $request->is('api/*'))
+                && RouteHelper::wantsJson()
             ) {
                 $response->headers->set('X-User-Token', $token->toString());
             }
@@ -101,8 +102,6 @@ class ValidateUserToken
     private function shouldRememberIntendedUrl(Request $request): bool
     {
         return in_array($request->method(), ['GET', 'HEAD'], true)
-            && ! $request->expectsJson()
-            && ! $request->wantsJson()
-            && ! $request->is('api/*');
+            && ! RouteHelper::wantsJson();
     }
 }
