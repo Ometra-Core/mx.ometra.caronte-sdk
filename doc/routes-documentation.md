@@ -1,19 +1,23 @@
 # Routes Documentation
 
-Package routes are loaded by Ometra\Caronte\Providers\CaronteServiceProvider from routes/web.php inside a web middleware group.
+Package routes are loaded by Ometra\Caronte\Providers\CaronteServiceProvider from both `routes/web.php` and `routes/api.php`.
 
 ## 1. Route Registration Model
 
 - Service provider: Ometra\Caronte\Providers\CaronteServiceProvider
-- Loader: loadRoutesFrom(routes/web.php)
-- Route file: routes/web.php
-- Global route group:
-    - prefix: config(caronte.routes_prefix)
-    - name prefix: caronte.
+- Loaders:
+    - `loadRoutesFrom(routes/web.php)` inside a `web` middleware group
+    - `loadRoutesFrom(routes/api.php)` inside an `api` middleware group
+- Route files:
+    - `routes/web.php`
+    - `routes/api.php`
+- Route-group prefixes:
+    - web auth routes use `config(caronte.routes_prefix)` with the `caronte.` name prefix
+    - API client auth routes use the fixed `/api/caronte/auth` prefix with the `caronte.api.auth.` name prefix
 
 Management routes are conditionally registered only when config(caronte.management.enabled) is true.
 
-## 2. Authentication Routes
+## 2. Browser Authentication Routes
 
 | Method   | URI Pattern               | Route Name                              | Controller Method                             | Middleware |
 | -------- | ------------------------- | --------------------------------------- | --------------------------------------------- | ---------- |
@@ -35,7 +39,29 @@ Notes:
 - login_path is derived from config(caronte.login_url).
 - auth prefix is config(caronte.routes_prefix).
 
-## 3. Management Routes
+## 3. JSON Client Authentication Routes
+
+Base prefix: `/api/caronte/auth`.
+
+Common middleware:
+
+- `api`
+- `Equidna\Toolkit\Http\Middleware\ForceJsonResponse`
+- `caronte.session` on authenticated routes only
+
+| Method | URI Pattern              | Route Name              | Controller Method        | Middleware                              |
+| ------ | ------------------------ | ----------------------- | ------------------------ | --------------------------------------- |
+| POST   | /api/caronte/auth/login  | caronte.api.auth.login  | ApiAuthController@login  | api, ForceJsonResponse                  |
+| GET    | /api/caronte/auth/me     | caronte.api.auth.me     | ApiAuthController@me     | api, ForceJsonResponse, caronte.session |
+| POST   | /api/caronte/auth/logout | caronte.api.auth.logout | ApiAuthController@logout | api, ForceJsonResponse, caronte.session |
+
+Notes:
+
+- These endpoints are intended for mobile, CLI, Python, and other non-browser clients.
+- They always return JSON, including validation failures and tenant-selection conflicts.
+- When `caronte.session` refreshes a bearer token, the response returns the refreshed credential in `X-User-Token`.
+
+## 4. Management Routes
 
 Base prefix: config(caronte.management.route_prefix), default caronte/management.
 
@@ -63,7 +89,7 @@ Common middleware for all management routes:
 | POST   | /caronte/management/users/{uri_user}/metadata | caronte.management.users.metadata.store  | UserController@storeMetadata             |
 | DELETE | /caronte/management/users/{uri_user}/metadata | caronte.management.users.metadata.delete | UserController@deleteMetadata            |
 
-## 4. Middleware Aliases Exposed by the Package
+## 5. Middleware Aliases Exposed by the Package
 
 Registered in CaronteServiceProvider:
 
@@ -75,10 +101,11 @@ Registered in CaronteServiceProvider:
 - caronte.app-token -> ValidateApplicationAccessToken (deprecated alias)
 - caronte.app-permissions -> ValidateApplicationAccessPermissions (deprecated alias)
 
-## 5. Host Application Expectations
+## 6. Host Application Expectations
 
 As this is a package:
 
 - Route prefixes and login path are host-configurable.
 - Host apps should use package middleware on their own API routes for app-to-app and protected API authorization.
-- No package routes are auto-mounted under routes/api.php.
+- Package-owned browser auth and management routes are mounted through `routes/web.php`.
+- Package-owned JSON auth endpoints are mounted through `routes/api.php` under `/api/caronte/auth`.

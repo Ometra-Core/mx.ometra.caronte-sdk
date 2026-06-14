@@ -1,3 +1,61 @@
+# Release v4.6.0 "Passport"
+
+> **Release date:** 2026-06-13
+> **Type:** Minor - JSON client auth endpoints and token lifecycle hardening.
+
+---
+
+## Summary
+
+v4.6.0 "Passport" introduces a first-class JSON authentication surface for non-browser clients while tightening how validated and refreshed user tokens move through a request. Mobile apps, CLIs, Python scripts, and other public clients can now log in, inspect the authenticated user, and log out through dedicated API routes without relying on Laravel sessions or HTML-aware response handling.
+
+The codename _Passport_ reflects the release's focus: portable user authentication for clients that operate outside the browser, with a cleaner contract for bearer-token renewal.
+
+## Highlights
+
+- New `/api/caronte/auth` endpoints for `login`, `me`, and `logout`.
+- JSON-only auth error handling, including validation failures and tenant-selection conflicts.
+- Request-scoped token caching so middleware and downstream controllers share the same validated token.
+- Refreshed bearer tokens now flow cleanly to API clients through `X-User-Token` and are reused by logout.
+
+## Added
+
+- `routes/api.php` with `caronte.api.auth.login`, `caronte.api.auth.me`, and `caronte.api.auth.logout`.
+- `src/Http/Controllers/ApiAuthController.php` for stateless client authentication flows.
+- Feature coverage for API auth success, error, tenant-selection, and refreshed-token logout scenarios.
+
+## Changed
+
+- `src/Providers/CaronteServiceProvider.php` now registers package API routes inside the Laravel `api` middleware group.
+- `src/Caronte.php` now reuses the request-scoped validated token stored by `caronte.session`.
+- Auth and middleware JSON detection was standardized around `RouteHelper::wantsJson()`.
+
+## Fixed
+
+- API logout now revokes the refreshed bearer token when middleware exchanged the incoming credential during the same request.
+- `X-User-Token` is only emitted when the current request actually performed a token refresh.
+
+## Deprecated
+
+- No changes.
+
+## Removed
+
+- No changes.
+
+## Security
+
+- No changes.
+
+---
+
+## Full History
+
+See [CHANGELOG.md](CHANGELOG.md) for complete project history.
+See [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for migration guidance.
+
+---
+
 # Release v4.5.1
 
 > **Release date:** 2026-06-10

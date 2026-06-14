@@ -1,5 +1,21 @@
 # Breaking Changes
 
+## v4.6.0
+
+### Breaking status
+
+No breaking changes were introduced in this release.
+
+### Migration recommendations
+
+1. For mobile, CLI, and other public clients, prefer the new JSON-only auth endpoints under `/api/caronte/auth` instead of browser login routes or session cookies.
+2. When a protected API request returns `X-User-Token`, replace the stored bearer token with that header value before the next request.
+
+### Notes
+
+- API auth routes are stateless and always respond with JSON, including validation failures and tenant-selection conflicts.
+- Request-scoped token caching ensures logout and downstream auth checks reuse the same validated or refreshed token from the current request.
+
 ## v4.5.0
 
 ### Breaking status

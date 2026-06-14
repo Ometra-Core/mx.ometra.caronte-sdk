@@ -2,6 +2,7 @@
 
 namespace Ometra\Caronte\Http\Controllers;
 
+use Equidna\Toolkit\Helpers\RouteHelper;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -381,7 +382,7 @@ class AuthController extends BaseController
             );
         }
 
-        if ($this->wantsJson()) {
+        if (RouteHelper::wantsJson()) {
             return CaronteResponse::success(
                 message: $response['message'],
                 data: $response['data']
@@ -491,15 +492,7 @@ class AuthController extends BaseController
 
     private function isWebRequest(Request $request): bool
     {
-        return ! $this->wantsJson()
-            && ! $request->is('api/*');
-    }
-
-    private function wantsJson(): bool
-    {
-        return request()->expectsJson()
-            || request()->wantsJson()
-            || request()->is('api/*');
+        return ! RouteHelper::wantsJson();
     }
 
     /**

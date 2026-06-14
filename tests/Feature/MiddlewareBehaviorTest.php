@@ -490,6 +490,34 @@ class MiddlewareBehaviorTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('X-User-Token', $fresh);
+        Http::assertSentCount(1);
+    }
+
+    public function test_session_middleware_does_not_leak_exchange_header_to_later_requests(): void
+    {
+        $expired = $this->makeToken(
+            issuedAt: new DateTimeImmutable('-30 minutes', new DateTimeZone('UTC')),
+            expiresAt: new DateTimeImmutable('-5 minutes', new DateTimeZone('UTC')),
+        );
+        $fresh = $this->makeToken();
+
+        Http::fake([
+            'https://caronte.test/api/auth/exchange' => Http::response([
+                'status' => 200,
+                'message' => 'Token exchanged',
+                'data' => ['token' => $fresh],
+            ], 200),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer ' . $expired)
+            ->getJson('/api/_caronte/session-check')
+            ->assertOk()
+            ->assertHeader('X-User-Token', $fresh);
+
+        $this->withHeader('Authorization', 'Bearer ' . $fresh)
+            ->getJson('/api/_caronte/session-check')
+            ->assertOk()
+            ->assertHeaderMissing('X-User-Token');
     }
 
     public function test_session_middleware_exchanges_tokens_inside_refresh_window(): void

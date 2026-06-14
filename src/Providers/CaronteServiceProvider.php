@@ -56,7 +56,7 @@ class CaronteServiceProvider extends ServiceProvider
             ));
 
             if (!$sender instanceof SendsTwoFactorChallenge) {
-                throw new \InvalidArgumentException(sprintf(
+                throw new InvalidArgumentException(sprintf(
                     'Caronte: %s must implement %s.',
                     $sender::class,
                     SendsTwoFactorChallenge::class
@@ -73,7 +73,7 @@ class CaronteServiceProvider extends ServiceProvider
             ));
 
             if (!$sender instanceof SendsPasswordRecovery) {
-                throw new \InvalidArgumentException(sprintf(
+                throw new InvalidArgumentException(sprintf(
                     'Caronte: %s must implement %s.',
                     $sender::class,
                     SendsPasswordRecovery::class
@@ -104,6 +104,10 @@ class CaronteServiceProvider extends ServiceProvider
 
         Route::middleware(['web'])->group(function (): void {
             $this->loadRoutesFrom(__DIR__ . '/../../routes/web.php');
+        });
+
+        Route::middleware(['api'])->group(function (): void {
+            $this->loadRoutesFrom(__DIR__ . '/../../routes/api.php');
         });
 
         $this->loadViewsFrom(__DIR__ . '/../../resources/views', 'caronte');

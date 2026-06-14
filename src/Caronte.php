@@ -7,10 +7,12 @@ use Equidna\Toolkit\Exceptions\UnauthorizedException;
 use Equidna\Toolkit\Helpers\RouteHelper;
 use Exception;
 use Lcobucci\JWT\Token\Plain;
-use Ometra\Caronte\CaronteUserToken;
 use Ometra\Caronte\Exceptions\TenantMissingException;
 use Ometra\Caronte\Models\CaronteUser;
+use Ometra\Caronte\Support\CaronteApplicationToken;
+use RuntimeException;
 use stdClass;
+use Throwable;
 
 final class Caronte
 {
@@ -22,13 +24,19 @@ final class Caronte
             $this->getToken();
 
             return true;
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return false;
         }
     }
 
     public function getToken(): Plain
     {
+        $cachedToken = $this->cachedRequestToken();
+
+        if ($cachedToken instanceof Plain) {
+            return $cachedToken;
+        }
+
         $token = $this->rawToken();
 
         if (!is_string($token) || $token === '') {
@@ -45,7 +53,7 @@ final class Caronte
             $user = CaronteUserToken::userPayload($token);
 
             if (!$user instanceof stdClass) {
-                throw new \RuntimeException('Invalid user payload.');
+                throw new RuntimeException('Invalid user payload.');
             }
 
             return $user;
@@ -76,7 +84,7 @@ final class Caronte
 
     public function saveToken(string $token): void
     {
-        if (!app()->bound('session')) {
+        if (! $this->hasRequestSession()) {
             return;
         }
 
@@ -85,7 +93,7 @@ final class Caronte
 
     public function clearToken(): void
     {
-        if (!app()->bound('session')) {
+        if (! $this->hasRequestSession()) {
             return;
         }
 
@@ -100,6 +108,11 @@ final class Caronte
     public function tokenWasExchanged(): bool
     {
         return $this->newToken;
+    }
+
+    public function resetTokenWasExchanged(): void
+    {
+        $this->newToken = false;
     }
 
     public function echo(string $message): string
@@ -151,7 +164,7 @@ final class Caronte
                     [
                         'uri_user' => $user->uri_user,
                         'tenant_id' => $tenantId,
-                        'scope' => $item->scope ?? \Ometra\Caronte\Support\CaronteApplicationToken::appId(),
+                        'scope' => $item->scope ?? CaronteApplicationToken::appId(),
                         'key' => $item->key,
                     ],
                     [
@@ -195,14 +208,38 @@ final class Caronte
 
     private function rawToken(): ?string
     {
-        if (RouteHelper::isApi() || request()->is('api/*')) {
+        if (RouteHelper::isApi()) {
             return request()->bearerToken();
         }
 
-        if (!app()->bound('session')) {
+        if (! $this->hasRequestSession()) {
             return null;
         }
 
         return request()->session()->get((string) config('caronte.session_key', 'caronte.user_token'));
+    }
+
+    private function cachedRequestToken(): ?Plain
+    {
+        if (! app()->bound('request')) {
+            return null;
+        }
+
+        $token = request()->attributes->get('caronte.user_token');
+
+        return $token instanceof Plain ? $token : null;
+    }
+
+    private function hasRequestSession(): bool
+    {
+        if (! app()->bound('request')) {
+            return false;
+        }
+
+        try {
+            return request()->hasSession();
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

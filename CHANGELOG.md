@@ -11,6 +11,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No changes yet.
 
+## [4.6.0] - 2026-06-13 "Passport"
+
+### Added
+
+- **JSON-only client auth endpoints** — added `/api/caronte/auth/login`, `/api/caronte/auth/me`, and `/api/caronte/auth/logout` through a dedicated `ApiAuthController` for mobile, CLI, Python, and other non-browser clients.
+- **Forced JSON auth contract** — API auth routes now run under `ForceJsonResponse`, including validation errors and tenant-selection conflict payloads, so non-browser clients never receive HTML redirects.
+- **Bearer-auth coverage for client flows** — feature tests now cover API login, tenant-selection continuation, authenticated `me`, authenticated logout, and the refreshed-token logout path.
+
+### Changed
+
+- **Package route registration now includes API auth routes** — `CaronteServiceProvider` now loads `routes/api.php` inside the package `api` middleware group alongside the existing web routes.
+- **Request-scoped user token reuse** — `Caronte::getToken()` now reuses the validated token cached by `ValidateUserToken`, ensuring downstream auth flows operate on the same token instance validated earlier in the request.
+- **JSON/web detection consistency** — auth and session flows now rely on `RouteHelper::wantsJson()` for response-mode decisions, keeping browser redirects and API envelopes aligned across middleware and controllers.
+
+### Fixed
+
+- **API logout now honors refreshed bearer tokens** — when `caronte.session` refreshes an expiring bearer token, logout now sends the refreshed token to Caronte instead of the stale incoming bearer credential.
+- **Token-exchange headers no longer leak across requests** — exchange state is reset per request so `X-User-Token` is only emitted when the current request actually refreshed the token.
+
+### Deprecated
+
+- No changes.
+
+### Removed
+
+- No changes.
+
+### Security
+
+- No changes.
+
 ## [4.5.1] - 2026-06-10
 
 ### Fixed

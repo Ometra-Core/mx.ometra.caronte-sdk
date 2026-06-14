@@ -6,17 +6,19 @@ use Ometra\Caronte\Http\Controllers\ManagementController;
 use Ometra\Caronte\Http\Controllers\OidcAuthController;
 use Ometra\Caronte\Http\Controllers\RoleController;
 use Ometra\Caronte\Http\Controllers\UserController;
+use Ometra\Caronte\Support\ConfiguredRoles;
 
 $authPrefix = trim((string) config('caronte.routes_prefix', ''), '/');
 $configuredLoginUrl = (string) config('caronte.login_url', '/login');
 $loginPath = trim((string) (parse_url($configuredLoginUrl, PHP_URL_PATH) ?: $configuredLoginUrl), '/');
 $managementPrefix = trim((string) config('caronte.management.route_prefix', 'caronte/management'), '/');
-$managementRoles = implode(',', \Ometra\Caronte\Support\ConfiguredRoles::accessRoles());
+$managementRoles = implode(',', ConfiguredRoles::accessRoles());
 
 Route::prefix($authPrefix)->name('caronte.')->group(function () use ($loginPath): void {
     Route::get($loginPath, [AuthController::class, 'loginForm'])->name('login.form');
     Route::post($loginPath, [AuthController::class, 'login'])->name('login');
     Route::match(['get', 'post'], 'logout', [AuthController::class, 'logout'])->name('logout');
+
     Route::get('oidc/login', [OidcAuthController::class, 'redirect'])->name('oidc.login');
     Route::get('oidc/callback', [OidcAuthController::class, 'callback'])->name('oidc.callback');
     Route::post('oidc/logout', [OidcAuthController::class, 'logout'])->name('oidc.logout');

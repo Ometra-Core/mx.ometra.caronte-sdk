@@ -6,8 +6,8 @@ use DateTimeImmutable;
 use DateTimeZone;
 use Equidna\Toolkit\Exceptions\BadRequestException;
 use Equidna\Toolkit\Exceptions\UnprocessableEntityException;
+use Equidna\Toolkit\Helpers\RouteHelper;
 use Illuminate\Support\Arr;
-use Illuminate\Http\Request;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Hmac\Sha256;
@@ -447,19 +447,7 @@ final class CaronteUserToken
 
     private static function isWebRequest(): bool
     {
-        if (! app()->bound('request')) {
-            return false;
-        }
-
-        $request = request();
-
-        if (! $request instanceof Request) {
-            return false;
-        }
-
-        return ! $request->expectsJson()
-            && ! $request->wantsJson()
-            && ! $request->is('api/*');
+        return ! RouteHelper::wantsJson();
     }
 
     private static function configForToken(Plain $token): Configuration
