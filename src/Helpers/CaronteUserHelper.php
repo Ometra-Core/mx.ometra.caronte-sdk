@@ -72,7 +72,7 @@ class CaronteUserHelper
         $tenantId = static::tenantId();
 
         if ($tenantId !== null) {
-            $query->where('tenant_id', $tenantId);
+            $query->where('id_tenant', $tenantId);
         }
 
         return $query->value('value');
@@ -84,7 +84,7 @@ class CaronteUserHelper
         $tenantId = static::tenantId();
 
         if ($tenantId !== null) {
-            $query->where('tenant_id', $tenantId);
+            $query->where('id_tenant', $tenantId);
         }
 
         return $query;

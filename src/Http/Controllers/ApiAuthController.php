@@ -19,12 +19,12 @@ class ApiAuthController extends BaseController
         $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required_without:tenant_selection_token', 'nullable', 'string'],
-            'tenant_id' => ['nullable', 'string'],
+            'id_tenant' => ['nullable', 'string'],
             'tenant_selection_token' => ['nullable', 'string'],
         ]);
 
-        $tenantId = $request->input('tenant_id') !== null
-            ? trim($request->string('tenant_id')->toString())
+        $tenantId = $request->input('id_tenant') !== null
+            ? trim($request->string('id_tenant')->toString())
             : null;
         $configuredTenantId = CaronteTenancy::isSingleTenant()
             ? CaronteTenancy::requireConfiguredTenantId()
@@ -101,7 +101,7 @@ class ApiAuthController extends BaseController
                     'name' => $user->name ?? null,
                     'email' => $user->email ?? null,
                 ],
-                'tenant_id' => $user->tenant_id ?? null,
+                'id_tenant' => $user->id_tenant ?? null,
                 'roles' => $user->roles ?? [],
                 'metadata' => $user->metadata ?? [],
             ]

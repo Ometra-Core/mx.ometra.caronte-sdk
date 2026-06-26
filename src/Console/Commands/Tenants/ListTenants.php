@@ -28,7 +28,7 @@ class ListTenants extends Command
             $this->table(
                 ['Tenant', 'External ID', 'Name', 'Status', 'Users'],
                 array_map(fn(array $tenant): array => [
-                    $tenant['tenant_id'] ?? '',
+                    $tenant['id_tenant'] ?? '',
                     $tenant['external_id'] ?? '',
                     $tenant['name'] ?? '',
                     $tenant['status'] ?? '',

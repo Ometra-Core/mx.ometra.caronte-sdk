@@ -93,10 +93,10 @@ class ConfigurationValidationTest extends TestCase
     public function test_single_tenant_mode_requires_configured_tenant_id(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
-        config()->set('caronte.tenancy.tenant_id', '');
+        config()->set('caronte.tenancy.id_tenant', '');
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('caronte.tenancy.tenant_id is required');
+        $this->expectExceptionMessage('caronte.tenancy.id_tenant is required');
 
         $this->validatePackageConfig();
     }

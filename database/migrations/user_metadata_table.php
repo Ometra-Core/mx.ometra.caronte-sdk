@@ -19,7 +19,7 @@ return new class extends Migration
      *
      * @var list<string>
      */
-    private array $expectedPrimaryColumns = ['uri_user', 'tenant_id', 'scope', 'key'];
+    private array $expectedPrimaryColumns = ['uri_user', 'id_tenant', 'scope', 'key'];
 
     /**
      * Run the migrations.
@@ -31,11 +31,11 @@ return new class extends Migration
         if (!Schema::hasTable($tableName)) {
             Schema::create($tableName, function (Blueprint $table) {
                 $table->string('uri_user', 40);
-                $table->string('tenant_id', 64);
+                $table->string('id_tenant', 64);
                 $table->string('scope', 128);
                 $table->string('key', 45);
                 $table->string('value', 45);
-                $table->primary(['uri_user', 'tenant_id', 'scope', 'key']);
+                $table->primary(['uri_user', 'id_tenant', 'scope', 'key']);
                 $table->engine = 'InnoDB';
             });
         } else {
@@ -46,8 +46,8 @@ return new class extends Migration
                 } else {
                     $table->string('uri_user', 40)->change();
                 }
-                if (!Schema::hasColumn($tableName, 'tenant_id')) {
-                    $table->string('tenant_id', 64)->nullable();
+                if (!Schema::hasColumn($tableName, 'id_tenant')) {
+                    $table->string('id_tenant', 64)->nullable();
                 }
                 if (!Schema::hasColumn($tableName, 'scope')) {
                     $table->string('scope', 128);
@@ -67,11 +67,19 @@ return new class extends Migration
                 $table->engine = 'InnoDB';
             });
 
-            if (Schema::hasColumn($tableName, 'tenant_id')) {
+            if (Schema::hasColumn($tableName, 'id_tenant')) {
                 DB::table($tableName)
-                    ->whereNull('tenant_id')
-                    ->update(['tenant_id' => (string) config('caronte.tenancy.tenant_id', 'default')]);
+                    ->whereNull('id_tenant')
+                    ->update(['id_tenant' => (string) config('caronte.tenancy.id_tenant', 'default')]);
             }
+            
+            if (Schema::hasColumn($tableName, 'id_tenant') && Schema::hasColumn($tableName, 'tenant_id')) {
+                DB::table($tableName)
+                    ->whereNull('id_tenant')
+                    ->update(['id_tenant' => DB::raw('tenant_id')]);
+            }
+
+
 
             $currentPrimaryColumns = $this->getPrimaryColumns($tableName);
 

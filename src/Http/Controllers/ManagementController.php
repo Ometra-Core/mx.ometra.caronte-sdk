@@ -31,7 +31,7 @@ class ManagementController extends BaseController
             return $this->toView('management.index', [
                 'branding' => $this->branding(),
                 'search' => $search,
-                'tenant_id' => Caronte::getTenantId(),
+                'id_tenant' => Caronte::getTenantId(),
                 'users' => $paginator,
                 'configured_roles' => $configuredRoles,
                 'roles' => $configuredRoles,
