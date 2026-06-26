@@ -1,5 +1,50 @@
 # Breaking Changes
 
+## v5.0.0
+
+### Breaking status
+
+Breaking changes were introduced in this release.
+
+### What changed
+
+1. The Protected API permission compatibility layer has been removed. Protected API authorization now exclusively uses scopes.
+2. The legacy `tenant_id` compatibility layer has been removed. `id_tenant` is now the only supported tenant identifier across runtime payloads, JWT handling, persistence, command output, and frontend integrations.
+
+### Migration recommendations
+
+1. Replace any remaining permission-based Protected API configuration with `protected_api.scopes`.
+
+2. Replace any legacy middleware aliases with the supported scope-based middleware:
+
+   - `caronte.protected-api-token`
+   - `caronte.protected-api-scopes:*`
+
+3. Replace legacy permission synchronization commands with:
+
+```bash
+php artisan caronte:protected-api:scopes:sync
+```
+
+4. Update any remaining host-side integrations that still use `tenant_id` to use `id_tenant`, including:
+
+   - SQL queries
+   - Eloquent models
+   - API payloads
+   - DTOs
+   - Serializers
+   - Custom middleware
+   - Frontend (TypeScript/JavaScript/Blade) bindings
+   - JWT parsing logic
+
+5. Verify any downstream services or shared libraries interacting with the SDK also emit and consume `id_tenant`.
+
+### Notes
+
+- All compatibility layers deprecated during the 4.x release cycle have been removed.
+- Protected API authorization now only supports scopes.
+- The package no longer provides backwards compatibility for `tenant_id`.
+
 ## v4.6.0
 
 ### Breaking status
