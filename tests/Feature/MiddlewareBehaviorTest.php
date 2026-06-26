@@ -70,7 +70,7 @@ class MiddlewareBehaviorTest extends TestCase
 
                 return response()->json([
                     'uri_user' => $context->user->uri_user ?? null,
-                    'tenant_id' => $context->tenantId,
+                    'id_tenant' => $context->tenantId,
                     'token_id' => $context->tokenId,
                     'tenant_context' => app()->bound(TenantContext::class)
                         ? app(TenantContext::class)->get()
@@ -85,7 +85,7 @@ class MiddlewareBehaviorTest extends TestCase
 
                 return response()->json([
                     'uri_user' => $context->user->uri_user ?? null,
-                    'tenant_id' => $context->tenantId,
+                    'id_tenant' => $context->tenantId,
                     'tenant_context' => app(TenantContext::class)->get(),
                 ]);
             });
@@ -118,7 +118,7 @@ class MiddlewareBehaviorTest extends TestCase
                 $context = app(CaronteProtectedApiAccessContext::class);
 
                 return response()->json([
-                    'tenant_id' => $context->tenantId,
+                    'id_tenant' => $context->tenantId,
                     'scopes' => $context->scopes,
                 ]);
             });
@@ -129,7 +129,7 @@ class MiddlewareBehaviorTest extends TestCase
                 $context = app(CaronteApplicationAccessContext::class);
 
                 return response()->json([
-                    'tenant_id' => $context->tenantId,
+                    'id_tenant' => $context->tenantId,
                     'permissions' => $context->permissions,
                 ]);
             });
@@ -347,7 +347,7 @@ class MiddlewareBehaviorTest extends TestCase
     public function test_single_tenant_application_middleware_binds_configured_tenant_without_header(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
-        config()->set('caronte.tenancy.tenant_id', 'mobig');
+        config()->set('caronte.tenancy.id_tenant', 'mobig');
 
         $this->getJson('/api/_caronte/context-check', [
             'X-Application-Token' => CaronteApplicationToken::make(),
@@ -360,7 +360,7 @@ class MiddlewareBehaviorTest extends TestCase
     public function test_single_tenant_application_middleware_rejects_header_mismatch(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
-        config()->set('caronte.tenancy.tenant_id', 'mobig');
+        config()->set('caronte.tenancy.id_tenant', 'mobig');
 
         $this->getJson('/api/_caronte/application-only-check', [
             'X-Application-Token' => CaronteApplicationToken::make(),
@@ -424,7 +424,7 @@ class MiddlewareBehaviorTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('uri_user', 'user-123')
-            ->assertJsonPath('tenant_id', 'tenant-1')
+            ->assertJsonPath('id_tenant', 'tenant-1')
             ->assertJsonPath('token_id', 'user-token-1')
             ->assertJsonPath('tenant_context', 'tenant-1');
     }
@@ -442,7 +442,7 @@ class MiddlewareBehaviorTest extends TestCase
             'uri_user' => 'user-123',
             'name' => 'Root User',
             'email' => 'root@example.com',
-            'tenant_id' => null,
+            'id_tenant' => null,
             'roles' => [
                 [
                     'name' => 'root',
@@ -465,7 +465,7 @@ class MiddlewareBehaviorTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('uri_user', 'user-123')
-            ->assertJsonPath('tenant_id', null)
+            ->assertJsonPath('id_tenant', null)
             ->assertJsonPath('tenant_context', 'tenant-1');
     }
 
@@ -641,7 +641,7 @@ class MiddlewareBehaviorTest extends TestCase
             'uri_user' => 'user-1',
             'name' => 'Viewer',
             'email' => 'viewer@example.com',
-            'tenant_id' => 'tenant-1',
+            'id_tenant' => 'tenant-1',
             'roles' => [
                 [
                     'name' => 'rootless',
@@ -663,7 +663,7 @@ class MiddlewareBehaviorTest extends TestCase
             'uri_user' => 'user-1',
             'name' => 'Foreign App User',
             'email' => 'foreign@example.com',
-            'tenant_id' => 'tenant-1',
+            'id_tenant' => 'tenant-1',
             'roles' => [
                 [
                     'name' => 'viewer',
@@ -774,13 +774,13 @@ class MiddlewareBehaviorTest extends TestCase
     public function test_single_tenant_session_middleware_binds_configured_tenant(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
-        config()->set('caronte.tenancy.tenant_id', 'mobig');
+        config()->set('caronte.tenancy.id_tenant', 'mobig');
 
         $token = $this->makeToken([
             'uri_user' => 'user-1',
             'name' => 'Mobig User',
             'email' => 'mobig@example.com',
-            'tenant_id' => 'mobig',
+            'id_tenant' => 'mobig',
             'roles' => [
                 [
                     'name' => 'root',
@@ -800,13 +800,13 @@ class MiddlewareBehaviorTest extends TestCase
     public function test_single_tenant_session_middleware_rejects_token_without_tenant(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
-        config()->set('caronte.tenancy.tenant_id', 'mobig');
+        config()->set('caronte.tenancy.id_tenant', 'mobig');
 
         $token = $this->makeToken([
             'uri_user' => 'user-1',
             'name' => 'Global User',
             'email' => 'global@example.com',
-            'tenant_id' => null,
+            'id_tenant' => null,
             'roles' => [
                 [
                     'name' => 'root',
@@ -827,7 +827,7 @@ class MiddlewareBehaviorTest extends TestCase
     public function test_single_tenant_session_middleware_rejects_token_tenant_mismatch(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
-        config()->set('caronte.tenancy.tenant_id', 'mobig');
+        config()->set('caronte.tenancy.id_tenant', 'mobig');
 
         $token = $this->makeToken();
 
@@ -845,7 +845,7 @@ class MiddlewareBehaviorTest extends TestCase
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/_caronte/application-access-check')
             ->assertOk()
-            ->assertJsonPath('tenant_id', 'tenant-1')
+            ->assertJsonPath('id_tenant', 'tenant-1')
             ->assertJsonPath('scopes.0', 'invoices.read');
     }
 
@@ -906,7 +906,7 @@ class MiddlewareBehaviorTest extends TestCase
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/_caronte/application-access-legacy-check')
             ->assertOk()
-            ->assertJsonPath('tenant_id', 'tenant-1')
+            ->assertJsonPath('id_tenant', 'tenant-1')
             ->assertJsonPath('permissions.0', 'invoices.read');
     }
 
@@ -926,7 +926,7 @@ class MiddlewareBehaviorTest extends TestCase
             ->identifiedBy('legacy-application-token-without-aud')
             ->withClaim('token_audience', 'application_token')
             ->withClaim('app_id', CaronteApplicationToken::appId())
-            ->withClaim('tenant_id', 'tenant-1')
+            ->withClaim('id_tenant', 'tenant-1')
             ->withClaim('name', 'Legacy integration token')
             ->withClaim('permissions', ['invoices.read'])
             ->getToken($config->signer(), $config->signingKey())
@@ -935,7 +935,7 @@ class MiddlewareBehaviorTest extends TestCase
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/_caronte/application-access-legacy-check')
             ->assertOk()
-            ->assertJsonPath('tenant_id', 'tenant-1')
+            ->assertJsonPath('id_tenant', 'tenant-1')
             ->assertJsonPath('permissions.0', 'invoices.read');
     }
 
@@ -1009,7 +1009,7 @@ class MiddlewareBehaviorTest extends TestCase
             ->issuedAt($issuedAt)
             ->canOnlyBeUsedAfter($issuedAt)
             ->expiresAt($expiresAt)
-            ->withClaim('tenant_id', 'tenant-1')
+            ->withClaim('id_tenant', 'tenant-1')
             ->withClaim('name', 'Root User')
             ->withClaim('email', 'root@example.com')
             ->withClaim('roles', ['root'])

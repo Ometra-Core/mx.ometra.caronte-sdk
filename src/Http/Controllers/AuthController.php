@@ -120,8 +120,8 @@ class AuthController extends BaseController
     private function handleUserPasswordLogin(Request $request): Response
     {
         $pendingLogin = $this->pendingLogin($request);
-        $tenantId = $request->input('tenant_id') !== null
-            ? trim($request->string('tenant_id')->toString())
+        $tenantId = $request->input('id_tenant') !== null
+            ? trim($request->string('id_tenant')->toString())
             : null;
         $configuredTenantId = CaronteTenancy::isSingleTenant()
             ? CaronteTenancy::requireConfiguredTenantId()
@@ -159,7 +159,7 @@ class AuthController extends BaseController
         $request->validate([
             'email' => [$usePendingLogin ? 'nullable' : 'required', 'email'],
             'password' => [$usePendingLogin ? 'nullable' : 'required', 'string'],
-            'tenant_id' => ['nullable', 'string'],
+            'id_tenant' => ['nullable', 'string'],
             'tenant_selection_token' => ['nullable', 'string'],
         ]);
 

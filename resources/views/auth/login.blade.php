@@ -47,11 +47,11 @@
 
                     @if (!empty($tenantOptions))
                         <div>
-                            <label for="tenant_id" class="form-label">Tenant</label>
-                            <select id="tenant_id" name="tenant_id" class="form-control" required>
+                            <label for="id_tenant" class="form-label">Tenant</label>
+                            <select id="id_tenant" name="id_tenant" class="form-control" required>
                                 <option value="">Select tenant</option>
                                 @foreach ($tenantOptions as $tenant)
-                                    <option value="{{ $tenant['tenant_id'] }}" @selected(old('tenant_id') === $tenant['tenant_id'])>
+                                    <option value="{{ $tenant['id_tenant'] }}" @selected(old('id_tenant') === $tenant['id_tenant'])>
                                         {{ $tenant['name'] }}
                                     </option>
                                 @endforeach

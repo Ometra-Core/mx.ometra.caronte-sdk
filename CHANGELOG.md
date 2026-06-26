@@ -11,6 +11,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - No changes yet.
 
+## [5.0.0] - 2026-06-26
+
+### Breaking Changes
+
+This release removes all compatibility layers deprecated throughout the 4.x series.
+
+See `BREAKING_CHANGES.md` for complete migration instructions.
+
+### Removed
+
+- **Legacy protected API compatibility layer removed** — deprecated permission-based configuration, middleware aliases, and compatibility shims introduced during the 4.x migration window have been removed. Protected API authorization now exclusively uses scopes.
+- **Legacy tenant key compatibility removed** — `tenant_id` is no longer recognized by package internals. `id_tenant` is now the only supported tenant identifier across runtime payloads, persistence, JWT handling, commands, and frontend bindings.
+
+### Changed
+
+- **Protected API authorization standardized** — protected API middleware, configuration, commands, and internal authorization flow now exclusively rely on scope-based authorization.
+- **Tenant contract standardized** — all package contracts now consistently require `id_tenant` without backwards-compatibility fallbacks.
+
+### Added
+
+- No changes.
+
+### Fixed
+
+- No changes.
+
+### Deprecated
+
+- No changes.
+
+### Security
+
+- No changes.
+
 ## [4.6.0] - 2026-06-13 "Passport"
 
 ### Added

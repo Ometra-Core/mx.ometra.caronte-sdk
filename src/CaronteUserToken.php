@@ -257,13 +257,13 @@ final class CaronteUserToken
     private static function explicitUserPayload(Plain $token): stdClass
     {
         $subject = (string) $token->claims()->get('sub', '');
-        $tenantId = $token->claims()->get('tenant_id');
+        $tenantId = $token->claims()->get('id_tenant');
 
         $user = new stdClass();
         $user->uri_user = $subject;
         $user->name = (string) $token->claims()->get('name', '');
         $user->email = (string) $token->claims()->get('email', '');
-        $user->tenant_id = $tenantId;
+        $user->id_tenant = $tenantId;
         $user->roles = static::normalizeClaimItems($token->claims()->get('roles', []));
         $user->metadata = static::normalizeClaimItems($token->claims()->get('metadata', []));
 

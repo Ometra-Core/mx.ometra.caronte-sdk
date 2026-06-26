@@ -79,18 +79,18 @@ export default function Login({
 
             {tenant_options.length > 0 ? (
               <div>
-                <label htmlFor="tenant_id" className="form-label">
+                <label htmlFor="id_tenant" className="form-label">
                   Tenant
                 </label>
                 <select
-                  id="tenant_id"
-                  name="tenant_id"
+                  id="id_tenant"
+                  name="id_tenant"
                   className="form-control"
                   required
                 >
                   <option value="">Select tenant</option>
                   {tenant_options.map((tenant) => (
-                    <option key={tenant.tenant_id} value={tenant.tenant_id}>
+                    <option key={tenant.id_tenant} value={tenant.id_tenant}>
                       {tenant.name}
                     </option>
                   ))}

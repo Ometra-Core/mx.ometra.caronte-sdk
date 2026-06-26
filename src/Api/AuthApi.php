@@ -25,7 +25,7 @@ class AuthApi
         }
 
         if (is_string($tenantId) && trim($tenantId) !== '') {
-            $payload['tenant_id'] = trim($tenantId);
+            $payload['id_tenant'] = trim($tenantId);
         }
 
         if (is_string($tenantSelectionToken) && trim($tenantSelectionToken) !== '') {
