@@ -24,10 +24,10 @@ return new class extends Migration
         if (!Schema::hasTable($tableName)) {
             Schema::create($tableName, function (Blueprint $table) {
                 $table->string('uri_user', 40);
-                $table->string('tenant_id', 64)->index();
+                $table->string('id_tenant', 64)->index();
                 $table->string('name', 150);
                 $table->string('email', 150);
-                $table->primary(['uri_user', 'tenant_id']);
+                $table->primary(['uri_user', 'id_tenant']);
                 $table->engine = 'InnoDB';
             });
         } else {
@@ -35,8 +35,8 @@ return new class extends Migration
                 if (!Schema::hasColumn($tableName, 'uri_user')) {
                     $table->string('uri_user', 40);
                 }
-                if (!Schema::hasColumn($tableName, 'tenant_id')) {
-                    $table->string('tenant_id', 64)->nullable()->index();
+                if (!Schema::hasColumn($tableName, 'id_tenant')) {
+                    $table->string('id_tenant', 64)->nullable()->index();
                 }
                 if (!Schema::hasColumn($tableName, 'name')) {
                     $table->string('name', 150);

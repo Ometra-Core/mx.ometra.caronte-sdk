@@ -35,7 +35,7 @@ Common optional variables:
 - CARONTE_TOKEN_CLOCK_SKEW_SECONDS=60
 - CARONTE_TOKEN_REFRESH_LEEWAY_SECONDS=60
 
-Back up `Users` and `UsersMetadata`, then run `php artisan migrate` during the SDK upgrade. The tenant-column migration backfills `Users.tenant_id` from `Users.id_tenant`; user rows without either value stop the migration. Metadata is resolved from its legacy tenant or a unique matching user. Orphaned or ambiguous metadata is deleted and the discarded count is logged.
+Back up `Users` and `UsersMetadata`, then run `php artisan migrate` during the SDK upgrade. The corrective tenant-column migration restores Bee Hive's canonical `id_tenant` column from the short-lived `tenant_id` column when present.
 
 Grouped applications require a Caronte v6 server that accepts `X-Group-Token` as the sole application credential. When group configuration is present, this SDK does not generate or send `X-Application-Token`.
 - CARONTE_LOGIN_URL=/login

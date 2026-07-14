@@ -111,7 +111,7 @@ class CommandBehaviorTest extends TestCase
                 'status' => 200,
                 'message' => 'Users retrieved',
                 'data' => [
-                    ['uri_user' => 'user-1', 'tenant_id' => 'tenant-1', 'name' => 'Jane Doe', 'email' => 'jane@example.com'],
+                    ['uri_user' => 'user-1', 'id_tenant' => 'tenant-1', 'name' => 'Jane Doe', 'email' => 'jane@example.com'],
                 ],
             ], 200),
         ]);
@@ -162,7 +162,7 @@ class CommandBehaviorTest extends TestCase
                 'data' => [
                     'tenants' => [
                         [
-                            'tenant_id' => 'tenant-1',
+                            'id_tenant' => 'tenant-1',
                             'external_id' => 'external-1',
                             'name' => 'Tenant One',
                             'status' => 'active',
@@ -238,7 +238,7 @@ class CommandBehaviorTest extends TestCase
                     'users' => [
                         [
                             'uri_user' => 'user-1',
-                            'tenant_id' => 'tenant-1',
+                            'id_tenant' => 'tenant-1',
                             'name' => 'Jane Doe',
                             'email' => 'jane@example.com',
                             'roles' => [['name' => 'billing.viewer']],

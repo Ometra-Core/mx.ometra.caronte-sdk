@@ -1,3 +1,35 @@
+# Release v7.0.0 "Ariadne"
+
+> **Release date:** 2026-07-14
+> **Type:** Major - Correction of the public tenant identifier contract.
+
+## Summary
+
+v7.0.0 restores Bee Hive's canonical `id_tenant` identifier throughout the SDK. The `tenant_id` contract published in v6.0.0 affected database columns, JWT claims, HTTP payloads, configuration, commands, and frontend bindings; all of those surfaces now consistently use `id_tenant`.
+
+The security hardening and legacy removals delivered in v6 remain in place. This release changes the tenant-key name and provides a data-preserving corrective migration for the SDK's local user tables.
+
+## Upgrade requirements
+
+1. Back up the prefixed `Users` and `UsersMetadata` tables, then run `php artisan migrate` to rename their `tenant_id` columns to `id_tenant`.
+2. Update user and protected API token issuers so the required tenant claim is `id_tenant`.
+3. Update integrations, API payloads, DTOs, queries, and frontend bindings to consume `id_tenant` instead of `tenant_id`.
+4. Use `caronte.tenancy.id_tenant` for single-tenant configuration. Keep using `CARONTE_TENANT_ID` in environment files.
+5. Coordinate deployment with the Caronte server because v7 does not accept a `tenant_id` runtime alias.
+
+## Validation
+
+- The corrective migration renames existing tenant columns without copying or deleting their data.
+- User and protected API access tokens require the `id_tenant` claim.
+- Tenant-scoped user and metadata queries remain fail-closed.
+- The feature suite passes with the corrected contract.
+
+## Breaking changes
+
+See [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for the full migration checklist.
+
+## Historical release notes
+
 # Release v6.0.0 "Hermes"
 
 > **Release date:** 2026-07-14
@@ -23,8 +55,6 @@ Application authentication now uses one credential per request. Applications wit
 - Individual and group credentials are mutually exclusive; inbound requests containing both return `400`.
 - Tenant-scoped helpers never fall back to unscoped queries.
 - Legacy permissions, middleware aliases, nested user claims, and `auth_mode=legacy` are removed.
-
-## Historical release notes
 
 ## Release v5.0.0
 

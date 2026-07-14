@@ -1,5 +1,33 @@
 # Breaking Changes
 
+## v7.0.0
+
+### Breaking status
+
+This release replaces the `tenant_id` contract introduced in v6.0.0 with Bee Hive's canonical `id_tenant` contract. Because the name is exposed in storage, configuration, JWTs, HTTP payloads, and frontend data, upgrading from v6 requires coordinated changes in every producer and consumer.
+
+### What changed
+
+1. `id_tenant` is again the only supported tenant identifier in runtime payloads, JWT claims, persistence, configuration, command output, and UI bindings.
+2. The local `Users` primary key is `['uri_user', 'id_tenant']`; the `UsersMetadata` primary key is `['uri_user', 'id_tenant', 'scope', 'key']`.
+3. Single-tenant configuration uses `caronte.tenancy.id_tenant`. The environment variable remains `CARONTE_TENANT_ID`.
+4. User and protected API access tokens must contain `id_tenant`; tokens containing only `tenant_id` are rejected.
+5. Login, tenant-selection, `/me`, tenant, user, and group-user payloads expose `id_tenant` instead of `tenant_id`.
+
+### Migration recommendations
+
+1. Upgrade the SDK and run `php artisan migrate`. The corrective migration renames `tenant_id` to `id_tenant` in the prefixed `Users` and `UsersMetadata` tables when the source exists and the destination does not.
+2. Update JWT issuers and consumers to emit and read `id_tenant`.
+3. Replace `tenant_id` with `id_tenant` in custom SQL, Eloquent models, DTOs, serializers, API clients, middleware, tests, and frontend bindings.
+4. Replace `config('caronte.tenancy.tenant_id')` with `config('caronte.tenancy.id_tenant')`. No environment-file rename is required.
+5. Deploy the matching Caronte server/API contract at the same time so authentication and tenant-selection payloads agree on the field name.
+
+### Notes
+
+- Back up `Users` and `UsersMetadata` before deploying the migration.
+- The migration preserves column data by renaming the column; it does not translate payloads or JWTs.
+- v6.0.0 release documentation remains below as historical context and must not be treated as the current contract.
+
 ## v6.0.0
 
 ### Breaking status

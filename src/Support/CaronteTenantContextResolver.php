@@ -55,7 +55,7 @@ final class CaronteTenantContextResolver
         if ($tenantId === '') {
             return $required
                 ? CaronteResponse::badRequest(
-                    message: 'tenant_id is required',
+                    message: 'id_tenant is required',
                     errors: ['X-Tenant-Id header is required.']
                 )
                 : null;
