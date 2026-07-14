@@ -78,7 +78,7 @@ return [
     */
     'tenancy' => [
         'mode'      => env('CARONTE_TENANCY_MODE', 'multi'),
-        'id_tenant' => env('CARONTE_TENANT_ID', ''),
+        'tenant_id' => env('CARONTE_TENANT_ID', ''),
     ],
 
     /*

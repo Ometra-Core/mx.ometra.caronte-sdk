@@ -28,7 +28,7 @@ class ShowTenant extends Command
             $this->table(
                 ['Field', 'Value'],
                 [
-                    ['id_tenant', (string) ($tenant['id_tenant'] ?? '')],
+                    ['tenant_id', (string) ($tenant['tenant_id'] ?? '')],
                     ['external_id', (string) ($tenant['external_id'] ?? '')],
                     ['name', (string) ($tenant['name'] ?? '')],
                     ['description', (string) ($tenant['description'] ?? '')],

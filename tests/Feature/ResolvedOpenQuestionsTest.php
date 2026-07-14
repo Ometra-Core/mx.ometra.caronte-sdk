@@ -19,7 +19,7 @@ class ResolvedOpenQuestionsTest extends TestCase
     {
         Route::middleware('web')->get('/_caronte/tenant-resolver', function () {
             return response()->json([
-                'id_tenant' => (new CaronteTenantResolver())->resolveTenantId(),
+                'tenant_id' => (new CaronteTenantResolver())->resolveTenantId(),
             ]);
         });
 
@@ -27,7 +27,7 @@ class ResolvedOpenQuestionsTest extends TestCase
             config('caronte.session_key') => $this->makeToken(),
         ])->getJson('/_caronte/tenant-resolver')
             ->assertOk()
-            ->assertJsonPath('id_tenant', 'tenant-1');
+            ->assertJsonPath('tenant_id', 'tenant-1');
     }
 
     public function test_management_dashboard_can_render_as_inertia_response(): void
@@ -68,7 +68,7 @@ class ResolvedOpenQuestionsTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('component', 'management/index')
-            ->assertJsonPath('props.id_tenant', 'tenant-1')
+            ->assertJsonPath('props.tenant_id', 'tenant-1')
             ->assertJsonPath('props.suite_access.enabled', true)
             ->assertJsonPath('props.users.data.0.email', 'jane@example.com');
     }
@@ -80,19 +80,19 @@ class ResolvedOpenQuestionsTest extends TestCase
 
         Schema::create('Users', function (Blueprint $table): void {
             $table->string('uri_user', 40);
-            $table->string('id_tenant', 64)->index();
+            $table->string('tenant_id', 64)->index();
             $table->string('name', 150);
             $table->string('email', 150);
-            $table->primary(['uri_user', 'id_tenant']);
+            $table->primary(['uri_user', 'tenant_id']);
         });
 
         Schema::create('UsersMetadata', function (Blueprint $table): void {
             $table->string('uri_user', 40);
-            $table->string('id_tenant', 64);
+            $table->string('tenant_id', 64);
             $table->string('scope');
             $table->string('key');
             $table->text('value')->nullable();
-            $table->primary(['uri_user', 'id_tenant', 'scope', 'key']);
+            $table->primary(['uri_user', 'tenant_id', 'scope', 'key']);
         });
 
         $tenantContext = new TenantContext();
@@ -100,7 +100,7 @@ class ResolvedOpenQuestionsTest extends TestCase
         app()->instance(TenantContext::class, $tenantContext);
 
         CaronteUser::create([
-            'id_tenant' => 'tenant-1',
+            'tenant_id' => 'tenant-1',
             'uri_user' => 'user-1',
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
@@ -108,7 +108,7 @@ class ResolvedOpenQuestionsTest extends TestCase
 
         DB::table('UsersMetadata')->insert([
             'uri_user' => 'user-1',
-            'id_tenant' => 'tenant-1',
+            'tenant_id' => 'tenant-1',
             'scope' => 'app-1',
             'key' => 'theme',
             'value' => 'dark',

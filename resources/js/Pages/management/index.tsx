@@ -3,7 +3,7 @@ import type { Branding, Paginated, Role, Routes, SuiteAccess, User } from "../..
 type ManagementIndexProps = {
   branding?: Branding;
   search?: string;
-  id_tenant?: string;
+  tenant_id?: string;
   users?: Paginated<User>;
   configured_roles?: Role[];
   missing_roles?: Role[];
@@ -16,7 +16,7 @@ type ManagementIndexProps = {
 export default function ManagementIndex({
   branding = {},
   search = "",
-  id_tenant,
+  tenant_id,
   users = { data: [], links: [] },
   configured_roles = [],
   missing_roles = [],
@@ -32,7 +32,7 @@ export default function ManagementIndex({
           <span className="caronte-kicker">{branding.app_name || "Caronte"}</span>
           <h1 className="caronte-title mb-2">User management</h1>
           <p className="caronte-copy mb-0">
-            Tenant <strong>{id_tenant}</strong>. Roles are defined locally in
+            Tenant <strong>{tenant_id}</strong>. Roles are defined locally in
             <code> config/caronte.php </code>
             and synchronized explicitly.
           </p>

@@ -8,7 +8,7 @@ export type Branding = {
 export type Routes = Record<string, string | undefined>;
 
 export type TenantOption = {
-  id_tenant: string;
+  tenant_id: string;
   name: string;
 };
 

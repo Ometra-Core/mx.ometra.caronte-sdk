@@ -98,7 +98,7 @@ abstract class TestCase extends Orchestra
             'uri_user' => 'user-123',
             'name' => 'Root User',
             'email' => 'root@example.com',
-            'id_tenant' => 'tenant-1',
+            'tenant_id' => 'tenant-1',
             'roles' => [
                 [
                     'name' => 'root',
@@ -220,7 +220,7 @@ abstract class TestCase extends Orchestra
             ->identifiedBy('protected-api-token-1')
             ->withClaim('token_audience', $audience)
             ->withClaim('app_id', CaronteApplicationToken::appId())
-            ->withClaim('id_tenant', $tenantId)
+            ->withClaim('tenant_id', $tenantId)
             ->withClaim('name', 'Integration token')
             ->withClaim($scopeClaim, $scopes)
             ->getToken($config->signer(), $config->signingKey())

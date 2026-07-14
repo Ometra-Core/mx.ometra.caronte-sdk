@@ -12,7 +12,7 @@
             <div>
                 <span class="caronte-kicker">{{ data_get($branding, 'app_name', config('app.name')) }}</span>
                 <h1 class="caronte-title mb-2">User management</h1>
-                <p class="caronte-copy mb-0">Tenant <strong>{{ $id_tenant }}</strong>. Roles are defined locally in <code>config/caronte.php</code> and synchronized explicitly.</p>
+                <p class="caronte-copy mb-0">Tenant <strong>{{ $tenant_id }}</strong>. Roles are defined locally in <code>config/caronte.php</code> and synchronized explicitly.</p>
             </div>
 
             <form method="POST" action="{{ $routes['logout'] }}">

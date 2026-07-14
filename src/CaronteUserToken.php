@@ -265,7 +265,7 @@ final class CaronteUserToken
     private static function explicitUserPayload(Plain $token): stdClass
     {
         $subject = (string) $token->claims()->get('sub', '');
-        $tenantId = $token->claims()->get('id_tenant');
+        $tenantId = $token->claims()->get('tenant_id', null);
 
         $user = new stdClass();
         $user->uri_user = $subject;

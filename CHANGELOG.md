@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.6.0] - 2026-07-14 "Hermes"
+
 ### Added
 
 - Runtime deprecation warnings and HTTP `Deprecation: true` signals for compatibility adapters.
@@ -19,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Deprecated
 
 - Nested `user` claim fallback, `auth_mode=legacy`, protected API `permissions` aliases, the `application_token` audience, legacy management mutations, and permission-named middleware/commands will be removed in SDK 5.
+
+### Security
+
+- No changes.
+
 ## [4.5.1] - 2026-06-10
 
 ### Fixed

@@ -22,7 +22,7 @@ final class CaronteTenancy
 
     public static function configuredTenantId(): ?string
     {
-        $tenantId = trim((string) config('caronte.tenancy.id_tenant', ''));
+        $tenantId = trim((string) config('caronte.tenancy.tenant_id', ''));
 
         return $tenantId !== '' ? $tenantId : null;
     }
@@ -33,7 +33,7 @@ final class CaronteTenancy
 
         if ($tenantId === null) {
             throw new InvalidArgumentException(
-                'Caronte: caronte.tenancy.id_tenant is required when caronte.tenancy.mode is single.'
+                'Caronte: caronte.tenancy.tenant_id is required when caronte.tenancy.mode is single.'
             );
         }
 
