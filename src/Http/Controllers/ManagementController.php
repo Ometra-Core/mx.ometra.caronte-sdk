@@ -52,11 +52,11 @@ class ManagementController extends BaseController
                     ]),
                     'logout' => route('caronte.logout'),
                 ],
-            ], true);
+            ]);
         } catch (\Exception $exception) {
             return CaronteResponse::handleException(
                 exception: $exception,
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
     }

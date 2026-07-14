@@ -13,8 +13,7 @@ class ListUsers extends Command
     protected $signature = 'caronte:users:list
         {--tenant= : Tenant identifier required for user-scoped Caronte endpoints}
         {--search= : Optional name or email filter}
-        {--app-users : Only include users currently linked to the application}
-        {--all : Deprecated alias kept for compatibility; all tenant users are now returned by default}';
+        {--app-users : Only include users currently linked to the application}';
 
     protected $description = 'Search Caronte users in a tenant.';
 

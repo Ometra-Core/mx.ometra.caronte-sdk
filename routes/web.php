@@ -8,8 +8,8 @@ use Ometra\Caronte\Http\Controllers\RoleController;
 use Ometra\Caronte\Http\Controllers\UserController;
 use Ometra\Caronte\Support\ConfiguredRoles;
 
-$authPrefix = trim((string) config('caronte.routes_prefix', ''), '/');
-$configuredLoginUrl = (string) config('caronte.login_url', '/login');
+$authPrefix = trim((string) config('caronte.routes.prefix', ''), '/');
+$configuredLoginUrl = (string) config('caronte.routes.login_url', '/login');
 $loginPath = trim((string) (parse_url($configuredLoginUrl, PHP_URL_PATH) ?: $configuredLoginUrl), '/');
 $managementPrefix = trim((string) config('caronte.management.route_prefix', 'caronte/management'), '/');
 $managementRoles = implode(',', ConfiguredRoles::accessRoles());
@@ -41,16 +41,11 @@ if (config('caronte.management.enabled')) {
         ->group(function (): void {
             Route::get('', [ManagementController::class, 'dashboard'])->name('dashboard');
             Route::post('roles/sync', [RoleController::class, 'sync'])->name('roles.sync');
-            Route::post('roles/create', [RoleController::class, 'unsupportedLegacyMutation'])->middleware('caronte.deprecated:role_mutation,roles_sync')->name('roles.create');
-            Route::post('roles/update', [RoleController::class, 'unsupportedLegacyMutation'])->middleware('caronte.deprecated:role_mutation,roles_sync')->name('roles.update');
-            Route::post('roles/delete', [RoleController::class, 'unsupportedLegacyMutation'])->middleware('caronte.deprecated:role_mutation,roles_sync')->name('roles.delete');
 
             Route::get('users/list', [UserController::class, 'list'])->name('users.list');
             Route::post('users', [UserController::class, 'store'])->name('users.store');
             Route::get('users/{uri_user}', [UserController::class, 'show'])->name('users.show');
-            Route::post('users/update', [UserController::class, 'updateLegacy'])->middleware('caronte.deprecated:users_update,users_update_direct')->name('users.update');
             Route::put('users/{uri_user}', [UserController::class, 'update'])->name('users.update.direct');
-            Route::post('users/delete', [UserController::class, 'deleteLegacy'])->middleware('caronte.deprecated:users_delete,users_delete_direct')->name('users.delete');
             Route::delete('users/{uri_user}', [UserController::class, 'delete'])->name('users.delete.direct');
             Route::get('users/{uri_user}/roles', [UserController::class, 'listRoles'])->name('users.roles.list');
             Route::put('users/{uri_user}/roles', [UserController::class, 'syncRoles'])->name('users.roles.sync');

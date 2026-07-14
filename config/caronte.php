@@ -9,10 +9,9 @@ return [
     'url'        => env('CARONTE_URL', ''),
     'app_cn'     => env('CARONTE_APP_CN', ''),
     'app_secret' => env('CARONTE_APP_SECRET', ''),
+
     'application_group_id' => env('CARONTE_APPLICATION_GROUP_ID', ''),
     'application_group_secret' => env('CARONTE_APPLICATION_GROUP_SECRET', ''),
-    'application_token_ttl_seconds' => (int) env('CARONTE_APPLICATION_TOKEN_TTL_SECONDS', 300),
-    'application_group_token_ttl_seconds' => (int) env('CARONTE_APPLICATION_GROUP_TOKEN_TTL_SECONDS', 300),
 
     /*
     |--------------------------------------------------------------------------
@@ -20,10 +19,13 @@ return [
     |--------------------------------------------------------------------------
     */
     'issuer_id'                => env('CARONTE_ISSUER_ID', 'caronte'),
-    'enforce_issuer'           => env('CARONTE_ENFORCE_ISSUER', true),
-    'auth_mode'                => env('CARONTE_AUTH_MODE', 'jwt'), // jwt, oidc, dual; legacy is deprecated
-    'token_clock_skew_seconds' => (int) env('CARONTE_TOKEN_CLOCK_SKEW_SECONDS', 60),
-    'token_refresh_leeway_seconds' => (int) env('CARONTE_TOKEN_REFRESH_LEEWAY_SECONDS', 60),
+    'auth_mode'                => env('CARONTE_AUTH_MODE', 'jwt'), // jwt, oidc, dual
+
+    'token' => [
+        'ttl_seconds' => (int) env('CARONTE_TOKEN_TTL_SECONDS', 300),
+        'clock_skew_seconds' => (int) env('CARONTE_TOKEN_CLOCK_SKEW_SECONDS', 60),
+        'refresh_leeway_seconds' => (int) env('CARONTE_TOKEN_REFRESH_LEEWAY_SECONDS', 60),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -67,9 +69,11 @@ return [
     | Route Configuration
     |--------------------------------------------------------------------------
     */
-    'routes_prefix' => env('CARONTE_ROUTES_PREFIX', ''),
-    'success_url'   => env('CARONTE_SUCCESS_URL', '/'),
-    'login_url'     => env('CARONTE_LOGIN_URL', '/login'),
+    'routes' => [
+        'prefix' => env('CARONTE_ROUTES_PREFIX', ''),
+        'success_url' => env('CARONTE_SUCCESS_URL', '/'),
+        'login_url' => env('CARONTE_LOGIN_URL', '/login'),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -114,18 +118,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Deprecated Protected API Permissions Alias
-    |--------------------------------------------------------------------------
-    |
-    | Use protected_api.scopes for new integrations. This compatibility key
-    | will be removed in the next major version.
-    */
-    'permissions' => [
-        // 'invoices.read' => 'Read invoices through this application API',
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | User Management
     |--------------------------------------------------------------------------
     */
@@ -137,10 +129,8 @@ return [
                 array_map('trim', explode(',', (string) env('CARONTE_MANAGEMENT_ACCESS_ROLES', 'root')))
             )
         ),
-        'use_inertia' => env('CARONTE_MANAGEMENT_USE_INERTIA', env('CARONTE_USE_INERTIA', false)),
         'features' => [
-            'metadata'         => env('CARONTE_MANAGEMENT_METADATA', true),
-            'profile_pictures' => env('CARONTE_MANAGEMENT_PROFILE_PICTURES', false),
+            'metadata' => env('CARONTE_MANAGEMENT_METADATA', true),
         ],
     ],
 
@@ -149,8 +139,8 @@ return [
     | View & UI Configuration
     |--------------------------------------------------------------------------
     */
-    'use_inertia' => env('CARONTE_USE_INERTIA', false),
     'ui' => [
+        'use_inertia' => env('CARONTE_USE_INERTIA', false),
         'branding' => [
             'app_name'      => env('CARONTE_UI_APP_NAME', env('APP_NAME', 'Caronte')),
             'headline'      => env('CARONTE_UI_HEADLINE', 'Secure access with Caronte'),

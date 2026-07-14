@@ -9,6 +9,8 @@ Class: Ometra\Caronte\Http\Middleware\ValidateUserToken
 - Enforce tenant constraints when running in single-tenant mode.
 - Return refreshed user token data in `X-User-Token` when the token layer exchanges credentials during a JSON/API response.
 
+User JWTs must contain `iss`, `aud`, `sub`, `jti`, `iat`, `nbf`, `exp`, `token_audience`, and `tenant_id`. The `tenant_id` claim may be explicitly `null` for a global user, but it may not be omitted. Application tokens use `token_audience=application`; group user tokens use `token_audience=application_group` and must include matching `group_id`, `app_id`, and `source_app_id` claims.
+
 ## Step-by-step flow
 
 1. The middleware calls `Ometra\Caronte\Facades\Caronte::getToken()`.

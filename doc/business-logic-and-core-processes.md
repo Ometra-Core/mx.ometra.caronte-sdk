@@ -125,7 +125,7 @@ Business rules:
 
 - Role names: lowercase normalization; allowed chars include letters, numbers, dot, underscore, hyphen.
 - root role is always present after normalization.
-- Legacy permissions alias maps to scopes and is deprecated.
+- Protected API authorization uses scopes exclusively.
 
 ```mermaid
 sequenceDiagram
@@ -163,7 +163,7 @@ Flow:
 
 Key constraints:
 
-- Role creation/update/delete via UI are deprecated; source of truth is config/caronte.php + sync.
+- Role creation/update/delete routes are not exposed; the source of truth is config/caronte.php plus synchronization.
 - Metadata endpoints are gated by caronte.management.features.metadata.
 
 ## 6. Secondary Process: OIDC Authentication Mode

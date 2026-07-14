@@ -333,7 +333,7 @@ class AuthContractTest extends TestCase
         $this->assertSame($token, session(config('caronte.session_key')));
     }
 
-    public function test_login_sends_application_and_group_tokens_when_group_is_configured(): void
+    public function test_login_sends_only_group_token_when_group_is_configured(): void
     {
         config()->set('caronte.application_group_id', 'core-suite');
         config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
@@ -355,8 +355,8 @@ class AuthContractTest extends TestCase
 
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/auth/login'
-                && $this->hasValidApplicationTokenHeader($request)
-                && $this->hasValidGroupTokenHeader($request);
+                && $this->hasValidGroupTokenHeader($request)
+                && ! $request->hasHeader('X-Application-Token');
         });
     }
 
@@ -561,10 +561,10 @@ class AuthContractTest extends TestCase
     {
         $token = $this->makeToken([
             'uri_user' => 'user-claims',
-            'name' => 'Legacy Name',
-            'email' => 'legacy@example.com',
-            'tenant_id' => 'legacy-tenant',
-            'tenant_name' => 'Legacy Tenant',
+            'name' => 'Claim User',
+            'email' => 'claims@example.com',
+            'tenant_id' => 'claims-tenant',
+            'tenant_name' => 'Claims Tenant',
             'roles' => [],
             'metadata' => [],
         ]);
@@ -573,15 +573,15 @@ class AuthContractTest extends TestCase
         $user = CaronteUserToken::userPayload($parsed);
 
         $this->assertSame('user-claims', $user->uri_user);
-        $this->assertSame('Legacy Name', $user->name);
-        $this->assertSame('legacy@example.com', $user->email);
-        $this->assertSame('legacy-tenant', $user->tenant_id);
-        $this->assertSame('Legacy Tenant', $user->tenant_name);
+        $this->assertSame('Claim User', $user->name);
+        $this->assertSame('claims@example.com', $user->email);
+        $this->assertSame('claims-tenant', $user->tenant_id);
+        $this->assertSame('Claims Tenant', $user->tenant_name);
     }
 
-    public function test_user_payload_supports_tokens_without_legacy_user_claim(): void
+    public function test_user_payload_supports_flat_claims(): void
     {
-        $token = $this->makeTokenWithoutLegacyUserClaim([
+        $token = $this->makeToken([
             'uri_user' => 'user-flat',
             'name' => 'Flat Claim User',
             'email' => 'flat@example.com',
@@ -615,7 +615,7 @@ class AuthContractTest extends TestCase
 
     public function test_user_token_accepts_iat_and_nbf_within_configured_clock_skew(): void
     {
-        config()->set('caronte.token_clock_skew_seconds', 120);
+        config()->set('caronte.token.clock_skew_seconds', 120);
 
         $token = $this->makeToken(
             issuedAt: new DateTimeImmutable('+90 seconds', new DateTimeZone('UTC')),
@@ -628,7 +628,7 @@ class AuthContractTest extends TestCase
 
     public function test_user_token_rejects_iat_and_nbf_beyond_configured_clock_skew(): void
     {
-        config()->set('caronte.token_clock_skew_seconds', 30);
+        config()->set('caronte.token.clock_skew_seconds', 30);
 
         $token = $this->makeToken(
             issuedAt: new DateTimeImmutable('+45 seconds', new DateTimeZone('UTC')),

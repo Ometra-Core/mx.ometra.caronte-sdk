@@ -33,10 +33,4 @@ class RoleController extends BaseController
         }
     }
 
-    public function unsupportedLegacyMutation(): Response
-    {
-        return redirect()
-            ->route('caronte.management.dashboard')
-            ->with('warning', 'Role definitions are managed in config/caronte.php. Use role synchronization to publish changes.');
-    }
 }

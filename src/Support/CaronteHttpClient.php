@@ -86,17 +86,13 @@ abstract class CaronteHttpClient
      */
     protected function applicationHeaders(): array
     {
-        $headers = [
-            'X-Application-Token' => $this->makeApplicationToken(),
-        ];
-
         $groupToken = $this->makeGroupToken();
 
         if (is_string($groupToken) && $groupToken !== '') {
-            $headers['X-Group-Token'] = $groupToken;
+            return ['X-Group-Token' => $groupToken];
         }
 
-        return $headers;
+        return ['X-Application-Token' => $this->makeApplicationToken()];
     }
 
     protected function makeGroupToken(): ?string

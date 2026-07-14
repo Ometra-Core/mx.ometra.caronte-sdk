@@ -60,11 +60,11 @@ Lower coverage / gaps:
 
 - Use HTTP::fake for Caronte API boundary testing.
 - Use explicit assertions on outgoing headers:
-    - X-Application-Token
-    - X-Group-Token
+    - X-Application-Token for non-grouped applications
+    - X-Group-Token for grouped applications, while asserting X-Application-Token is absent
     - X-Tenant-Id
 - Prefer named route assertions and middleware behavior assertions.
-- Validate deprecated aliases while keeping migration path explicit.
+- Validate that removed aliases are no longer registered and canonical contracts remain covered.
 
 ## 5. Adding New Tests
 

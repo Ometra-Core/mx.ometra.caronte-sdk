@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Ometra\Caronte\Helpers\CaronteUserHelper;
+use Ometra\Caronte\Exceptions\TenantMissingException;
 use Ometra\Caronte\Models\CaronteUser;
 use Ometra\Caronte\Tenancy\Resolvers\CaronteTenantResolver;
 use Tests\TestCase;
@@ -32,7 +33,7 @@ class ResolvedOpenQuestionsTest extends TestCase
 
     public function test_management_dashboard_can_render_as_inertia_response(): void
     {
-        config()->set('caronte.management.use_inertia', true);
+        config()->set('caronte.ui.use_inertia', true);
 
         Http::fake([
             'https://caronte.test/api/users*' => Http::response([
@@ -113,11 +114,40 @@ class ResolvedOpenQuestionsTest extends TestCase
             'key' => 'theme',
             'value' => 'dark',
         ]);
+        DB::table('Users')->insert([
+            'tenant_id' => 'tenant-2',
+            'uri_user' => 'user-1',
+            'name' => 'Other Tenant User',
+            'email' => 'other@example.com',
+        ]);
+        DB::table('UsersMetadata')->insert([
+            'uri_user' => 'user-1',
+            'tenant_id' => 'tenant-2',
+            'scope' => 'app-1',
+            'key' => 'theme',
+            'value' => 'light',
+        ]);
 
         $this->assertSame('Jane Doe', CaronteUserHelper::getUserName('user-1'));
         $this->assertSame('jane@example.com', CaronteUserHelper::getUserEmail('user-1'));
         $this->assertSame('dark', CaronteUserHelper::getUserMetadata('user-1', 'theme'));
         $this->assertSame('User not found', CaronteUserHelper::getUserName('missing'));
         $this->assertNull(CaronteUserHelper::getUserMetadata('user-1', 'missing'));
+
+        $tenantContext->set('tenant-2');
+
+        $this->assertSame('Other Tenant User', CaronteUserHelper::getUserName('user-1'));
+        $this->assertSame('other@example.com', CaronteUserHelper::getUserEmail('user-1'));
+        $this->assertSame('light', CaronteUserHelper::getUserMetadata('user-1', 'theme'));
+    }
+
+    public function test_caronte_user_helper_refuses_unscoped_queries(): void
+    {
+        app()->forgetInstance(TenantContext::class);
+
+        $this->expectException(TenantMissingException::class);
+        $this->expectExceptionMessage('No tenant context is available.');
+
+        CaronteUserHelper::getUserMetadata('user-1', 'theme');
     }
 }

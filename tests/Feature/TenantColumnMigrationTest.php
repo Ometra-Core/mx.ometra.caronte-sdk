@@ -15,6 +15,7 @@ class TenantColumnMigrationTest extends TestCase
         parent::setUp();
 
         config()->set('caronte.table_prefix', 'MigrationTest');
+        Schema::dropIfExists('MigrationTestUsersMetadata');
         Schema::dropIfExists('MigrationTestUsers');
     }
 
@@ -52,12 +53,60 @@ class TenantColumnMigrationTest extends TestCase
         }
     }
 
+    public function testItMigratesResolvableMetadataAndDeletesAmbiguousOrOrphanedRows(): void
+    {
+        Schema::create('MigrationTestUsers', function (Blueprint $table): void {
+            $table->string('uri_user', 40);
+            $table->string('tenant_id', 64);
+            $table->primary(['uri_user', 'tenant_id']);
+        });
+
+        DB::table('MigrationTestUsers')->insert([
+            ['uri_user' => 'unique-user', 'tenant_id' => 'tenant-b'],
+            ['uri_user' => 'ambiguous-user', 'tenant_id' => 'tenant-c'],
+            ['uri_user' => 'ambiguous-user', 'tenant_id' => 'tenant-d'],
+        ]);
+
+        Schema::create('MigrationTestUsersMetadata', function (Blueprint $table): void {
+            $table->string('uri_user', 40);
+            $table->string('id_tenant', 64)->nullable();
+            $table->string('tenant_id', 64)->nullable();
+            $table->string('scope', 128);
+            $table->string('key', 45);
+            $table->string('value', 45)->nullable();
+            $table->primary(['uri_user', 'id_tenant', 'scope', 'key']);
+        });
+
+        DB::table('MigrationTestUsersMetadata')->insert([
+            ['uri_user' => 'legacy-user', 'id_tenant' => 'tenant-a', 'tenant_id' => null, 'scope' => 'app', 'key' => 'legacy', 'value' => 'yes'],
+            ['uri_user' => 'unique-user', 'id_tenant' => null, 'tenant_id' => null, 'scope' => 'app', 'key' => 'resolved', 'value' => 'yes'],
+            ['uri_user' => 'ambiguous-user', 'id_tenant' => null, 'tenant_id' => null, 'scope' => 'app', 'key' => 'ambiguous', 'value' => 'no'],
+            ['uri_user' => 'orphan-user', 'id_tenant' => null, 'tenant_id' => null, 'scope' => 'app', 'key' => 'orphan', 'value' => 'no'],
+        ]);
+
+        $this->migration()->up();
+
+        $this->assertFalse(Schema::hasColumn('MigrationTestUsersMetadata', 'id_tenant'));
+        $this->assertSame(2, DB::table('MigrationTestUsersMetadata')->count());
+        $this->assertDatabaseHas('MigrationTestUsersMetadata', [
+            'uri_user' => 'legacy-user',
+            'tenant_id' => 'tenant-a',
+        ]);
+        $this->assertDatabaseHas('MigrationTestUsersMetadata', [
+            'uri_user' => 'unique-user',
+            'tenant_id' => 'tenant-b',
+        ]);
+        $this->assertDatabaseMissing('MigrationTestUsersMetadata', ['uri_user' => 'ambiguous-user']);
+        $this->assertDatabaseMissing('MigrationTestUsersMetadata', ['uri_user' => 'orphan-user']);
+    }
+
     private function createLegacyUsersTable(): void
     {
         Schema::create('MigrationTestUsers', function (Blueprint $table): void {
-            $table->string('uri_user', 40)->primary();
+            $table->string('uri_user', 40);
             $table->string('id_tenant', 64)->nullable();
             $table->string('tenant_id', 64)->nullable();
+            $table->primary(['uri_user', 'id_tenant']);
         });
     }
 

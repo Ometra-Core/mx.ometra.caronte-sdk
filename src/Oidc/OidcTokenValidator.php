@@ -18,7 +18,7 @@ use Lcobucci\JWT\Validation\Constraint\SignedWith;
 
 class OidcTokenValidator
 {
-    public function validate(string $rawToken): Plain
+    public function validate(string $rawToken, ?string $expectedNonce = null): Plain
     {
         $token = (new Parser(new JoseEncoder()))->parse($rawToken);
 
@@ -44,14 +44,24 @@ class OidcTokenValidator
             new SignedWith($config->signer(), $config->verificationKey()),
             new LooseValidAt(new SystemClock(new DateTimeZone('UTC'))),
             new PermittedFor((string) config('caronte.oidc.client_id')),
+            new IssuedBy((string) config('caronte.oidc.issuer')),
         ];
-
-        if (config('caronte.enforce_issuer')) {
-            $constraints[] = new IssuedBy((string) config('caronte.oidc.issuer'));
-        }
 
         if (! $config->validator()->validate($token, ...$constraints)) {
             throw new UnprocessableEntityException('Invalid OIDC token signature, issuer, audience or lifetime.');
+        }
+
+        if ($expectedNonce !== null) {
+            $nonce = $token->claims()->get('nonce', null);
+
+            if (
+                $expectedNonce === ''
+                || ! is_string($nonce)
+                || $nonce === ''
+                || ! hash_equals($expectedNonce, $nonce)
+            ) {
+                throw new UnprocessableEntityException('Invalid OIDC token nonce.');
+            }
         }
 
         return $token;

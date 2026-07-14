@@ -13,8 +13,8 @@ All package responses follow the CaronteResponse envelope shape:
 
 Base prefix is dynamic:
 
-- auth_prefix = trim(config(caronte.routes_prefix), /)
-- login_path = path part of config(caronte.login_url)
+- auth_prefix = trim(config(caronte.routes.prefix), /)
+- login_path = path part of config(caronte.routes.login_url)
 
 With default config, login resolves to /login.
 
@@ -36,7 +36,7 @@ With default config, login resolves to /login.
     - password: required string for normal login
     - tenant_id: optional string
     - tenant_selection_token: optional string
-    - callback_url: optional string (plain URL or base64 encoded)
+    - callback_url: optional relative or same-origin URL, plain or base64 encoded
 - Success:
     - 200 with token in data.token (JSON clients)
     - redirect for browser clients
@@ -169,13 +169,18 @@ These are not package-owned routes; they are middleware contracts host apps appl
 
 - Middleware class: Ometra\Caronte\Http\Middleware\ResolveApplicationContext
 - Headers:
-    - X-Application-Token required
-    - X-Group-Token optional when application group is enabled
+    - X-Application-Token required when no application group is configured
+    - X-Group-Token required instead of X-Application-Token when an application group is configured
+    - Sending both application credential headers returns HTTP 400
     - X-Tenant-Id required when tenant_required mode is used
     - X-User-Token optional or required when user_required mode is used
 
+Group tokens retain `source_app_id` and `source_app_cn`. These claims identify the caller for operational context but do not provide non-repudiation between holders of the shared group secret.
+
 Tenant identifier naming in package payloads and claims uses `tenant_id`.
 `X-Tenant-Id` remains the incoming transport header for application-context middleware.
+
+User JWTs require `iss`, `aud`, `sub`, `jti`, `iat`, `nbf`, `exp`, `token_audience`, and presence of `tenant_id`. Missing or unknown audiences and tokens without expiration are rejected.
 
 Modes:
 
@@ -187,10 +192,7 @@ Modes:
 - Validates bearer token as protected API access token
 - Scope middleware checks required scopes list
 
-Compatibility aliases (deprecated):
-
-- caronte.app-token
-- caronte.app-permissions
+The former `caronte.app-token` and `caronte.app-permissions` aliases are not registered in SDK 6.0.0.
 
 ## 4. Example JSON Response
 

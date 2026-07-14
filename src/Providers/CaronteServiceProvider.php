@@ -13,7 +13,6 @@ use Ometra\Caronte\Console\Commands\ManagementCaronte;
 use Ometra\Caronte\Console\Commands\Groups\ListGroupRoles;
 use Ometra\Caronte\Console\Commands\Groups\ListGroupUsers;
 use Ometra\Caronte\Console\Commands\Groups\SyncGroupUserRoles;
-use Ometra\Caronte\Console\Commands\Permissions\SyncPermissions;
 use Ometra\Caronte\Console\Commands\ProtectedApi\SyncScopes;
 use Ometra\Caronte\Console\Commands\Roles\SyncRoles;
 use Ometra\Caronte\Console\Commands\Tenants\ListTenants;
@@ -27,10 +26,7 @@ use Ometra\Caronte\Contracts\SendsPasswordRecovery;
 use Ometra\Caronte\Contracts\SendsTwoFactorChallenge;
 use Ometra\Caronte\Facades\Caronte as CaronteFacade;
 use Ometra\Caronte\Helpers\PermissionHelper;
-use Ometra\Caronte\Http\Middleware\DeprecatedFeature;
 use Ometra\Caronte\Http\Middleware\ResolveApplicationContext;
-use Ometra\Caronte\Http\Middleware\ValidateApplicationAccessPermissions;
-use Ometra\Caronte\Http\Middleware\ValidateApplicationAccessToken;
 use Ometra\Caronte\Http\Middleware\ValidateProtectedApiAccessToken;
 use Ometra\Caronte\Http\Middleware\ValidateProtectedApiScopes;
 use Ometra\Caronte\Http\Middleware\ValidateUserRoles;
@@ -100,9 +96,6 @@ class CaronteServiceProvider extends ServiceProvider
         $router->aliasMiddleware('caronte.application', ResolveApplicationContext::class);
         $router->aliasMiddleware('caronte.protected-api-token', ValidateProtectedApiAccessToken::class);
         $router->aliasMiddleware('caronte.protected-api-scopes', ValidateProtectedApiScopes::class);
-        $router->aliasMiddleware('caronte.app-token', ValidateApplicationAccessToken::class);
-        $router->aliasMiddleware('caronte.app-permissions', ValidateApplicationAccessPermissions::class);
-        $router->aliasMiddleware('caronte.deprecated', DeprecatedFeature::class);
 
         Route::middleware(['web'])->group(function (): void {
             $this->loadRoutesFrom(__DIR__ . '/../../routes/web.php');
@@ -154,7 +147,6 @@ class CaronteServiceProvider extends ServiceProvider
             $this->commands([
                 ManagementCaronte::class,
                 SyncScopes::class,
-                SyncPermissions::class,
                 SyncRoles::class,
                 ListGroupRoles::class,
                 ListGroupUsers::class,
@@ -187,7 +179,8 @@ class CaronteServiceProvider extends ServiceProvider
             'caronte.url',
             'caronte.app_cn',
             'caronte.app_secret',
-            'caronte.login_url',
+            'caronte.issuer_id',
+            'caronte.routes.login_url',
         ];
 
         $missing = [];
@@ -200,8 +193,10 @@ class CaronteServiceProvider extends ServiceProvider
             }
         }
 
-        if (config('caronte.enforce_issuer') && empty(config('caronte.issuer_id'))) {
-            $missing[] = 'caronte.issuer_id';
+        if (! in_array(config('caronte.auth_mode'), ['jwt', 'oidc', 'dual'], true)) {
+            throw new InvalidArgumentException(
+                'Caronte: caronte.auth_mode must be jwt, oidc, or dual.'
+            );
         }
 
         if ($missing !== []) {
@@ -219,10 +214,16 @@ class CaronteServiceProvider extends ServiceProvider
             );
         }
 
-        foreach (['caronte.application_token_ttl_seconds', 'caronte.application_group_token_ttl_seconds'] as $key) {
-            if ((int) config($key, 300) < 1) {
+        if ((int) config('caronte.token.ttl_seconds', 300) < 1) {
+            throw new InvalidArgumentException(
+                'Caronte: caronte.token.ttl_seconds must be greater than zero.'
+            );
+        }
+
+        foreach (['clock_skew_seconds', 'refresh_leeway_seconds'] as $key) {
+            if ((int) config("caronte.token.{$key}", 60) < 0) {
                 throw new InvalidArgumentException(
-                    sprintf('Caronte: %s must be greater than zero.', $key)
+                    "Caronte: caronte.token.{$key} must be zero or greater."
                 );
             }
         }

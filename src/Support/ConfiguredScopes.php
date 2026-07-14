@@ -11,15 +11,7 @@ class ConfiguredScopes
      */
     public static function all(): array
     {
-        $scopes = config('caronte.protected_api.scopes', null);
-
-        if ($scopes === null || $scopes === []) {
-            $scopes = config('caronte.permissions', []);
-
-            if ($scopes !== []) {
-                LegacyDeprecation::warn('caronte.permissions configuration', 'caronte.protected_api.scopes');
-            }
-        }
+        $scopes = config('caronte.protected_api.scopes', []);
 
         $normalized = [];
 
@@ -65,11 +57,7 @@ class ConfiguredScopes
 
     private static function scopeName(array $scope, int|string $key): mixed
     {
-        if (array_key_exists('permission', $scope) && ! array_key_exists('scope', $scope)) {
-            LegacyDeprecation::warn('permission scope entry key', 'scope entry key');
-        }
-
-        return $scope['scope'] ?? $scope['permission'] ?? $scope['name'] ?? $key;
+        return $scope['scope'] ?? $scope['name'] ?? $key;
     }
 
     private static function normalizeName(string $name): string

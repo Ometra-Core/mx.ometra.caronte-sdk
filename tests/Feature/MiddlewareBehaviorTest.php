@@ -16,9 +16,9 @@ use Lcobucci\JWT\Signer\Hmac\Sha256;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Token\Parser;
 use Lcobucci\JWT\Token\Plain;
+use Ometra\Caronte\CaronteUserToken;
 use Ometra\Caronte\Http\Middleware\ResolveApplicationContext;
 use Ometra\Caronte\Oidc\OidcTokenValidator;
-use Ometra\Caronte\Support\CaronteApplicationAccessContext;
 use Ometra\Caronte\Support\CaronteApplicationContext;
 use Ometra\Caronte\Support\CaronteApplicationToken;
 use Ometra\Caronte\Support\CaronteForwardedUserContext;
@@ -123,16 +123,6 @@ class MiddlewareBehaviorTest extends TestCase
                 ]);
             });
 
-        Route::middleware(['caronte.app-token', 'caronte.app-permissions:invoices.read'])
-            ->get('/api/_caronte/application-access-legacy-check', function () {
-                /** @var CaronteApplicationAccessContext $context */
-                $context = app(CaronteApplicationAccessContext::class);
-
-                return response()->json([
-                    'tenant_id' => $context->tenantId,
-                    'permissions' => $context->permissions,
-                ]);
-            });
     }
 
     public function test_application_middleware_requires_tenant_when_requested(): void
@@ -160,13 +150,12 @@ class MiddlewareBehaviorTest extends TestCase
             ->assertJsonPath('tenant_context', null);
     }
 
-    public function test_application_middleware_accepts_group_application_token(): void
+    public function test_application_middleware_accepts_group_token_without_application_token(): void
     {
         config()->set('caronte.application_group_id', 'core-suite');
         config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
 
         $this->getJson('/api/_caronte/application-only-check', [
-            'X-Application-Token' => CaronteApplicationToken::make(),
             'X-Group-Token' => CaronteApplicationToken::makeGroup(),
         ])
             ->assertOk()
@@ -178,20 +167,22 @@ class MiddlewareBehaviorTest extends TestCase
         $context = app(CaronteApplicationContext::class);
         $this->assertTrue($context->authenticatedAsGroup);
         $this->assertSame('core-suite', $context->groupId);
-        $this->assertNotEmpty($context->applicationTokenId);
+        $this->assertNull($context->applicationToken);
+        $this->assertNull($context->applicationTokenId);
         $this->assertNotEmpty($context->groupTokenId);
     }
 
-    public function test_application_middleware_requires_application_token_when_group_token_is_provided(): void
+    public function test_application_middleware_rejects_ambiguous_application_and_group_tokens(): void
     {
         config()->set('caronte.application_group_id', 'core-suite');
         config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
 
         $this->getJson('/api/_caronte/application-only-check', [
+            'X-Application-Token' => CaronteApplicationToken::make(),
             'X-Group-Token' => CaronteApplicationToken::makeGroup(),
         ])
-            ->assertStatus(401)
-            ->assertJsonPath('message', 'No application token provided.');
+            ->assertStatus(400)
+            ->assertJsonPath('message', 'Ambiguous application credentials.');
     }
 
     public function test_application_middleware_rejects_legacy_base64_application_tokens(): void
@@ -207,7 +198,6 @@ class MiddlewareBehaviorTest extends TestCase
         config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
 
         $this->getJson('/api/_caronte/application-only-check', [
-            'X-Application-Token' => CaronteApplicationToken::make(),
             'X-Group-Token' => base64_encode('core-suite:group-secret-with-minimum-length-32'),
         ])->assertStatus(401);
     }
@@ -320,6 +310,29 @@ class MiddlewareBehaviorTest extends TestCase
         CaronteApplicationToken::validateGroupToken($token);
     }
 
+    public function test_user_token_rejects_each_missing_required_claim(): void
+    {
+        foreach (['iss', 'aud', 'sub', 'jti', 'iat', 'nbf', 'exp', 'token_audience', 'tenant_id'] as $claim) {
+            try {
+                CaronteUserToken::validateToken($this->makeUserTokenOmitting([$claim]), skipExchange: true);
+                $this->fail('Token without ' . $claim . ' should have been rejected.');
+            } catch (UnprocessableEntityException $exception) {
+                $this->assertStringContainsString($claim, $exception->getMessage());
+            }
+        }
+    }
+
+    public function test_user_token_rejects_unknown_audience(): void
+    {
+        $this->expectException(UnprocessableEntityException::class);
+        $this->expectExceptionMessage('Invalid token audience.');
+
+        CaronteUserToken::validateToken(
+            $this->makeUserTokenOmitting([], ['token_audience' => 'unknown']),
+            skipExchange: true
+        );
+    }
+
     public function test_application_middleware_binds_tenant_context_for_the_request_lifecycle(): void
     {
         $this->getJson('/api/_caronte/context-check', [
@@ -381,18 +394,6 @@ class MiddlewareBehaviorTest extends TestCase
         ])
             ->assertStatus(403)
             ->assertJsonPath('message', 'Tenant override is not allowed.');
-    }
-
-    public function test_application_tenant_static_wrapper_still_binds_tenant_context(): void
-    {
-        $request = Request::create('/api/_caronte/context-check', 'GET', [], [], [], [
-            'HTTP_X_TENANT_ID' => 'tenant-1',
-        ]);
-
-        $response = ResolveApplicationContext::resolveTenant($request, true);
-
-        $this->assertNull($response);
-        $this->assertSame('tenant-1', app(TenantContext::class)->get());
     }
 
     public function test_application_middleware_rejects_invalid_forwarded_user_token(): void
@@ -522,7 +523,7 @@ class MiddlewareBehaviorTest extends TestCase
 
     public function test_session_middleware_exchanges_tokens_inside_refresh_window(): void
     {
-        config()->set('caronte.token_refresh_leeway_seconds', 60);
+        config()->set('caronte.token.refresh_leeway_seconds', 60);
 
         $expiring = $this->makeToken(
             issuedAt: new DateTimeImmutable('-14 minutes', new DateTimeZone('UTC')),
@@ -547,7 +548,7 @@ class MiddlewareBehaviorTest extends TestCase
 
     public function test_session_middleware_keeps_token_when_exchange_rejects_still_valid(): void
     {
-        config()->set('caronte.token_refresh_leeway_seconds', 60);
+        config()->set('caronte.token.refresh_leeway_seconds', 60);
 
         $expiring = $this->makeToken(
             issuedAt: new DateTimeImmutable('-14 minutes', new DateTimeZone('UTC')),
@@ -746,8 +747,17 @@ class MiddlewareBehaviorTest extends TestCase
 
         $this->fakeOidcValidator();
 
-        $targetUrl = 'https://client.test/reports/monthly?tab=roles';
-        $token = $this->makeOidcToken();
+        $targetUrl = 'http://localhost/reports/monthly?tab=roles';
+
+        $this->get('/login?callback_url=' . urlencode(base64_encode($targetUrl)))
+            ->assertRedirectContains('/oidc/login?callback_url=');
+
+        $this->get('/oidc/login?callback_url=' . urlencode(base64_encode($targetUrl)))
+            ->assertRedirectContains('https://caronte.test/oauth/authorize');
+
+        $state = (string) session('caronte.oidc.state');
+        $nonce = (string) session('caronte.oidc.nonce');
+        $token = $this->makeOidcToken(nonce: $nonce);
 
         Http::fake([
             'https://caronte.test/oauth/token' => Http::response([
@@ -757,18 +767,50 @@ class MiddlewareBehaviorTest extends TestCase
             ], 200),
         ]);
 
-        $this->get('/login?callback_url=' . urlencode(base64_encode($targetUrl)))
-            ->assertRedirectContains('/oidc/login?callback_url=');
-
-        $this->get('/oidc/login?callback_url=' . urlencode(base64_encode($targetUrl)))
-            ->assertRedirectContains('https://caronte.test/oauth/authorize');
-
-        $state = (string) session('caronte.oidc.state');
-
         $this->get('/oidc/callback?state=' . urlencode($state) . '&code=code-123')
             ->assertRedirect($targetUrl)
             ->assertSessionHas((string) config('caronte.session_key', 'caronte.user_token'), $token)
             ->assertSessionMissing('caronte.oidc.callback_url');
+    }
+
+    public function test_oidc_callback_rejects_missing_state_and_clears_login_session(): void
+    {
+        session([
+            'caronte.oidc.state' => 'expected-state',
+            'caronte.oidc.nonce' => 'expected-nonce',
+            'caronte.oidc.code_verifier' => 'expected-verifier',
+            'caronte.oidc.callback_url' => '/dashboard',
+        ]);
+
+        $this->get('/oidc/callback?code=code-123')
+            ->assertRedirect('/login')
+            ->assertSessionMissing('caronte.oidc.state')
+            ->assertSessionMissing('caronte.oidc.nonce')
+            ->assertSessionMissing('caronte.oidc.code_verifier')
+            ->assertSessionMissing('caronte.oidc.callback_url');
+    }
+
+    public function test_oidc_callback_rejects_mismatched_nonce(): void
+    {
+        config()->set('caronte.oidc.issuer', 'https://caronte.test');
+        config()->set('caronte.oidc.client_id', 'test-app-id');
+        config()->set('caronte.oidc.client_secret', 'oidc-secret');
+        config()->set('caronte.oidc.redirect_uri', 'http://localhost/oidc/callback');
+        $this->fakeOidcValidator();
+
+        $this->get('/oidc/login')->assertRedirectContains('https://caronte.test/oauth/authorize');
+        $state = (string) session('caronte.oidc.state');
+
+        Http::fake([
+            'https://caronte.test/oauth/token' => Http::response([
+                'token_type' => 'Bearer',
+                'id_token' => $this->makeOidcToken(nonce: 'different-nonce'),
+            ], 200),
+        ]);
+
+        $this->get('/oidc/callback?state=' . urlencode($state) . '&code=code-123')
+            ->assertRedirect('/login')
+            ->assertSessionMissing((string) config('caronte.session_key'));
     }
 
     public function test_single_tenant_session_middleware_binds_configured_tenant(): void
@@ -900,48 +942,6 @@ class MiddlewareBehaviorTest extends TestCase
             ->assertStatus(401);
     }
 
-    public function test_legacy_application_access_aliases_accept_permissions_claim_temporarily(): void
-    {
-        $token = $this->makeApplicationAccessToken(['invoices.read']);
-
-        $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->getJson('/api/_caronte/application-access-legacy-check')
-            ->assertOk()
-            ->assertHeader('Deprecation', 'true')
-            ->assertJsonPath('tenant_id', 'tenant-1')
-            ->assertJsonPath('permissions.0', 'invoices.read');
-    }
-
-    public function test_legacy_application_access_aliases_accept_permissions_claim_without_jwt_audience_temporarily(): void
-    {
-        $issuedAt = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        $config = Configuration::forSymmetricSigner(
-            new Sha256(),
-            InMemory::plainText((string) config('caronte.app_secret'))
-        );
-
-        $token = $config->builder(ChainedFormatter::default())
-            ->issuedBy((string) config('caronte.issuer_id', ''))
-            ->issuedAt($issuedAt)
-            ->canOnlyBeUsedAfter($issuedAt)
-            ->expiresAt($issuedAt->modify('+1 year'))
-            ->identifiedBy('legacy-application-token-without-aud')
-            ->withClaim('token_audience', 'application_token')
-            ->withClaim('app_id', CaronteApplicationToken::appId())
-            ->withClaim('tenant_id', 'tenant-1')
-            ->withClaim('name', 'Legacy integration token')
-            ->withClaim('permissions', ['invoices.read'])
-            ->getToken($config->signer(), $config->signingKey())
-            ->toString();
-
-        $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->getJson('/api/_caronte/application-access-legacy-check')
-            ->assertOk()
-            ->assertHeader('Deprecation', 'true')
-            ->assertJsonPath('tenant_id', 'tenant-1')
-            ->assertJsonPath('permissions.0', 'invoices.read');
-    }
-
     /**
      * @param  array<string, mixed>  $claimOverrides
      */
@@ -974,16 +974,76 @@ class MiddlewareBehaviorTest extends TestCase
             ->toString();
     }
 
+    /**
+     * @param  list<string>  $omitted
+     * @param  array<string, mixed>  $overrides
+     */
+    private function makeUserTokenOmitting(array $omitted, array $overrides = []): string
+    {
+        $issuedAt = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $expiresAt = $issuedAt->modify('+15 minutes');
+        $config = Configuration::forSymmetricSigner(
+            new Sha256(),
+            InMemory::plainText((string) config('caronte.app_secret'))
+        );
+        $builder = $config->builder(ChainedFormatter::default());
+
+        if (! in_array('iss', $omitted, true)) {
+            $builder = $builder->issuedBy((string) config('caronte.issuer_id'));
+        }
+        if (! in_array('aud', $omitted, true)) {
+            $builder = $builder->permittedFor(CaronteApplicationToken::appId());
+        }
+        if (! in_array('sub', $omitted, true)) {
+            $builder = $builder->relatedTo('user-123');
+        }
+        if (! in_array('jti', $omitted, true)) {
+            $builder = $builder->identifiedBy('strict-user-token');
+        }
+        if (! in_array('iat', $omitted, true)) {
+            $builder = $builder->issuedAt($issuedAt);
+        }
+        if (! in_array('nbf', $omitted, true)) {
+            $builder = $builder->canOnlyBeUsedAfter($issuedAt);
+        }
+        if (! in_array('exp', $omitted, true)) {
+            $builder = $builder->expiresAt($expiresAt);
+        }
+        if (! in_array('token_audience', $omitted, true)) {
+            $builder = $builder->withClaim('token_audience', $overrides['token_audience'] ?? 'application');
+        }
+        if (! in_array('tenant_id', $omitted, true)) {
+            $builder = $builder->withClaim('tenant_id', null);
+        }
+
+        return $builder
+            ->withClaim('app_id', CaronteApplicationToken::appId())
+            ->withClaim('name', 'Strict User')
+            ->withClaim('email', 'strict@example.com')
+            ->withClaim('roles', [])
+            ->withClaim('metadata', [])
+            ->getToken($config->signer(), $config->signingKey())
+            ->toString();
+    }
+
     private function fakeOidcValidator(): void
     {
         app()->instance(OidcTokenValidator::class, new class extends OidcTokenValidator
         {
-            public function validate(string $rawToken): Plain
+            public function validate(string $rawToken, ?string $expectedNonce = null): Plain
             {
                 $token = (new Parser(new JoseEncoder()))->parse($rawToken);
 
                 if (! $token instanceof Plain) {
                     throw new \RuntimeException('Invalid OIDC token.');
+                }
+
+                if ($expectedNonce !== null) {
+                    $nonce = $token->claims()->get('nonce', null);
+
+                    if (! is_string($nonce) || ! hash_equals($expectedNonce, $nonce)) {
+                        throw new \RuntimeException('Invalid OIDC token nonce.');
+                    }
                 }
 
                 return $token;
@@ -994,6 +1054,7 @@ class MiddlewareBehaviorTest extends TestCase
     private function makeOidcToken(
         ?DateTimeImmutable $issuedAt = null,
         ?DateTimeImmutable $expiresAt = null,
+        ?string $nonce = null,
     ): string {
         $issuedAt ??= new DateTimeImmutable('now', new DateTimeZone('UTC'));
         $expiresAt ??= $issuedAt->modify('+15 minutes');
@@ -1003,7 +1064,7 @@ class MiddlewareBehaviorTest extends TestCase
             \Lcobucci\JWT\Signer\Key\InMemory::plainText('oidc-test-secret-with-minimum-length')
         );
 
-        return $config->builder(\Lcobucci\JWT\Encoding\ChainedFormatter::default())
+        $builder = $config->builder(\Lcobucci\JWT\Encoding\ChainedFormatter::default())
             ->withHeader('kid', 'oidc-test-kid')
             ->identifiedBy('oidc-token-1')
             ->issuedBy('https://caronte.test')
@@ -1016,8 +1077,13 @@ class MiddlewareBehaviorTest extends TestCase
             ->withClaim('name', 'Root User')
             ->withClaim('email', 'root@example.com')
             ->withClaim('roles', ['root'])
-            ->withClaim('metadata', [])
-            ->getToken($config->signer(), $config->signingKey())
+            ->withClaim('metadata', []);
+
+        if ($nonce !== null) {
+            $builder = $builder->withClaim('nonce', $nonce);
+        }
+
+        return $builder->getToken($config->signer(), $config->signingKey())
             ->toString();
     }
 

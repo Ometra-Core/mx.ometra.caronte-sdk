@@ -119,7 +119,7 @@ class UserController extends BaseController
                     'storeMetadata' => route('caronte.management.users.metadata.store', ['uri_user' => $uri_user]),
                     'deleteMetadata' => route('caronte.management.users.metadata.delete', ['uri_user' => $uri_user]),
                 ],
-            ], true);
+            ]);
         } catch (Exception $exception) {
             return CaronteResponse::handleException(
                 exception: $exception,
@@ -148,15 +148,6 @@ class UserController extends BaseController
                 forwardUrl: route('caronte.management.users.show', ['uri_user' => $uri_user])
             );
         }
-    }
-
-    public function updateLegacy(Request $request): Response
-    {
-        $uriUser = (string) $request->input('uri_user', '');
-
-        abort_if($uriUser === '', 422, 'Missing uri_user.');
-
-        return $this->update($request, $uriUser);
     }
 
     public function syncRoles(Request $request, string $uri_user): Response
@@ -280,15 +271,6 @@ class UserController extends BaseController
                 forwardUrl: route('caronte.management.dashboard')
             );
         }
-    }
-
-    public function deleteLegacy(Request $request): Response
-    {
-        $uriUser = (string) $request->input('uri_user', '');
-
-        abort_if($uriUser === '', 422, 'Missing uri_user.');
-
-        return $this->delete($uriUser);
     }
 
     /**

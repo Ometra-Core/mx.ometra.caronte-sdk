@@ -62,22 +62,4 @@ class ManagementUiTest extends TestCase
             ->assertSee('Jane Doe');
     }
 
-    public function test_legacy_management_user_partial_renders_with_compatibility_routes(): void
-    {
-        $html = view('caronte::management.users.list-tab', [
-            'users' => [
-                ['uri_user' => 'user-1', 'name' => 'Jane Doe', 'email' => 'jane@example.com'],
-            ],
-            'configured_roles' => [
-                [
-                    'uri_applicationRole' => 'role-root',
-                    'name' => 'root',
-                    'description' => 'Default super administrator role',
-                ],
-            ],
-        ])->render();
-
-        $this->assertStringContainsString(route('caronte.management.users.list'), $html);
-        $this->assertStringContainsString('Jane Doe', $html);
-    }
 }

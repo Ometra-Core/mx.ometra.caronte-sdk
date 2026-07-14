@@ -12,7 +12,7 @@ Package routes are loaded by Ometra\Caronte\Providers\CaronteServiceProvider fro
     - `routes/web.php`
     - `routes/api.php`
 - Route-group prefixes:
-    - web auth routes use `config(caronte.routes_prefix)` with the `caronte.` name prefix
+    - web auth routes use `config(caronte.routes.prefix)` with the `caronte.` name prefix
     - API client auth routes use the fixed `/api/caronte/auth` prefix with the `caronte.api.auth.` name prefix
 
 Management routes are conditionally registered only when config(caronte.management.enabled) is true.
@@ -36,8 +36,8 @@ Management routes are conditionally registered only when config(caronte.manageme
 
 Notes:
 
-- login_path is derived from config(caronte.login_url).
-- auth prefix is config(caronte.routes_prefix).
+- login_path is derived from config(caronte.routes.login_url).
+- auth prefix is config(caronte.routes.prefix).
 
 ## 3. JSON Client Authentication Routes
 
@@ -98,8 +98,6 @@ Registered in CaronteServiceProvider:
 - caronte.application -> ResolveApplicationContext
 - caronte.protected-api-token -> ValidateProtectedApiAccessToken
 - caronte.protected-api-scopes -> ValidateProtectedApiScopes
-- caronte.app-token -> ValidateApplicationAccessToken (deprecated alias)
-- caronte.app-permissions -> ValidateApplicationAccessPermissions (deprecated alias)
 
 ## 6. Host Application Expectations
 

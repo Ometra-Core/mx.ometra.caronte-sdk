@@ -62,17 +62,6 @@ class ResolveApplicationContext
     }
 
     /**
-     * @deprecated Use CaronteTenantContextResolver::resolve() instead.
-     */
-    public static function resolveTenant(
-        Request $request,
-        bool $required,
-        ?CaronteForwardedUserContext $forwardedUserContext = null,
-    ): ?Response {
-        return (new CaronteTenantContextResolver())->resolve($request, $required, $forwardedUserContext);
-    }
-
-    /**
      * @param  array<int, string>  $modes
      * @return array<int, string>
      */

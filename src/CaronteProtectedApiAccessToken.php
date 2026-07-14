@@ -13,10 +13,8 @@ use Lcobucci\JWT\Token\Plain;
 use Lcobucci\JWT\Validation\Constraint\IssuedBy;
 use Lcobucci\JWT\Validation\Constraint\PermittedFor;
 use Lcobucci\JWT\Validation\Constraint\SignedWith;
-use Ometra\Caronte\Support\CaronteApplicationAccessContext;
 use Ometra\Caronte\Support\CaronteApplicationToken;
 use Ometra\Caronte\Support\CaronteProtectedApiAccessContext;
-use Ometra\Caronte\Support\LegacyDeprecation;
 use RuntimeException;
 
 final class CaronteProtectedApiAccessToken
@@ -24,8 +22,6 @@ final class CaronteProtectedApiAccessToken
     public const MINIMUM_KEY_LENGTH = 32;
 
     public const AUDIENCE = 'protected_api_access';
-
-    public const LEGACY_AUDIENCE = 'application_token';
 
     public static function validateToken(string $rawToken): CaronteProtectedApiAccessContext
     {
@@ -36,7 +32,7 @@ final class CaronteProtectedApiAccessToken
 
         $scopes = static::scopeClaims($token);
 
-        return new CaronteApplicationAccessContext(
+        return new CaronteProtectedApiAccessContext(
             tokenId: (string) $token->claims()->get('jti'),
             appId: (string) $token->claims()->get('app_id'),
             tenantId: (string) $token->claims()->get('tenant_id'),
@@ -74,19 +70,13 @@ final class CaronteProtectedApiAccessToken
 
         $audience = (string) $token->claims()->get('token_audience', '');
 
-        if (! in_array($audience, [static::AUDIENCE, static::LEGACY_AUDIENCE], true)) {
+        if ($audience !== static::AUDIENCE) {
             throw new UnprocessableEntityException('Invalid Protected API Access Token audience.');
         }
 
-        if ($audience === static::LEGACY_AUDIENCE) {
-            LegacyDeprecation::warn('protected API audience application_token', 'protected_api_access');
-        }
-
-        if ($audience === static::AUDIENCE) {
-            foreach (['iss', 'aud', 'iat', 'nbf', 'exp'] as $claim) {
-                if (! $token->claims()->has($claim)) {
-                    throw new UnprocessableEntityException('Invalid Protected API Access Token');
-                }
+        foreach (['iss', 'aud', 'iat', 'nbf', 'exp'] as $claim) {
+            if (! $token->claims()->has($claim)) {
+                throw new UnprocessableEntityException('Invalid Protected API Access Token');
             }
         }
 
@@ -126,13 +116,6 @@ final class CaronteProtectedApiAccessToken
             return $scopes;
         }
 
-        $legacyPermissions = $token->claims()->get('permissions', null);
-
-        if (is_array($legacyPermissions)) {
-            LegacyDeprecation::warn('permissions JWT claim', 'scopes JWT claim');
-            return $legacyPermissions;
-        }
-
         throw new UnprocessableEntityException('Invalid Protected API Access Token scopes.');
     }
 
@@ -143,9 +126,7 @@ final class CaronteProtectedApiAccessToken
             new SignedWith($config->signer(), $config->signingKey()),
         ];
 
-        if (config('caronte.enforce_issuer')) {
-            $constraints[] = new IssuedBy((string) config('caronte.issuer_id'));
-        }
+        $constraints[] = new IssuedBy((string) config('caronte.issuer_id'));
 
         if ($token->claims()->has('aud')) {
             $constraints[] = new PermittedFor(CaronteApplicationToken::appId());

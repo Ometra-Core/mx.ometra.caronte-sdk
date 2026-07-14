@@ -90,6 +90,36 @@ class ConfigurationValidationTest extends TestCase
         $this->validatePackageConfig();
     }
 
+    public function test_legacy_auth_mode_is_rejected(): void
+    {
+        config()->set('caronte.auth_mode', 'legacy');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('caronte.auth_mode must be jwt, oidc, or dual');
+
+        $this->validatePackageConfig();
+    }
+
+    public function test_token_ttl_must_be_greater_than_zero(): void
+    {
+        config()->set('caronte.token.ttl_seconds', 0);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('caronte.token.ttl_seconds must be greater than zero');
+
+        $this->validatePackageConfig();
+    }
+
+    public function test_token_timing_leeway_must_not_be_negative(): void
+    {
+        config()->set('caronte.token.clock_skew_seconds', -1);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('caronte.token.clock_skew_seconds must be zero or greater');
+
+        $this->validatePackageConfig();
+    }
+
     public function test_single_tenant_mode_requires_configured_tenant_id(): void
     {
         config()->set('caronte.tenancy.mode', 'single');

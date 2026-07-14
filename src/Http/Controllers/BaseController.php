@@ -8,13 +8,9 @@ use Inertia\Response as InertiaResponse;
 
 class BaseController extends Controller
 {
-    protected function toView(string $viewPath, array $data = [], bool $management = false): View|InertiaResponse
+    protected function toView(string $viewPath, array $data = []): View|InertiaResponse
     {
-        $useInertia = $management
-            ? (bool) config('caronte.management.use_inertia', false)
-            : (bool) config('caronte.use_inertia', false);
-
-        if ($useInertia) {
+        if ((bool) config('caronte.ui.use_inertia', false)) {
             return inertia(str_replace('.', '/', $viewPath), $data);
         }
 
