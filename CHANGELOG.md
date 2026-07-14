@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.0.0] - 2026-07-14 "Hermes"
+
+### Changed
+
+- Consolidated Blade/Inertia rendering under `ui.use_inertia`, configured only through `CARONTE_USE_INERTIA`.
+- Removed the unused `management.features.profile_pictures` flag; `management.features.metadata` remains because it gates both metadata endpoints and UI controls.
+- Grouped token timing settings under `token.ttl_seconds`, `token.clock_skew_seconds`, and `token.refresh_leeway_seconds`; application and application-group tokens share the TTL configured through `CARONTE_TOKEN_TTL_SECONDS`.
+- Grouped route configuration under `routes.prefix`, `routes.login_url`, and `routes.success_url` while retaining the existing environment variable names.
+- Made issuer validation mandatory for user, application, application-group, protected API, and OIDC tokens.
+- Application requests now send exactly one credential: `X-Application-Token` for individual applications or `X-Group-Token` for configured groups.
+- User JWTs now require issuer, audience, subject, token id, temporal claims, token audience, and the canonical `tenant_id` claim.
+- Browser callback URLs are restricted to relative or same-origin destinations.
+- Local user and metadata lookups now fail closed when tenant context is unavailable.
+
+### Fixed
+
+- OIDC callbacks now require non-empty state, PKCE verifier, and nonce values and validate the ID-token nonce.
+- The v6 tenant migration now backfills `UsersMetadata.tenant_id`, resolves unambiguous user ownership, and discards only orphaned or ambiguous metadata.
+
+### Removed
+
+- Removed the `id_tenant` runtime contract; `tenant_id` is now the only supported tenant identifier.
+- Removed the nested JWT `user` claim fallback and `auth_mode=legacy`.
+- Removed permission-based protected API configuration, claims, APIs, middleware aliases, context aliases, and sync command.
+- Removed legacy management mutation routes, controller wrappers, middleware, and Blade partials.
+- Removed the deprecated `--all` option from `caronte:users:list`.
+- Removed `CARONTE_MANAGEMENT_USE_INERTIA` and the duplicate top-level `use_inertia` configuration.
+- Removed `CARONTE_APPLICATION_TOKEN_TTL_SECONDS` and `CARONTE_APPLICATION_GROUP_TOKEN_TTL_SECONDS`.
+- Removed `CARONTE_ENFORCE_ISSUER` and the `enforce_issuer` configuration switch.
+
+### Security
+
+- Closed open-redirect, OIDC replay, unsigned application-token attribution, and unscoped tenant-query paths.
+
+## [5.0.0] - 2026-06-26
+
+### Changed
+
+- Published the 5.0 major baseline with the `id_tenant` tenant contract and the compatibility paths subsequently removed by v6.0.0.
+
 ## [4.6.0] - 2026-07-14 "Hermes"
 
 ### Added

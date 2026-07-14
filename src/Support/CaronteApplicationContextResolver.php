@@ -16,6 +16,13 @@ final class CaronteApplicationContextResolver
         $applicationToken = trim((string) $request->header('X-Application-Token'));
         $groupToken       = trim((string) $request->header('X-Group-Token'));
 
+        if ($applicationToken !== '' && $groupToken !== '') {
+            return CaronteResponse::badRequest(
+                message: 'Ambiguous application credentials.',
+                errors: ['Send either X-Application-Token or X-Group-Token, never both.']
+            );
+        }
+
         if ($applicationToken === '' && $groupToken === '') {
             return CaronteResponse::unauthorized(
                 message: 'No application token provided.',
@@ -24,28 +31,20 @@ final class CaronteApplicationContextResolver
         }
 
         if ($groupToken !== '') {
-            return $this->resolveGroupContext($applicationToken, $groupToken);
+            return $this->resolveGroupContext($groupToken);
         }
 
         return $this->resolveApplicationContext($applicationToken);
     }
 
-    private function resolveGroupContext(string $applicationToken, string $groupToken): CaronteApplicationContext|Response
+    private function resolveGroupContext(string $groupToken): CaronteApplicationContext|Response
     {
-        if ($applicationToken === '') {
-            return CaronteResponse::unauthorized(
-                message: 'No application token provided.',
-                errors: ['X-Application-Token header is required when X-Group-Token is provided.']
-            );
-        }
-
         try {
-            $decodedApplicationToken = CaronteApplicationToken::decodeApplicationToken($applicationToken);
-            $validatedGroupToken     = CaronteApplicationToken::validateGroupToken($groupToken);
+            $validatedGroupToken = CaronteApplicationToken::validateGroupToken($groupToken);
         } catch (Throwable) {
             return CaronteResponse::unauthorized(
-                message: 'Invalid application token.',
-                errors: ['The provided X-Application-Token or X-Group-Token is invalid.']
+                message: 'Invalid application group token.',
+                errors: ['The provided X-Group-Token is invalid.']
             );
         }
 
@@ -55,13 +54,13 @@ final class CaronteApplicationContextResolver
         return new CaronteApplicationContext(
             appCn: CaronteApplicationToken::cn(),
             appId: CaronteApplicationToken::appId(),
-            applicationToken: $applicationToken,
+            applicationToken: null,
             authenticatedAsGroup: true,
             groupId: (string) $validatedGroupToken->claims()->get('group_id'),
             sourceAppId: $sourceAppId,
             sourceAppCn: $sourceAppCn,
             groupTokenId: (string) $validatedGroupToken->claims()->get('jti'),
-            applicationTokenId: (string) $decodedApplicationToken->claims()->get('jti'),
+            applicationTokenId: null,
         );
     }
 

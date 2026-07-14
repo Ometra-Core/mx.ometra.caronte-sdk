@@ -56,8 +56,8 @@ Operational recommendation:
 1. Validate package configuration:
     - caronte.url, caronte.app_cn, caronte.app_secret
     - tenancy mode and tenant id
-2. Confirm token headers per scenario:
-    - X-Application-Token
+2. Confirm exactly one application credential per scenario:
+    - X-Application-Token when group mode is inactive
     - X-Group-Token when group mode is active
     - X-Tenant-Id for tenant-required flows
 3. Check host route middleware order and composition.

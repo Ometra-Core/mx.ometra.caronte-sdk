@@ -1,3 +1,37 @@
+# Release v6.0.0 "Hermes"
+
+> **Release date:** 2026-07-14
+> **Type:** Major - Removal of legacy contracts and security hardening.
+
+## Summary
+
+v6.0.0 completes the transition to `tenant_id`, removes the remaining compatibility APIs, and hardens authentication boundaries. OIDC now validates state and nonce, browser callbacks are same-origin, tenant-owned local data fails closed without context, and user JWTs have a strict claim contract.
+
+Application authentication now uses one credential per request. Applications without a configured group send `X-Application-Token`; grouped applications send only `X-Group-Token`. Group tokens retain `source_app_id` and `source_app_cn` for operational attribution, with integrity at group-secret level rather than non-repudiation between members.
+
+## Upgrade requirements
+
+1. Replace every runtime use of `id_tenant` with `tenant_id`.
+2. Ensure issued user JWTs include `iss`, `aud`, `sub`, `jti`, `iat`, `nbf`, `exp`, `token_audience`, and `tenant_id`.
+3. Update Caronte v6 endpoints to accept `X-Group-Token` as the sole credential for grouped applications.
+4. Restrict post-login destinations to relative or same-origin URLs.
+5. Back up `UsersMetadata` before migrating. Rows with no unambiguous tenant are discarded and counted in the application log.
+
+## Validation
+
+- OIDC state, PKCE verifier, and nonce are single-use and mandatory.
+- Individual and group credentials are mutually exclusive; inbound requests containing both return `400`.
+- Tenant-scoped helpers never fall back to unscoped queries.
+- Legacy permissions, middleware aliases, nested user claims, and `auth_mode=legacy` are removed.
+
+## Historical release notes
+
+## Release v5.0.0
+
+> **Release date:** 2026-06-26
+
+Version 5.0.0 is the published major baseline from which v6 migrates. Its released persistence contract used `id_tenant`; v6 replaces that contract with Bee Hive-aligned `tenant_id` and removes the compatibility layers retained by 5.x.
+
 # Release v4.6.0 "Hermes"
 
 > **Release date:** 2026-07-14
@@ -21,17 +55,16 @@ The codename _Hermes_—god of transitions and communication—guides this relea
 ## Added
 
 - **Runtime deprecation warnings and HTTP `Deprecation: true` signals** for compatibility adapters.
-  - Deprecated code paths now emit visible warnings and set the `Deprecation: true` header on responses.
-  - Helps teams identify legacy usage before v5.0.0 removal.
+    - Deprecated code paths now emit visible warnings and set the `Deprecation: true` header on responses.
+    - Helps teams identify legacy usage before v5.0.0 removal.
 
 ## Changed
 
 - **`auth_mode` now defaults to `jwt`** — new installations prefer JWT tokens over legacy session modes.
-  - `legacy` remains a temporary alias for backward compatibility but is flagged as deprecated.
-  
+    - `legacy` remains a temporary alias for backward compatibility but is flagged as deprecated.
 - **Existing SDK user tables now backfill `tenant_id`** and remove the legacy physical `id_tenant` column.
-  - Aligns with Bee Hive tenancy conventions.
-  - Automatic migration during deployment ensures consistency across deployments.
+    - Aligns with Bee Hive tenancy conventions.
+    - Automatic migration during deployment ensures consistency across deployments.
 
 ## Deprecated
 
@@ -85,7 +118,6 @@ See [BREAKING_CHANGES.md](BREAKING_CHANGES.md#v500) for the complete v5.0.0 migr
 - **[CHANGELOG.md](CHANGELOG.md)** — Full project history with all releases
 - **[BREAKING_CHANGES.md](BREAKING_CHANGES.md)** — v5.0.0 breaking changes and migration guidance
 - **[doc/deployment-instructions.md](doc/deployment-instructions.md)** — Installation and configuration steps
-
 
 ## Full History
 

@@ -30,10 +30,14 @@ Minimum required variables:
 Common optional variables:
 
 - CARONTE_ISSUER_ID=caronte
-- CARONTE_ENFORCE_ISSUER=true
 - CARONTE_AUTH_MODE=jwt
+- CARONTE_TOKEN_TTL_SECONDS=300
+- CARONTE_TOKEN_CLOCK_SKEW_SECONDS=60
+- CARONTE_TOKEN_REFRESH_LEEWAY_SECONDS=60
 
-Run `php artisan migrate` during the SDK upgrade. The tenant-column standardization migration backfills `Users.tenant_id` from legacy `Users.id_tenant` and then removes `id_tenant`. If any row has neither value, the migration stops without dropping the legacy column; repair those rows explicitly and rerun it.
+Back up `Users` and `UsersMetadata`, then run `php artisan migrate` during the SDK upgrade. The tenant-column migration backfills `Users.tenant_id` from `Users.id_tenant`; user rows without either value stop the migration. Metadata is resolved from its legacy tenant or a unique matching user. Orphaned or ambiguous metadata is deleted and the discarded count is logged.
+
+Grouped applications require a Caronte v6 server that accepts `X-Group-Token` as the sole application credential. When group configuration is present, this SDK does not generate or send `X-Application-Token`.
 - CARONTE_LOGIN_URL=/login
 - CARONTE_SUCCESS_URL=/
 - CARONTE_SESSION_KEY=caronte.user_token
@@ -42,7 +46,7 @@ Run `php artisan migrate` during the SDK upgrade. The tenant-column standardizat
 - CARONTE_MANAGEMENT_ENABLED=true
 - CARONTE_MANAGEMENT_ROUTE_PREFIX=caronte/management
 - CARONTE_MANAGEMENT_ACCESS_ROLES=root
-- CARONTE_MANAGEMENT_USE_INERTIA=false
+- CARONTE_USE_INERTIA=false
 - CARONTE_HTTP_TIMEOUT=10
 - CARONTE_HTTP_RETRIES=1
 - CARONTE_HTTP_RETRY_SLEEP=150

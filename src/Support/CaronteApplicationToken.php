@@ -63,7 +63,7 @@ class CaronteApplicationToken
         $appCn = strtolower(trim($appCn));
         $appId = static::appIdForCn($appCn);
         $issuedAt ??= static::now();
-        $expiresAt = $issuedAt->modify('+' . static::applicationTokenTtlSeconds() . ' seconds');
+        $expiresAt = $issuedAt->modify('+' . static::tokenTtlSeconds() . ' seconds');
         $config = static::configForSigningKey($appSecret, 'CARONTE_APP_SECRET');
 
         return $config->builder(ChainedFormatter::default())
@@ -87,7 +87,7 @@ class CaronteApplicationToken
         }
 
         $issuedAt ??= static::now();
-        $expiresAt = $issuedAt->modify('+' . static::applicationGroupTokenTtlSeconds() . ' seconds');
+        $expiresAt = $issuedAt->modify('+' . static::tokenTtlSeconds() . ' seconds');
         $config = static::groupConfig();
 
         return $config->builder(ChainedFormatter::default())
@@ -141,7 +141,17 @@ class CaronteApplicationToken
     {
         $token = static::parseToken($rawToken, 'application token');
 
-        static::assertRequiredClaims($token, ['jti', 'token_audience', 'app_id', 'app_cn']);
+        static::assertRequiredClaims($token, [
+            'iss',
+            'aud',
+            'jti',
+            'iat',
+            'nbf',
+            'exp',
+            'token_audience',
+            'app_id',
+            'app_cn',
+        ]);
         static::assertAudience($token, static::APPLICATION_AUDIENCE, 'application token');
 
         return $token;
@@ -163,6 +173,10 @@ class CaronteApplicationToken
             throw new UnprocessableEntityException('Application token canonical name does not match the configured Caronte application.');
         }
 
+        if (! $token->isPermittedFor(static::appId())) {
+            throw new UnprocessableEntityException('Application token does not match the configured Caronte application audience.');
+        }
+
         return $token;
     }
 
@@ -176,7 +190,12 @@ class CaronteApplicationToken
         $config = static::groupConfig();
 
         static::assertRequiredClaims($token, [
+            'iss',
+            'aud',
             'jti',
+            'iat',
+            'nbf',
+            'exp',
             'token_audience',
             'group_id',
             'source_app_id',
@@ -189,6 +208,10 @@ class CaronteApplicationToken
 
         if ((string) $token->claims()->get('group_id') !== static::groupId()) {
             throw new UnprocessableEntityException('Application group token does not match the configured Caronte application group.');
+        }
+
+        if (! $token->isPermittedFor(static::groupId())) {
+            throw new UnprocessableEntityException('Application group token does not match the configured Caronte application group audience.');
         }
 
         if (trim((string) $token->claims()->get('source_app_id')) === '') {
@@ -286,9 +309,7 @@ class CaronteApplicationToken
             new SignedWith($config->signer(), $config->signingKey()),
         ];
 
-        if (config('caronte.enforce_issuer')) {
-            $constraints[] = new IssuedBy((string) config('caronte.issuer_id'));
-        }
+        $constraints[] = new IssuedBy((string) config('caronte.issuer_id'));
 
         if (! $config->validator()->validate($token, ...$constraints)) {
             throw new UnprocessableEntityException($message);
@@ -298,7 +319,7 @@ class CaronteApplicationToken
     private static function assertTemporalClaims(Plain $token, string $label): void
     {
         $now = static::now();
-        $leewaySeconds = max(0, (int) config('caronte.token_clock_skew_seconds', 60));
+        $leewaySeconds = max(0, (int) config('caronte.token.clock_skew_seconds', 60));
 
         foreach (['iat', 'nbf'] as $claim) {
             if (! $token->claims()->has($claim)) {
@@ -315,21 +336,27 @@ class CaronteApplicationToken
             }
         }
 
+        $issuedAt = $token->claims()->get('iat');
+        $notBefore = $token->claims()->get('nbf');
         $expiresAt = $token->claims()->get('exp');
 
-        if ($expiresAt instanceof DateTimeImmutable && $expiresAt <= $now) {
+        if (
+            ! $issuedAt instanceof DateTimeImmutable
+            || ! $notBefore instanceof DateTimeImmutable
+            || ! $expiresAt instanceof DateTimeImmutable
+            || $expiresAt <= $issuedAt
+        ) {
+            throw new UnprocessableEntityException($label . ' has invalid temporal claims.');
+        }
+
+        if ($expiresAt->getTimestamp() <= ($now->getTimestamp() - $leewaySeconds)) {
             throw new UnprocessableEntityException($label . ' has expired.');
         }
     }
 
-    private static function applicationTokenTtlSeconds(): int
+    private static function tokenTtlSeconds(): int
     {
-        return max(1, (int) config('caronte.application_token_ttl_seconds', 300));
-    }
-
-    private static function applicationGroupTokenTtlSeconds(): int
-    {
-        return max(1, (int) config('caronte.application_group_token_ttl_seconds', 300));
+        return max(1, (int) config('caronte.token.ttl_seconds', 300));
     }
 
     private static function now(): DateTimeImmutable

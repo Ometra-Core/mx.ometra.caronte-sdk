@@ -109,4 +109,4 @@ flowchart LR
 ## Notes
 
 - This is a package-level architecture view; host app architecture is intentionally not modeled in detail.
-- Deprecated compatibility components (permission aliases and legacy middleware aliases) remain present and should be considered in migration planning.
+- SDK 6.0.0 contains only the scope-based protected API components; permission and middleware aliases have been removed.

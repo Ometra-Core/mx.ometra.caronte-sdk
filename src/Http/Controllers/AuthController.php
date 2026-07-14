@@ -14,6 +14,7 @@ use Ometra\Caronte\Contracts\SendsPasswordRecovery;
 use Ometra\Caronte\Contracts\SendsTwoFactorChallenge;
 use Ometra\Caronte\Exceptions\CaronteApiException;
 use Ometra\Caronte\Facades\Caronte;
+use Ometra\Caronte\Support\CaronteCallbackUrl;
 use Ometra\Caronte\Support\CaronteResponse;
 use Ometra\Caronte\Support\CaronteTenancy;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,7 +27,7 @@ class AuthController extends BaseController
     public function loginForm(Request $request): View|InertiaResponse|RedirectResponse
     {
         if (config('caronte.auth_mode') === 'oidc') {
-            $callbackUrl = $request->query('callback_url');
+            $callbackUrl = CaronteCallbackUrl::normalize($request, $request->query('callback_url'));
 
             if (is_string($callbackUrl) && trim($callbackUrl) !== '') {
                 return redirect()->route('caronte.oidc.login', ['callback_url' => $callbackUrl]);
@@ -43,10 +44,13 @@ class AuthController extends BaseController
             $this->forgetPendingLogin($request);
         }
 
-        $callbackUrl = $request->query('callback_url');
+        $callbackUrl = CaronteCallbackUrl::normalize($request, $request->query('callback_url'));
 
         if (! is_string($callbackUrl) || trim($callbackUrl) === '') {
-            $callbackUrl = $request->old('callback_url', data_get($pendingLogin, 'callback_url'));
+            $callbackUrl = CaronteCallbackUrl::normalize(
+                $request,
+                $request->old('callback_url', data_get($pendingLogin, 'callback_url'))
+            );
         }
 
         return $this->toView($view, [
@@ -136,7 +140,7 @@ class AuthController extends BaseController
             return CaronteResponse::forbidden(
                 message: 'Tenant mismatch.',
                 errors: ['Tenant mismatch.'],
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
 
@@ -193,7 +197,7 @@ class AuthController extends BaseController
             return CaronteResponse::success(
                 message: $response['message'],
                 data: ['token' => $token->toString()],
-                forwardUrl: $this->forwardUrl($request->input('callback_url'))
+                forwardUrl: CaronteCallbackUrl::resolve($request, $request->input('callback_url'))
             );
         } catch (CaronteApiException $exception) {
             if (
@@ -212,7 +216,7 @@ class AuthController extends BaseController
                     }
 
                     return redirect()
-                        ->to((string) config('caronte.login_url'))
+                        ->to((string) config('caronte.routes.login_url'))
                         ->with([
                             'status' => 409,
                             'message' => 'Select a tenant to continue.',
@@ -233,7 +237,7 @@ class AuthController extends BaseController
                     message: $exception->getMessage(),
                     errors: $exception->errors(),
                     data: ['tenants' => $exception->errors()['tenants'] ?? []],
-                    forwardUrl: (string) config('caronte.login_url')
+                    forwardUrl: (string) config('caronte.routes.login_url')
                 );
             }
 
@@ -242,7 +246,7 @@ class AuthController extends BaseController
             return CaronteResponse::handleException(
                 exception: $exception,
                 errors: $exception->errors(),
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
     }
@@ -255,7 +259,9 @@ class AuthController extends BaseController
 
         try {
             $email = $request->string('email')->toString();
-            $callbackUrl = $this->absoluteUrl($this->forwardUrl($request->input('callback_url')));
+            $callbackUrl = $this->absoluteUrl(
+                CaronteCallbackUrl::resolve($request, $request->input('callback_url'))
+            );
 
             if (config('caronte.notification_delivery') === 'host') {
                 $response = AuthApi::issueTwoFactor(
@@ -267,7 +273,7 @@ class AuthController extends BaseController
                     return CaronteResponse::success(
                         message: $response['message'],
                         data: $response['data'],
-                        forwardUrl: (string) config('caronte.login_url')
+                        forwardUrl: (string) config('caronte.routes.login_url')
                     );
                 }
 
@@ -286,13 +292,13 @@ class AuthController extends BaseController
             return CaronteResponse::success(
                 message: $response['message'],
                 data: $response['data'],
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         } catch (CaronteApiException $exception) {
             return CaronteResponse::handleException(
                 exception: $exception,
                 errors: $exception->errors(),
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
     }
@@ -312,13 +318,13 @@ class AuthController extends BaseController
             return CaronteResponse::success(
                 message: $response['message'],
                 data: ['token' => $validatedToken->toString()],
-                forwardUrl: $this->forwardUrl($request->input('callback_url'))
+                forwardUrl: CaronteCallbackUrl::resolve($request, $request->input('callback_url'))
             );
         } catch (CaronteApiException $exception) {
             return CaronteResponse::handleException(
                 exception: $exception,
                 errors: $exception->errors(),
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
     }
@@ -341,7 +347,7 @@ class AuthController extends BaseController
                     return CaronteResponse::success(
                         message: $response['message'],
                         data: $response['data'],
-                        forwardUrl: (string) config('caronte.login_url')
+                        forwardUrl: (string) config('caronte.routes.login_url')
                     );
                 }
 
@@ -359,13 +365,13 @@ class AuthController extends BaseController
             return CaronteResponse::success(
                 message: $response['message'],
                 data: $response['data'],
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         } catch (CaronteApiException $exception) {
             return CaronteResponse::handleException(
                 exception: $exception,
                 errors: $exception->errors(),
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
     }
@@ -378,7 +384,7 @@ class AuthController extends BaseController
             return CaronteResponse::handleException(
                 exception: $exception,
                 errors: $exception->errors(),
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
 
@@ -389,14 +395,14 @@ class AuthController extends BaseController
             );
         }
 
-        $view = config('caronte.use_inertia') ? 'auth/password-recover' : 'auth.password-recover';
+        $view = config('caronte.ui.use_inertia') ? 'auth/password-recover' : 'auth.password-recover';
 
-        if (config('caronte.use_inertia')) {
+        if (config('caronte.ui.use_inertia')) {
             return inertia($view, [
                 'csrf_token' => csrf_token(),
                 'routes' => [
                     'passwordRecoverSubmit' => url()->current(),
-                    'login' => config('caronte.login_url'),
+                    'login' => config('caronte.routes.login_url'),
                 ],
                 'branding' => config('caronte.ui.branding'),
                 'token' => $token,
@@ -407,7 +413,7 @@ class AuthController extends BaseController
             'csrf_token' => csrf_token(),
             'routes' => [
                 'passwordRecoverSubmit' => url()->current(),
-                'login' => config('caronte.login_url'),
+                'login' => config('caronte.routes.login_url'),
             ],
             'branding' => config('caronte.ui.branding'),
             'token' => $token,
@@ -430,13 +436,13 @@ class AuthController extends BaseController
             return CaronteResponse::success(
                 message: $response['message'],
                 data: $response['data'],
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         } catch (CaronteApiException $exception) {
             return CaronteResponse::handleException(
                 exception: $exception,
                 errors: $exception->errors(),
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
     }
@@ -453,32 +459,15 @@ class AuthController extends BaseController
             return CaronteResponse::success(
                 message: $response['message'],
                 data: $response['data'],
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         } catch (CaronteApiException $exception) {
             return CaronteResponse::handleException(
                 exception: $exception,
                 errors: $exception->errors(),
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
-    }
-
-    private function forwardUrl(?string $candidate): string
-    {
-        $value = is_string($candidate) ? trim($candidate) : '';
-
-        if ($value !== '') {
-            $decoded = base64_decode($value, true);
-
-            if (is_string($decoded) && $decoded !== '') {
-                return $decoded;
-            }
-
-            return $value;
-        }
-
-        return (string) config('caronte.success_url', '/');
     }
 
     private function absoluteUrl(string $url): string
@@ -532,14 +521,12 @@ class AuthController extends BaseController
 
     private function rememberPendingLogin(Request $request, string $email, string $tenantSelectionToken): void
     {
-        $callbackUrl = $request->input('callback_url');
+        $callbackUrl = CaronteCallbackUrl::normalize($request, $request->input('callback_url'));
 
         $request->session()->put(self::PENDING_LOGIN_SESSION_KEY, [
             'email' => $email,
             'tenant_selection_token' => $tenantSelectionToken,
-            'callback_url' => is_string($callbackUrl) && trim($callbackUrl) !== ''
-                ? $callbackUrl
-                : null,
+            'callback_url' => $callbackUrl,
             'created_at' => time(),
         ]);
     }

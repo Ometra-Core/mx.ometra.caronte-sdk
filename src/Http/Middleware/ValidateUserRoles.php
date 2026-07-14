@@ -18,7 +18,7 @@ class ValidateUserRoles
                 return CaronteResponse::forbidden(
                     message: 'User does not have access to this feature.',
                     errors: ['User does not have the required roles: ' . implode(', ', $roles)],
-                    forwardUrl: (string) config('caronte.login_url')
+                    forwardUrl: (string) config('caronte.routes.login_url')
                 );
             }
 
@@ -26,7 +26,7 @@ class ValidateUserRoles
         } catch (Throwable $exception) {
             return CaronteResponse::unauthorized(
                 message: $exception->getMessage(),
-                forwardUrl: (string) config('caronte.login_url')
+                forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
     }

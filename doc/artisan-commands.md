@@ -9,7 +9,6 @@ This package registers custom commands only when running in console.
 | caronte:admin                        | Interactive command hub for common management tasks      |
 | caronte:roles:sync                   | Sync configured roles from config/caronte.php to Caronte |
 | caronte:protected-api:scopes:sync    | Sync protected API scopes to Caronte                     |
-| caronte:permissions:sync             | Deprecated alias of scope sync                           |
 | caronte:tenants:list                 | List tenants visible to current application              |
 | caronte:tenants:show {tenant}        | Show tenant detail                                       |
 | caronte:users:list                   | List users for tenant/app filters                        |
@@ -46,13 +45,7 @@ Example:
 - Class: Ometra\Caronte\Console\Commands\ProtectedApi\SyncScopes
 - Signature options:
     - --dry-run: shows normalized scope list only
-- Reads scopes from config(caronte.protected_api.scopes), falling back to deprecated config(caronte.permissions).
-
-### caronte:permissions:sync
-
-- Class: Ometra\Caronte\Console\Commands\Permissions\SyncPermissions
-- Deprecated compatibility command.
-- Same behavior as protected-api scope sync.
+- Reads scopes exclusively from config(caronte.protected_api.scopes).
 
 ### caronte:tenants:list
 
@@ -73,7 +66,6 @@ Example:
     - --tenant=
     - --search=
     - --app-users
-    - --all (deprecated alias)
 
 ### caronte:users:create
 

@@ -44,15 +44,13 @@ abstract class TestCase extends Orchestra
         $app['config']->set('caronte.url', 'https://caronte.test/');
         $app['config']->set('caronte.app_cn', 'test-app-id');
         $app['config']->set('caronte.app_secret', 'test-app-secret-with-minimum-length-32');
-        $app['config']->set('caronte.login_url', '/login');
+        $app['config']->set('caronte.routes.login_url', '/login');
         $app['config']->set('caronte.issuer_id', 'caronte');
-        $app['config']->set('caronte.enforce_issuer', true);
-        $app['config']->set('caronte.routes_prefix', '');
-        $app['config']->set('caronte.use_inertia', false);
+        $app['config']->set('caronte.routes.prefix', '');
+        $app['config']->set('caronte.ui.use_inertia', false);
         $app['config']->set('caronte.management.enabled', true);
         $app['config']->set('caronte.management.route_prefix', 'caronte/management');
         $app['config']->set('caronte.management.access_roles', ['root']);
-        $app['config']->set('caronte.management.use_inertia', false);
         $app['config']->set('caronte.management.features.metadata', true);
         $app['config']->set('caronte.roles', [
             'root' => 'Default super administrator role',
@@ -131,8 +129,7 @@ abstract class TestCase extends Orchestra
             ->withClaim('name', $user['name'])
             ->withClaim('email', $user['email'])
             ->withClaim('roles', $user['roles'])
-            ->withClaim('metadata', $user['metadata'])
-            ->withClaim('user', json_encode($user));
+            ->withClaim('metadata', $user['metadata']);
 
         if ($group) {
             $builder = $builder
@@ -154,38 +151,6 @@ abstract class TestCase extends Orchestra
     /**
      * @param  array<string, mixed>  $user
      */
-    protected function makeTokenWithoutLegacyUserClaim(array $user): string
-    {
-        $issuedAt = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        $expiresAt = $issuedAt->modify('+15 minutes');
-        $config = Configuration::forSymmetricSigner(
-            new Sha256(),
-            InMemory::plainText((string) config('caronte.app_secret'))
-        );
-
-        return $config->builder(ChainedFormatter::default())
-            ->identifiedBy('user-token-2')
-            ->issuedBy((string) config('caronte.issuer_id', ''))
-            ->permittedFor(CaronteApplicationToken::appId())
-            ->relatedTo($this->subjectForTokenUser($user))
-            ->issuedAt($issuedAt)
-            ->canOnlyBeUsedAfter($issuedAt)
-            ->expiresAt($expiresAt)
-            ->withClaim('token_audience', 'application')
-            ->withClaim('app_id', CaronteApplicationToken::appId())
-            ->withClaim('tenant_id', $user['tenant_id'] ?? null)
-            ->withClaim('tenant_name', $user['tenant_name'] ?? '')
-            ->withClaim('name', $user['name'])
-            ->withClaim('email', $user['email'])
-            ->withClaim('roles', $user['roles'])
-            ->withClaim('metadata', $user['metadata'])
-            ->getToken($config->signer(), $config->signingKey())
-            ->toString();
-    }
-
-    /**
-     * @param  array<string, mixed>  $user
-     */
     private function subjectForTokenUser(array $user): string
     {
         return (string) ($user['uri_user'] ?? '');
@@ -200,7 +165,6 @@ abstract class TestCase extends Orchestra
         ?DateTimeImmutable $issuedAt = null,
         ?DateTimeImmutable $expiresAt = null,
         string $audience = 'protected_api_access',
-        string $scopeClaim = 'scopes',
         ?string $jwtAudience = null,
     ): string {
         $issuedAt ??= new DateTimeImmutable('now', new DateTimeZone('UTC'));
@@ -222,29 +186,9 @@ abstract class TestCase extends Orchestra
             ->withClaim('app_id', CaronteApplicationToken::appId())
             ->withClaim('tenant_id', $tenantId)
             ->withClaim('name', 'Integration token')
-            ->withClaim($scopeClaim, $scopes)
+            ->withClaim('scopes', $scopes)
             ->getToken($config->signer(), $config->signingKey())
             ->toString();
     }
 
-    /**
-     * @deprecated Use makeProtectedApiAccessToken() instead.
-     *
-     * @param  array<int, string>  $permissions
-     */
-    protected function makeApplicationAccessToken(
-        array $permissions = ['invoices.read'],
-        string $tenantId = 'tenant-1',
-        ?DateTimeImmutable $issuedAt = null,
-        ?DateTimeImmutable $expiresAt = null,
-    ): string {
-        return $this->makeProtectedApiAccessToken(
-            scopes: $permissions,
-            tenantId: $tenantId,
-            issuedAt: $issuedAt,
-            expiresAt: $expiresAt,
-            audience: 'application_token',
-            scopeClaim: 'permissions',
-        );
-    }
 }

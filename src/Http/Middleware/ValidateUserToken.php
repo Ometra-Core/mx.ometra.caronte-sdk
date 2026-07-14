@@ -86,7 +86,7 @@ class ValidateUserToken
 
     private function loginForwardUrl(Request $request): string
     {
-        $loginUrl = (string) config('caronte.login_url');
+        $loginUrl = (string) config('caronte.routes.login_url');
 
         if (! $this->shouldRememberIntendedUrl($request)) {
             return $loginUrl;

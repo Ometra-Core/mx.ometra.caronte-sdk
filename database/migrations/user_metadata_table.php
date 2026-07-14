@@ -9,7 +9,6 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -67,11 +66,13 @@ return new class extends Migration
                 $table->engine = 'InnoDB';
             });
 
-            if (Schema::hasColumn($tableName, 'tenant_id')) {
-                DB::table($tableName)
-                    ->whereNull('tenant_id')
-                    ->update(['tenant_id' => (string) config('caronte.tenancy.tenant_id', 'default')]);
+            // A legacy v5 table still needs its tenant values migrated before
+            // the final composite primary key can be installed. The v6
+            // standardization migration performs that data migration safely.
+            if (Schema::hasColumn($tableName, 'id_tenant')) {
+                return;
             }
+
             $currentPrimaryColumns = $this->getPrimaryColumns($tableName);
 
             if ($currentPrimaryColumns !== $this->expectedPrimaryColumns) {
@@ -100,7 +101,10 @@ return new class extends Migration
             $indexes = $schemaBuilder->getIndexes($tableName);
 
             foreach ($indexes as $index) {
-                if (strtolower((string) ($index['name'] ?? '')) === 'primary') {
+                if (
+                    ($index['primary'] ?? false) === true
+                    || strtolower((string) ($index['name'] ?? '')) === 'primary'
+                ) {
                     return array_values($index['columns'] ?? []);
                 }
             }

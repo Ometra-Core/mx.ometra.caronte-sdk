@@ -71,8 +71,8 @@ class CommandBehaviorTest extends TestCase
 
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/applications/roles'
-                && $this->hasValidApplicationTokenHeader($request)
-                && $this->hasValidGroupTokenHeader($request);
+                && $this->hasValidGroupTokenHeader($request)
+                && ! $request->hasHeader('X-Application-Token');
         });
     }
 
@@ -92,35 +92,6 @@ class CommandBehaviorTest extends TestCase
         ]);
 
         $this->artisan('caronte:protected-api:scopes:sync')
-            ->expectsOutput('Protected API scopes synchronized')
-            ->assertExitCode(0);
-
-        Http::assertSent(function ($request): bool {
-            return $request->url() === 'https://caronte.test/api/applications/scopes'
-                && $request->method() === 'PUT'
-                && $this->hasValidApplicationTokenHeader($request)
-                && in_array('invoices.read', array_column($request['scopes'], 'scope'), true)
-                && in_array('invoices.write', array_column($request['scopes'], 'scope'), true);
-        });
-    }
-
-    public function test_legacy_permissions_sync_command_maps_permissions_to_scopes_endpoint(): void
-    {
-        config()->set('caronte.protected_api.scopes', []);
-        config()->set('caronte.permissions', [
-            'invoices.read' => 'Read invoices',
-            ['permission' => 'invoices.write', 'description' => 'Write invoices'],
-        ]);
-
-        Http::fake([
-            'https://caronte.test/api/applications/scopes' => Http::response([
-                'status' => 200,
-                'message' => 'Protected API scopes synchronized',
-                'data' => ['scopes' => []],
-            ], 200),
-        ]);
-
-        $this->artisan('caronte:permissions:sync')
             ->expectsOutput('Protected API scopes synchronized')
             ->assertExitCode(0);
 
@@ -252,8 +223,8 @@ class CommandBehaviorTest extends TestCase
 
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/application-groups/current/roles'
-                && $this->hasValidApplicationTokenHeader($request)
-                && $this->hasValidGroupTokenHeader($request);
+                && $this->hasValidGroupTokenHeader($request)
+                && ! $request->hasHeader('X-Application-Token');
         });
     }
 

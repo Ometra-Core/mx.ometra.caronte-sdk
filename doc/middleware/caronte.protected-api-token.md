@@ -12,8 +12,7 @@ Class: Ometra\Caronte\Http\Middleware\ValidateProtectedApiAccessToken
 1. The middleware reads the `Authorization` bearer token.
 2. The token is parsed and validated as a protected API access token.
 3. The resulting context is stored in the container as `CaronteProtectedApiAccessContext`.
-4. The same context is also stored as `CaronteApplicationAccessContext` for compatibility.
-5. The request continues to the next middleware or controller.
+4. The request continues to the next middleware or controller.
 
 ## Flow diagram
 
@@ -42,4 +41,4 @@ flowchart TD
 - Verify the client is sending a JWT in `Authorization: Bearer`.
 - Confirm the token audience claim is `protected_api_access`.
 - Confirm the token is signed with the host app's `CARONTE_APP_SECRET`.
-- Check issuer enforcement settings if `config(caronte.enforce_issuer)` is true.
+- Confirm the token issuer matches `config(caronte.issuer_id)`.

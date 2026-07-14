@@ -1,16 +1,16 @@
-# SDK legacy deprecations
+# Legacy removals in SDK 6.0.0
 
-SDK 4.x continues to accept legacy contracts during migration and reports each deprecated feature once per process. Deprecated HTTP middleware and management routes also return `Deprecation: true`.
+SDK 6.0.0 removes the compatibility contracts that remained available in SDK 5.x.
 
-| Deprecated | Replacement | Removal |
+| Removed | Replacement | Removal |
 | --- | --- | --- |
-| `CARONTE_AUTH_MODE=legacy` | `CARONTE_AUTH_MODE=jwt` | SDK 5 |
-| Nested JWT claim `user` | Top-level user claims | SDK 5 |
-| `caronte.permissions` and entry key `permission` for protected APIs | `caronte.protected_api.scopes` and `scope` | SDK 5 |
-| JWT claim `permissions` | `scopes` | SDK 5 |
-| Audience `application_token` | `protected_api_access` | SDK 5 |
-| `caronte.app-permissions` | `caronte.protected-api-scopes` | SDK 5 |
-| `caronte:permissions:sync` | `caronte:protected-api:scopes:sync` | SDK 5 |
-| POST management user/role mutation wrappers | Direct REST user routes and role sync | SDK 5 |
+| `CARONTE_AUTH_MODE=legacy` | `CARONTE_AUTH_MODE=jwt` | SDK 6.0.0 |
+| Nested JWT claim `user` | Top-level user claims | SDK 6.0.0 |
+| `caronte.permissions` and entry key `permission` for protected APIs | `caronte.protected_api.scopes` and `scope` | SDK 6.0.0 |
+| JWT claim `permissions` | `scopes` | SDK 6.0.0 |
+| Audience `application_token` | `protected_api_access` | SDK 6.0.0 |
+| `caronte.app-permissions` | `caronte.protected-api-scopes` | SDK 6.0.0 |
+| `caronte:permissions:sync` | `caronte:protected-api:scopes:sync` | SDK 6.0.0 |
+| POST management user/role mutation wrappers | Direct REST user routes and role sync | SDK 6.0.0 |
 
-Before upgrading, run representative requests with log monitoring enabled and eliminate every SDK deprecation warning and `Deprecation` response header.
+Before upgrading, replace every removed contract listed above. SDK 6.0.0 no longer emits deprecation warnings because those paths no longer exist.

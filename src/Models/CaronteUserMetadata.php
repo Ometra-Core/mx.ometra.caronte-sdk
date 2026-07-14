@@ -8,6 +8,7 @@
 
 namespace Ometra\Caronte\Models;
 
+use Equidna\BeeHive\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Equidna\Toolkit\Traits\Database\HasCompositePrimaryKey;
@@ -21,10 +22,12 @@ use Equidna\Toolkit\Traits\Database\HasCompositePrimaryKey;
  */
 class CaronteUserMetadata extends Model
 {
+    use BelongsToTenant;
     use HasCompositePrimaryKey;
 
     protected $table;
     protected $primaryKey = ['uri_user', 'tenant_id', 'scope', 'key'];
+    protected string $tenantKey = 'tenant_id';
 
     public $timestamps = false;
 

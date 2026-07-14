@@ -1,19 +1,23 @@
 # Breaking Changes
 
-## v5.0.0
+## v6.0.0
 
 ### Breaking status
 
-Breaking changes were introduced in this release.
+Breaking changes are introduced in this release. Version 5.0.0 was already
+published, so these removals require the new v6.0.0 major line.
 
 ### What changed
 
-1. The Protected API permission compatibility layer has been removed. Protected API authorization now exclusively uses scopes.
-2. The legacy `id_tenant` compatibility layer has been removed. `tenant_id` is now the only supported tenant identifier across runtime payloads, JWT handling, persistence, command output, and frontend integrations.
+1. The legacy `id_tenant` contract is removed. `tenant_id` is the only supported tenant identifier across runtime payloads, JWT handling, persistence, command output, and frontend integrations.
+2. Compatibility APIs and aliases that remain deprecated during 5.x are removed.
+3. Application and group credentials are mutually exclusive. A configured group sends only `X-Group-Token`; other applications send only `X-Application-Token`.
+4. User JWTs without the complete v6 registered, temporal, audience, and `tenant_id` claim set are rejected.
+5. Browser `callback_url` values must resolve to a relative or same-origin HTTP(S) destination.
 
 ### Migration recommendations
 
-1. Replace any remaining permission-based Protected API configuration with `protected_api.scopes`.
+1. Update any remaining host-side integrations that use `id_tenant` to use `tenant_id`, including SQL queries, Eloquent models, API payloads, DTOs, serializers, middleware, frontend bindings, and JWT parsing logic.
 
 2. Replace any legacy middleware aliases with the supported scope-based middleware:
 
@@ -26,24 +30,24 @@ Breaking changes were introduced in this release.
 php artisan caronte:protected-api:scopes:sync
 ```
 
-4. Update any remaining host-side integrations that still use `id_tenant` to use `tenant_id`, including:
+4. Verify downstream services and shared libraries emit and consume `tenant_id`.
 
-   - SQL queries
-   - Eloquent models
-   - API payloads
-   - DTOs
-   - Serializers
-   - Custom middleware
-   - Frontend (TypeScript/JavaScript/Blade) bindings
-   - JWT parsing logic
+5. Update grouped Caronte endpoints to accept `X-Group-Token` without `X-Application-Token`. Reject requests that contain both headers.
 
-5. Verify any downstream services or shared libraries interacting with the SDK also emit and consume `tenant_id`.
+6. Back up local metadata before migration. `UsersMetadata` rows are resolved from their legacy tenant or a unique matching user; orphaned or ambiguous rows are deleted and logged.
 
 ### Notes
 
-- All compatibility layers deprecated during the 4.x release cycle have been removed.
+- Compatibility layers retained through 5.x are removed in 6.0.0.
 - Protected API authorization now only supports scopes.
 - The package no longer provides backwards compatibility for `id_tenant`.
+- `source_app_id` and `source_app_cn` remain in group tokens for operational context, but a shared group secret does not provide non-repudiation between group members.
+
+## v5.0.0
+
+Version 5.0.0 was published on 2026-06-26. Its released tenant contract used
+`id_tenant`; the Bee Hive-aligned `tenant_id` contract and removal of the
+remaining compatibility layers are therefore removed in v6.0.0.
 
 ## v4.6.0
 

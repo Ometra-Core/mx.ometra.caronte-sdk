@@ -23,7 +23,7 @@ use Ometra\Caronte\Oidc\Base64Url;
 use Ometra\Caronte\Oidc\OidcClient;
 use Ometra\Caronte\Oidc\OidcTokenValidator;
 use Ometra\Caronte\Support\CaronteApplicationToken;
-use Ometra\Caronte\Support\LegacyDeprecation;
+use InvalidArgumentException;
 use RuntimeException;
 use stdClass;
 
@@ -91,7 +91,7 @@ final class CaronteUserToken
             return $token;
         } catch (CaronteApiException $exception) {
             if (static::isStillValidExchangeRejection($exception)) {
-                return static::currentLegacyToken($rawToken);
+                return static::currentValidToken($rawToken);
             }
 
             Caronte::clearToken();
@@ -184,12 +184,29 @@ final class CaronteUserToken
             throw new BadRequestException('Invalid token');
         }
 
-        if (!$token->claims()->has('user') && !$token->claims()->has('sub')) {
-            throw new UnprocessableEntityException('Invalid token');
+        foreach (['iss', 'aud', 'sub', 'jti', 'iat', 'nbf', 'exp', 'token_audience', 'tenant_id'] as $claim) {
+            if (! $token->claims()->has($claim)) {
+                throw new UnprocessableEntityException('Invalid token: missing required claim ' . $claim . '.');
+            }
         }
 
-        if (!$token->claims()->has('app_id') && !$token->claims()->has('group_id')) {
-            throw new UnprocessableEntityException('Invalid token');
+        foreach (['iss', 'sub', 'jti', 'token_audience'] as $claim) {
+            if (trim((string) $token->claims()->get($claim, '')) === '') {
+                throw new UnprocessableEntityException('Invalid token: claim ' . $claim . ' must not be empty.');
+            }
+        }
+
+        foreach (['iat', 'nbf', 'exp'] as $claim) {
+            if (! $token->claims()->get($claim) instanceof DateTimeImmutable) {
+                throw new UnprocessableEntityException('Invalid token: claim ' . $claim . ' must be a date.');
+            }
+        }
+
+        $issuedAt = $token->claims()->get('iat');
+        $expiresAt = $token->claims()->get('exp');
+
+        if ($expiresAt <= $issuedAt) {
+            throw new UnprocessableEntityException('Invalid token: exp must be after iat.');
         }
 
         return $token;
@@ -197,35 +214,12 @@ final class CaronteUserToken
 
     public static function userPayload(Plain $token): stdClass
     {
-        if (static::hasExplicitUserClaims($token)) {
-            return static::explicitUserPayload($token);
-        }
-
-        $rawUser = $token->claims()->get('user', '');
-        LegacyDeprecation::warn('nested user JWT claim', 'top-level user claims');
-
-        if (!is_string($rawUser) || $rawUser === '') {
-            throw new UnprocessableEntityException('Invalid token user payload');
-        }
-
-        $user = json_decode($rawUser);
-
-        if (!$user instanceof stdClass) {
-            throw new UnprocessableEntityException('Invalid token user payload');
-        }
-
-        return $user;
+        return static::explicitUserPayload($token);
     }
 
     private static function shouldUseOidc(string $rawToken): bool
     {
         $mode = (string) config('caronte.auth_mode', 'jwt');
-
-        if ($mode === 'legacy') {
-            LegacyDeprecation::warn('auth_mode=legacy', 'auth_mode=jwt');
-
-            return false;
-        }
 
         if ($mode === 'jwt') {
             return false;
@@ -233,6 +227,10 @@ final class CaronteUserToken
 
         if ($mode === 'oidc') {
             return true;
+        }
+
+        if ($mode !== 'dual') {
+            throw new InvalidArgumentException('Caronte: auth_mode must be jwt, oidc, or dual.');
         }
 
         $parts = explode('.', $rawToken);
@@ -255,11 +253,6 @@ final class CaronteUserToken
         $refreshToken = request()->session()->get('caronte.oidc.refresh_token');
 
         return is_string($refreshToken) && $refreshToken !== '' ? $refreshToken : null;
-    }
-
-    private static function hasExplicitUserClaims(Plain $token): bool
-    {
-        return $token->claims()->has('sub');
     }
 
     private static function explicitUserPayload(Plain $token): stdClass
@@ -340,9 +333,7 @@ final class CaronteUserToken
             new SignedWith($config->signer(), $config->signingKey()),
         ];
 
-        if (config('caronte.enforce_issuer')) {
-            $constraints[] = new IssuedBy((string) config('caronte.issuer_id'));
-        }
+        $constraints[] = new IssuedBy((string) config('caronte.issuer_id'));
 
         if (!$validator->validate($token, ...$constraints)) {
             throw new UnprocessableEntityException('Invalid token signature or issuer.');
@@ -351,20 +342,38 @@ final class CaronteUserToken
 
     private static function assertApplicationClaim(Plain $token): void
     {
-        $audience = (string) $token->claims()->get('token_audience', 'application');
+        $audience = (string) $token->claims()->get('token_audience', '');
 
         if ($audience === 'application_group') {
             $groupId = (string) $token->claims()->get('group_id', '');
+            $appId = trim((string) $token->claims()->get('app_id', ''));
+            $sourceAppId = trim((string) $token->claims()->get('source_app_id', ''));
 
-            if ($groupId === '' || $groupId !== CaronteApplicationToken::groupId()) {
+            if (
+                $groupId === ''
+                || $groupId !== CaronteApplicationToken::groupId()
+                || ! $token->isPermittedFor($groupId)
+            ) {
                 throw new UnprocessableEntityException('Token application group does not match the configured Caronte application group.');
+            }
+
+            if ($appId === '' || $sourceAppId === '' || ! hash_equals($appId, $sourceAppId)) {
+                throw new UnprocessableEntityException('Token source application is invalid.');
             }
 
             return;
         }
 
-        $appId = (string) $token->claims()->get('app_id');
-        if ($appId !== CaronteApplicationToken::appId()) {
+        if ($audience !== 'application') {
+            throw new UnprocessableEntityException('Invalid token audience.');
+        }
+
+        $appId = trim((string) $token->claims()->get('app_id', ''));
+        if (
+            $appId === ''
+            || $appId !== CaronteApplicationToken::appId()
+            || ! $token->isPermittedFor($appId)
+        ) {
             throw new UnprocessableEntityException('Token application does not match the configured Caronte application.');
         }
     }
@@ -372,7 +381,7 @@ final class CaronteUserToken
     private static function assertNotBefore(Plain $token): void
     {
         $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        $leewaySeconds = (int) config('caronte.token_clock_skew_seconds', 60);
+        $leewaySeconds = (int) config('caronte.token.clock_skew_seconds', 60);
 
         foreach (['iat', 'nbf'] as $claim) {
             if (!$token->claims()->has($claim)) {
@@ -392,22 +401,17 @@ final class CaronteUserToken
 
     private static function isExpired(Plain $token): bool
     {
-        if (!$token->claims()->has('exp')) {
-            return false;
-        }
-
         $expiresAt = $token->claims()->get('exp');
+        $clockSkew = max(0, (int) config('caronte.token.clock_skew_seconds', 60));
 
         return $expiresAt instanceof DateTimeImmutable
-            && $expiresAt <= new DateTimeImmutable('now', new DateTimeZone('UTC'));
+            && $expiresAt->getTimestamp() <= (
+                (new DateTimeImmutable('now', new DateTimeZone('UTC')))->getTimestamp() - $clockSkew
+            );
     }
 
     private static function shouldRefresh(Plain $token): bool
     {
-        if (!$token->claims()->has('exp')) {
-            return false;
-        }
-
         $expiresAt = $token->claims()->get('exp');
 
         return $expiresAt instanceof DateTimeImmutable
@@ -430,7 +434,7 @@ final class CaronteUserToken
 
     private static function refreshLeewaySeconds(): int
     {
-        return max(0, (int) config('caronte.token_refresh_leeway_seconds', 60));
+        return max(0, (int) config('caronte.token.refresh_leeway_seconds', 60));
     }
 
     private static function isStillValidExchangeRejection(CaronteApiException $exception): bool
@@ -439,13 +443,17 @@ final class CaronteUserToken
             && strcasecmp($exception->getMessage(), 'Token is still valid') === 0;
     }
 
-    private static function currentLegacyToken(string $rawToken): Plain
+    private static function currentValidToken(string $rawToken): Plain
     {
         $token = static::decodeToken($rawToken);
 
         static::assertSignatureAndIssuer($token);
         static::assertApplicationClaim($token);
         static::assertNotBefore($token);
+
+        if (static::isExpired($token)) {
+            throw new UnprocessableEntityException('Token has expired. Please login again.');
+        }
 
         if (config('caronte.update_local_user')) {
             Caronte::updateUserData(static::userPayload($token));
@@ -461,10 +469,10 @@ final class CaronteUserToken
 
     private static function configForToken(Plain $token): Configuration
     {
-        $audience = (string) $token->claims()->get('token_audience', 'application');
-
-        return $audience === 'application_group'
-            ? static::getGroupConfig()
-            : static::getConfig();
+        return match ((string) $token->claims()->get('token_audience', '')) {
+            'application' => static::getConfig(),
+            'application_group' => static::getGroupConfig(),
+            default => throw new UnprocessableEntityException('Invalid token audience.'),
+        };
     }
 }
