@@ -34,7 +34,7 @@ class ListGroupUsers extends Command
                 ['URI', 'Tenant', 'Name', 'Email', 'Group roles'],
                 array_map(fn(array $user): array => [
                     $user['uri_user'] ?? '',
-                    $user['id_tenant'] ?? '',
+                    $user['tenant_id'] ?? '',
                     $user['name'] ?? '',
                     $user['email'] ?? '',
                     (string) count((array) ($user['roles'] ?? [])),

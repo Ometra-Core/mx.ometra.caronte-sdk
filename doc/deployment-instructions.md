@@ -31,7 +31,9 @@ Common optional variables:
 
 - CARONTE_ISSUER_ID=caronte
 - CARONTE_ENFORCE_ISSUER=true
-- CARONTE_AUTH_MODE=legacy
+- CARONTE_AUTH_MODE=jwt
+
+Run `php artisan migrate` during the SDK upgrade. The tenant-column standardization migration backfills `Users.tenant_id` from legacy `Users.id_tenant` and then removes `id_tenant`. If any row has neither value, the migration stops without dropping the legacy column; repair those rows explicitly and rerun it.
 - CARONTE_LOGIN_URL=/login
 - CARONTE_SUCCESS_URL=/
 - CARONTE_SESSION_KEY=caronte.user_token

@@ -16,6 +16,7 @@ use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use Ometra\Caronte\Support\CaronteApplicationAccessContext;
 use Ometra\Caronte\Support\CaronteApplicationToken;
 use Ometra\Caronte\Support\CaronteProtectedApiAccessContext;
+use Ometra\Caronte\Support\LegacyDeprecation;
 use RuntimeException;
 
 final class CaronteProtectedApiAccessToken
@@ -38,7 +39,7 @@ final class CaronteProtectedApiAccessToken
         return new CaronteApplicationAccessContext(
             tokenId: (string) $token->claims()->get('jti'),
             appId: (string) $token->claims()->get('app_id'),
-            tenantId: (string) $token->claims()->get('id_tenant'),
+            tenantId: (string) $token->claims()->get('tenant_id'),
             name: (string) $token->claims()->get('name', ''),
             scopes: collect($scopes)
                 ->map(fn(mixed $scope): string => strtolower(trim((string) $scope)))
@@ -65,7 +66,7 @@ final class CaronteProtectedApiAccessToken
             throw new BadRequestException('Invalid Protected API Access Token');
         }
 
-        foreach (['jti', 'app_id', 'id_tenant', 'token_audience'] as $claim) {
+        foreach (['jti', 'app_id', 'tenant_id', 'token_audience'] as $claim) {
             if (! $token->claims()->has($claim)) {
                 throw new UnprocessableEntityException('Invalid Protected API Access Token');
             }
@@ -75,6 +76,10 @@ final class CaronteProtectedApiAccessToken
 
         if (! in_array($audience, [static::AUDIENCE, static::LEGACY_AUDIENCE], true)) {
             throw new UnprocessableEntityException('Invalid Protected API Access Token audience.');
+        }
+
+        if ($audience === static::LEGACY_AUDIENCE) {
+            LegacyDeprecation::warn('protected API audience application_token', 'protected_api_access');
         }
 
         if ($audience === static::AUDIENCE) {
@@ -124,6 +129,7 @@ final class CaronteProtectedApiAccessToken
         $legacyPermissions = $token->claims()->get('permissions', null);
 
         if (is_array($legacyPermissions)) {
+            LegacyDeprecation::warn('permissions JWT claim', 'scopes JWT claim');
             return $legacyPermissions;
         }
 
@@ -156,7 +162,7 @@ final class CaronteProtectedApiAccessToken
             throw new UnprocessableEntityException('Protected API Access Token does not match the configured Caronte application.');
         }
 
-        if ((string) $token->claims()->get('id_tenant', '') === '') {
+        if ((string) $token->claims()->get('tenant_id', '') === '') {
             throw new UnprocessableEntityException('Protected API Access Token tenant is required.');
         }
     }

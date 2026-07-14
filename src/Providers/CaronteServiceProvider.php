@@ -27,6 +27,7 @@ use Ometra\Caronte\Contracts\SendsPasswordRecovery;
 use Ometra\Caronte\Contracts\SendsTwoFactorChallenge;
 use Ometra\Caronte\Facades\Caronte as CaronteFacade;
 use Ometra\Caronte\Helpers\PermissionHelper;
+use Ometra\Caronte\Http\Middleware\DeprecatedFeature;
 use Ometra\Caronte\Http\Middleware\ResolveApplicationContext;
 use Ometra\Caronte\Http\Middleware\ValidateApplicationAccessPermissions;
 use Ometra\Caronte\Http\Middleware\ValidateApplicationAccessToken;
@@ -101,6 +102,7 @@ class CaronteServiceProvider extends ServiceProvider
         $router->aliasMiddleware('caronte.protected-api-scopes', ValidateProtectedApiScopes::class);
         $router->aliasMiddleware('caronte.app-token', ValidateApplicationAccessToken::class);
         $router->aliasMiddleware('caronte.app-permissions', ValidateApplicationAccessPermissions::class);
+        $router->aliasMiddleware('caronte.deprecated', DeprecatedFeature::class);
 
         Route::middleware(['web'])->group(function (): void {
             $this->loadRoutesFrom(__DIR__ . '/../../routes/web.php');

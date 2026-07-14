@@ -40,7 +40,7 @@ class ListUsers extends Command
                 ['URI', 'Tenant', 'Name', 'Email'],
                 array_map(fn(array $user): array => [
                     $user['uri_user'] ?? '',
-                    $user['id_tenant'] ?? '',
+                    $user['tenant_id'] ?? '',
                     $user['name'] ?? '',
                     $user['email'] ?? '',
                 ], $users)

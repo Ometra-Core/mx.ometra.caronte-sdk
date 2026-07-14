@@ -98,7 +98,7 @@ abstract class TestCase extends Orchestra
             'uri_user' => 'user-123',
             'name' => 'Root User',
             'email' => 'root@example.com',
-            'id_tenant' => 'tenant-1',
+            'tenant_id' => 'tenant-1',
             'roles' => [
                 [
                     'name' => 'root',
@@ -126,7 +126,8 @@ abstract class TestCase extends Orchestra
             ->issuedAt($issuedAt)
             ->canOnlyBeUsedAfter($issuedAt)
             ->expiresAt($expiresAt)
-            ->withClaim('id_tenant', $user['id_tenant'] ?? null)
+            ->withClaim('tenant_id', $user['tenant_id'] ?? null)
+            ->withClaim('tenant_name', $user['tenant_name'] ?? '')
             ->withClaim('name', $user['name'])
             ->withClaim('email', $user['email'])
             ->withClaim('roles', $user['roles'])
@@ -172,7 +173,8 @@ abstract class TestCase extends Orchestra
             ->expiresAt($expiresAt)
             ->withClaim('token_audience', 'application')
             ->withClaim('app_id', CaronteApplicationToken::appId())
-            ->withClaim('id_tenant', $user['id_tenant'] ?? null)
+            ->withClaim('tenant_id', $user['tenant_id'] ?? null)
+            ->withClaim('tenant_name', $user['tenant_name'] ?? '')
             ->withClaim('name', $user['name'])
             ->withClaim('email', $user['email'])
             ->withClaim('roles', $user['roles'])
@@ -218,7 +220,7 @@ abstract class TestCase extends Orchestra
             ->identifiedBy('protected-api-token-1')
             ->withClaim('token_audience', $audience)
             ->withClaim('app_id', CaronteApplicationToken::appId())
-            ->withClaim('id_tenant', $tenantId)
+            ->withClaim('tenant_id', $tenantId)
             ->withClaim('name', 'Integration token')
             ->withClaim($scopeClaim, $scopes)
             ->getToken($config->signer(), $config->signingKey())

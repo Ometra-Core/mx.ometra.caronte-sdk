@@ -35,8 +35,8 @@ final class CaronteForwardedUserContextResolver
             );
         }
 
-        $tenantId = isset($user->id_tenant) && trim((string) $user->id_tenant) !== ''
-            ? trim((string) $user->id_tenant)
+        $tenantId = isset($user->tenant_id) && trim((string) $user->tenant_id) !== ''
+            ? trim((string) $user->tenant_id)
             : null;
 
         $tokenId = $token->claims()->has('jti')

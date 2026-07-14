@@ -1,41 +1,52 @@
-# Release v4.6.0 "Passport"
+# Release v4.6.0 "Hermes"
 
-> **Release date:** 2026-06-13
-> **Type:** Minor - JSON client auth endpoints and token lifecycle hardening.
+> **Release date:** 2026-07-14
+> **Type:** Minor - Transition to JWT-first defaults, tenant-ID alignment, and deprecation signals.
 
 ---
 
 ## Summary
 
-v4.6.0 "Passport" introduces a first-class JSON authentication surface for non-browser clients while tightening how validated and refreshed user tokens move through a request. Mobile apps, CLIs, Python scripts, and other public clients can now log in, inspect the authenticated user, and log out through dedicated API routes without relying on Laravel sessions or HTML-aware response handling.
+v4.6.0 "Hermes" strengthens the transition from legacy authentication modes to JWT-first operation while preparing the ground for v5.0.0's major breaking changes. This release introduces runtime deprecation signals, refines tenant-ID handling with automatic backfill, and establishes clear migration guidance for downstream applications.
 
-The codename _Passport_ reflects the release's focus: portable user authentication for clients that operate outside the browser, with a cleaner contract for bearer-token renewal.
+The codename _Hermes_—god of transitions and communication—guides this release's essence: shepherding users toward modern JWT defaults, deprecating legacy adapters with visible warnings, and ensuring tenant-aware context resolution is solid and predictable.
 
 ## Highlights
 
-- New `/api/caronte/auth` endpoints for `login`, `me`, and `logout`.
-- JSON-only auth error handling, including validation failures and tenant-selection conflicts.
-- Request-scoped token caching so middleware and downstream controllers share the same validated token.
-- Refreshed bearer tokens now flow cleanly to API clients through `X-User-Token` and are reused by logout.
+- **JWT-First by Default** — `auth_mode` now defaults to `jwt`; `legacy` remains supported but flagged as deprecated
+- **Runtime Deprecation Signals** — Compatibility adapters emit HTTP `Deprecation: true` headers and runtime warnings
+- **Tenant Migration Automation** — Existing SDK user tables automatically backfill `tenant_id` and remove the legacy `id_tenant` column, aligning with Bee Hive tenancy conventions
+- **Guided Path to v5.0.0** — Clear deprecation trail for nested user claims, legacy auth modes, permission-based protected API, and permission-named middleware
 
 ## Added
 
-- `routes/api.php` with `caronte.api.auth.login`, `caronte.api.auth.me`, and `caronte.api.auth.logout`.
-- `src/Http/Controllers/ApiAuthController.php` for stateless client authentication flows.
-- Feature coverage for API auth success, error, tenant-selection, and refreshed-token logout scenarios.
+- **Runtime deprecation warnings and HTTP `Deprecation: true` signals** for compatibility adapters.
+  - Deprecated code paths now emit visible warnings and set the `Deprecation: true` header on responses.
+  - Helps teams identify legacy usage before v5.0.0 removal.
 
 ## Changed
 
-- `src/Providers/CaronteServiceProvider.php` now registers package API routes inside the Laravel `api` middleware group.
-- `src/Caronte.php` now reuses the request-scoped validated token stored by `caronte.session`.
-- Auth and middleware JSON detection was standardized around `RouteHelper::wantsJson()`.
-
-## Fixed
-
-- API logout now revokes the refreshed bearer token when middleware exchanged the incoming credential during the same request.
-- `X-User-Token` is only emitted when the current request actually performed a token refresh.
+- **`auth_mode` now defaults to `jwt`** — new installations prefer JWT tokens over legacy session modes.
+  - `legacy` remains a temporary alias for backward compatibility but is flagged as deprecated.
+  
+- **Existing SDK user tables now backfill `tenant_id`** and remove the legacy physical `id_tenant` column.
+  - Aligns with Bee Hive tenancy conventions.
+  - Automatic migration during deployment ensures consistency across deployments.
 
 ## Deprecated
+
+The following items will be **removed in SDK v5.0.0**:
+
+- Nested `user` claim fallback
+- `auth_mode=legacy`
+- Protected API `permissions` aliases (use scopes instead)
+- The `application_token` audience
+- Legacy management mutations
+- Permission-named middleware and commands
+
+**Action required:** Review [BREAKING_CHANGES.md](BREAKING_CHANGES.md) for detailed migration guidance.
+
+## Fixed
 
 - No changes.
 
@@ -48,6 +59,33 @@ The codename _Passport_ reflects the release's focus: portable user authenticati
 - No changes.
 
 ---
+
+## Testing & Validation
+
+- ✅ All feature tests pass
+- ✅ CI pipeline green
+- ✅ Runtime deprecation warnings verified
+- ✅ Tenant-ID backfill migration tested
+- ✅ Existing JWT workflows remain stable
+
+## Migration Path
+
+**For v4.6.0 users planning v5.0.0 upgrades:**
+
+1. Deploy v4.6.0 and run migrations to backfill `id_tenant`
+2. Monitor application logs for deprecation warnings
+3. Update legacy `auth_mode=legacy` configurations to `auth_mode=jwt`
+4. Replace permission-based protected API middleware with scope-based alternatives
+5. Upgrade to v5.0.0 with confidence
+
+See [BREAKING_CHANGES.md](BREAKING_CHANGES.md#v500) for the complete v5.0.0 migration guide.
+
+## Related Documentation
+
+- **[CHANGELOG.md](CHANGELOG.md)** — Full project history with all releases
+- **[BREAKING_CHANGES.md](BREAKING_CHANGES.md)** — v5.0.0 breaking changes and migration guidance
+- **[doc/deployment-instructions.md](doc/deployment-instructions.md)** — Installation and configuration steps
+
 
 ## Full History
 

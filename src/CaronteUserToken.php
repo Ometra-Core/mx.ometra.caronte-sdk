@@ -23,6 +23,7 @@ use Ometra\Caronte\Oidc\Base64Url;
 use Ometra\Caronte\Oidc\OidcClient;
 use Ometra\Caronte\Oidc\OidcTokenValidator;
 use Ometra\Caronte\Support\CaronteApplicationToken;
+use Ometra\Caronte\Support\LegacyDeprecation;
 use RuntimeException;
 use stdClass;
 
@@ -201,6 +202,7 @@ final class CaronteUserToken
         }
 
         $rawUser = $token->claims()->get('user', '');
+        LegacyDeprecation::warn('nested user JWT claim', 'top-level user claims');
 
         if (!is_string($rawUser) || $rawUser === '') {
             throw new UnprocessableEntityException('Invalid token user payload');
@@ -217,9 +219,15 @@ final class CaronteUserToken
 
     private static function shouldUseOidc(string $rawToken): bool
     {
-        $mode = (string) config('caronte.auth_mode', 'legacy');
+        $mode = (string) config('caronte.auth_mode', 'jwt');
 
         if ($mode === 'legacy') {
+            LegacyDeprecation::warn('auth_mode=legacy', 'auth_mode=jwt');
+
+            return false;
+        }
+
+        if ($mode === 'jwt') {
             return false;
         }
 
@@ -257,13 +265,14 @@ final class CaronteUserToken
     private static function explicitUserPayload(Plain $token): stdClass
     {
         $subject = (string) $token->claims()->get('sub', '');
-        $tenantId = $token->claims()->get('id_tenant');
+        $tenantId = $token->claims()->get('tenant_id', null);
 
         $user = new stdClass();
         $user->uri_user = $subject;
         $user->name = (string) $token->claims()->get('name', '');
         $user->email = (string) $token->claims()->get('email', '');
-        $user->id_tenant = $tenantId;
+        $user->tenant_id = $tenantId;
+        $user->tenant_name = (string) $token->claims()->get('tenant_name', '');
         $user->roles = static::normalizeClaimItems($token->claims()->get('roles', []));
         $user->metadata = static::normalizeClaimItems($token->claims()->get('metadata', []));
 

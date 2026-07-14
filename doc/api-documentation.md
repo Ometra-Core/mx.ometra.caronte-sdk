@@ -34,7 +34,7 @@ With default config, login resolves to /login.
 - Request body:
     - email: required email (except pending tenant selection continuation)
     - password: required string for normal login
-    - id_tenant: optional string
+    - tenant_id: optional string
     - tenant_selection_token: optional string
     - callback_url: optional string (plain URL or base64 encoded)
 - Success:
@@ -85,12 +85,12 @@ Base path: `/api/caronte/auth`
 
 - POST `/api/caronte/auth/login` (caronte.api.auth.login)
     - Auth: public
-    - Body: `email`, `password`, optional `id_tenant`, optional `tenant_selection_token`
+    - Body: `email`, `password`, optional `tenant_id`, optional `tenant_selection_token`
     - Success: `200` with `data.token`
-    - Multi-tenant selection: `409` with `data.tenants` (tenant objects include `id_tenant`) and `data.tenant_selection_token`
+    - Multi-tenant selection: `409` with `data.tenants` (tenant objects include `tenant_id`) and `data.tenant_selection_token`
 - GET `/api/caronte/auth/me` (caronte.api.auth.me)
     - Auth: `Authorization: Bearer <user_jwt>` with `caronte.session`
-    - Success: authenticated user, `id_tenant`, roles, and metadata
+    - Success: authenticated user, `tenant_id`, roles, and metadata
 - POST `/api/caronte/auth/logout` (caronte.api.auth.logout)
     - Auth: `Authorization: Bearer <user_jwt>` with `caronte.session`
     - Revokes the current user token through Caronte
@@ -174,7 +174,7 @@ These are not package-owned routes; they are middleware contracts host apps appl
     - X-Tenant-Id required when tenant_required mode is used
     - X-User-Token optional or required when user_required mode is used
 
-Tenant identifier naming in package payloads and claims uses `id_tenant`.
+Tenant identifier naming in package payloads and claims uses `tenant_id`.
 `X-Tenant-Id` remains the incoming transport header for application-context middleware.
 
 Modes:

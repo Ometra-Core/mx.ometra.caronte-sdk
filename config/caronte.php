@@ -21,7 +21,7 @@ return [
     */
     'issuer_id'                => env('CARONTE_ISSUER_ID', 'caronte'),
     'enforce_issuer'           => env('CARONTE_ENFORCE_ISSUER', true),
-    'auth_mode'                => env('CARONTE_AUTH_MODE', 'legacy'), // legacy, oidc, dual
+    'auth_mode'                => env('CARONTE_AUTH_MODE', 'jwt'), // jwt, oidc, dual; legacy is deprecated
     'token_clock_skew_seconds' => (int) env('CARONTE_TOKEN_CLOCK_SKEW_SECONDS', 60),
     'token_refresh_leeway_seconds' => (int) env('CARONTE_TOKEN_REFRESH_LEEWAY_SECONDS', 60),
 
@@ -78,7 +78,7 @@ return [
     */
     'tenancy' => [
         'mode'      => env('CARONTE_TENANCY_MODE', 'multi'),
-        'id_tenant' => env('CARONTE_TENANT_ID', ''),
+        'tenant_id' => env('CARONTE_TENANT_ID', ''),
     ],
 
     /*
