@@ -845,7 +845,8 @@ class MiddlewareBehaviorTest extends TestCase
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/_caronte/application-access-check')
             ->assertOk()
-            ->assertJsonPath('id_tenant', 'tenant-1')
+            ->assertHeaderMissing('Deprecation')
+            ->assertJsonPath('tenant_id', 'tenant-1')
             ->assertJsonPath('scopes.0', 'invoices.read');
     }
 
@@ -906,7 +907,8 @@ class MiddlewareBehaviorTest extends TestCase
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/_caronte/application-access-legacy-check')
             ->assertOk()
-            ->assertJsonPath('id_tenant', 'tenant-1')
+            ->assertHeader('Deprecation', 'true')
+            ->assertJsonPath('tenant_id', 'tenant-1')
             ->assertJsonPath('permissions.0', 'invoices.read');
     }
 
@@ -935,7 +937,8 @@ class MiddlewareBehaviorTest extends TestCase
         $this->withHeader('Authorization', 'Bearer ' . $token)
             ->getJson('/api/_caronte/application-access-legacy-check')
             ->assertOk()
-            ->assertJsonPath('id_tenant', 'tenant-1')
+            ->assertHeader('Deprecation', 'true')
+            ->assertJsonPath('tenant_id', 'tenant-1')
             ->assertJsonPath('permissions.0', 'invoices.read');
     }
 

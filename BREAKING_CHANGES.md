@@ -143,6 +143,8 @@ php artisan caronte:protected-api:scopes:sync
 
 Earlier behavior mixed legacy and modern tenant field naming (`id_tenant` vs `tenant_id`) and allowed single-column assumptions that are unsafe in multi-tenant contexts. This release makes tenant scoping explicit and consistent across migrations, models, helper queries, and token-derived user sync.
 
+The upgrade migration now removes the physical `id_tenant` column after safely backfilling `tenant_id`. Rows without either value stop the migration so tenant context must be repaired explicitly instead of being guessed.
+
 ### Migration
 
 1. Run migrations in the host application:

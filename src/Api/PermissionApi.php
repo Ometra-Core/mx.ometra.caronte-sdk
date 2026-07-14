@@ -2,6 +2,8 @@
 
 namespace Ometra\Caronte\Api;
 
+use Ometra\Caronte\Support\LegacyDeprecation;
+
 /**
  * @deprecated Use ScopeApi instead.
  * This compatibility API will be removed in the next major version.
@@ -15,6 +17,8 @@ class PermissionApi
      */
     public static function showPermissions(): array
     {
+        LegacyDeprecation::warn('PermissionApi::showPermissions', 'ScopeApi::showScopes');
+
         return ScopeApi::showScopes();
     }
 
@@ -26,6 +30,8 @@ class PermissionApi
      */
     public static function syncPermissions(array $permissions): array
     {
+        LegacyDeprecation::warn('PermissionApi::syncPermissions', 'ScopeApi::syncScopes');
+
         return ScopeApi::syncScopes(
             array_map(
                 fn(array $permission): array => [

@@ -16,6 +16,7 @@ use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use Ometra\Caronte\Support\CaronteApplicationAccessContext;
 use Ometra\Caronte\Support\CaronteApplicationToken;
 use Ometra\Caronte\Support\CaronteProtectedApiAccessContext;
+use Ometra\Caronte\Support\LegacyDeprecation;
 use RuntimeException;
 
 final class CaronteProtectedApiAccessToken
@@ -77,6 +78,10 @@ final class CaronteProtectedApiAccessToken
             throw new UnprocessableEntityException('Invalid Protected API Access Token audience.');
         }
 
+        if ($audience === static::LEGACY_AUDIENCE) {
+            LegacyDeprecation::warn('protected API audience application_token', 'protected_api_access');
+        }
+
         if ($audience === static::AUDIENCE) {
             foreach (['iss', 'aud', 'iat', 'nbf', 'exp'] as $claim) {
                 if (! $token->claims()->has($claim)) {
@@ -124,6 +129,7 @@ final class CaronteProtectedApiAccessToken
         $legacyPermissions = $token->claims()->get('permissions', null);
 
         if (is_array($legacyPermissions)) {
+            LegacyDeprecation::warn('permissions JWT claim', 'scopes JWT claim');
             return $legacyPermissions;
         }
 

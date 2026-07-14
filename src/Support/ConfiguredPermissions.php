@@ -13,6 +13,8 @@ class ConfiguredPermissions
      */
     public static function all(): array
     {
+        LegacyDeprecation::warn('ConfiguredPermissions', 'ConfiguredScopes');
+
         return array_map(
             fn(array $scope): array => [
                 'permission' => $scope['scope'],

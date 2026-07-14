@@ -563,7 +563,8 @@ class AuthContractTest extends TestCase
             'uri_user' => 'user-claims',
             'name' => 'Legacy Name',
             'email' => 'legacy@example.com',
-            'id_tenant' => 'legacy-tenant',
+            'tenant_id' => 'legacy-tenant',
+            'tenant_name' => 'Legacy Tenant',
             'roles' => [],
             'metadata' => [],
         ]);
@@ -574,7 +575,8 @@ class AuthContractTest extends TestCase
         $this->assertSame('user-claims', $user->uri_user);
         $this->assertSame('Legacy Name', $user->name);
         $this->assertSame('legacy@example.com', $user->email);
-        $this->assertSame('legacy-tenant', $user->id_tenant);
+        $this->assertSame('legacy-tenant', $user->tenant_id);
+        $this->assertSame('Legacy Tenant', $user->tenant_name);
     }
 
     public function test_user_payload_supports_tokens_without_legacy_user_claim(): void
