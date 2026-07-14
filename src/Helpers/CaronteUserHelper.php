@@ -73,7 +73,7 @@ class CaronteUserHelper
         $query = DB::table((new CaronteUserMetadata())->getTable())
             ->where('uri_user', $uri_user)
             ->where('key', $key)
-            ->where('tenant_id', $tenantId);
+            ->where('id_tenant', $tenantId);
 
         return $query->value('value');
     }
@@ -83,7 +83,7 @@ class CaronteUserHelper
         $tenantId = static::tenantId();
 
         return CaronteUser::where('uri_user', $uriUser)
-            ->where('tenant_id', $tenantId);
+            ->where('id_tenant', $tenantId);
     }
 
     private static function tenantId(): string

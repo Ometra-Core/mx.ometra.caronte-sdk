@@ -35,7 +35,7 @@ final class CaronteProtectedApiAccessToken
         return new CaronteProtectedApiAccessContext(
             tokenId: (string) $token->claims()->get('jti'),
             appId: (string) $token->claims()->get('app_id'),
-            tenantId: (string) $token->claims()->get('tenant_id'),
+            tenantId: (string) $token->claims()->get('id_tenant'),
             name: (string) $token->claims()->get('name', ''),
             scopes: collect($scopes)
                 ->map(fn(mixed $scope): string => strtolower(trim((string) $scope)))
@@ -62,7 +62,7 @@ final class CaronteProtectedApiAccessToken
             throw new BadRequestException('Invalid Protected API Access Token');
         }
 
-        foreach (['jti', 'app_id', 'tenant_id', 'token_audience'] as $claim) {
+        foreach (['jti', 'app_id', 'id_tenant', 'token_audience'] as $claim) {
             if (! $token->claims()->has($claim)) {
                 throw new UnprocessableEntityException('Invalid Protected API Access Token');
             }
@@ -143,7 +143,7 @@ final class CaronteProtectedApiAccessToken
             throw new UnprocessableEntityException('Protected API Access Token does not match the configured Caronte application.');
         }
 
-        if ((string) $token->claims()->get('tenant_id', '') === '') {
+        if ((string) $token->claims()->get('id_tenant', '') === '') {
             throw new UnprocessableEntityException('Protected API Access Token tenant is required.');
         }
     }

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.0] - 2026-07-14 "Ariadne"
+
+### Changed
+
+- Restored Bee Hive's canonical `id_tenant` identifier across JWT claims, API payloads, configuration, persistence, command output, management views, and frontend bindings.
+- Local `Users` and `UsersMetadata` models and composite primary keys now use `id_tenant`.
+- Single-tenant configuration now reads `caronte.tenancy.id_tenant`; the `CARONTE_TENANT_ID` environment variable remains unchanged.
+
+### Fixed
+
+- Added a corrective migration that renames the short-lived `tenant_id` columns back to `id_tenant` in `Users` and `UsersMetadata` without copying or discarding data.
+- Realigned the SDK contract with Bee Hive 3.x after the incompatible tenant-key change published in v6.0.0.
+
+### Removed
+
+- Removed the v6 `tenant_id` contract. Consumers must use `id_tenant`; no runtime alias is provided.
+
+### Security
+
+- Tenant-scoped lookups remain fail-closed and continue to include the canonical tenant key in user and metadata queries.
+
 ## [6.0.0] - 2026-07-14 "Hermes"
 
 ### Changed

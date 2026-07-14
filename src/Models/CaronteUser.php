@@ -27,14 +27,14 @@ class CaronteUser extends Model
     use HasCompositePrimaryKey;
 
     protected $table;
-    protected $primaryKey = ['uri_user', 'tenant_id'];
+    protected $primaryKey = ['uri_user', 'id_tenant'];
     protected $keyType    = 'string';
 
     public $timestamps   = false;
     public $incrementing = false;
 
     protected $fillable = [
-        'tenant_id',
+        'id_tenant',
         'uri_user',
         'name',
         'email'
@@ -42,7 +42,7 @@ class CaronteUser extends Model
 
     protected $hidden = [];
 
-    protected string $tenantKey = 'tenant_id';
+    protected string $tenantKey = 'id_tenant';
 
     /**
      * Initialize the model.
@@ -61,7 +61,7 @@ class CaronteUser extends Model
     public function metadata(): HasMany
     {
         return $this->hasMany(CaronteUserMetadata::class, 'uri_user')
-            ->where('tenant_id', $this->tenant_id);
+            ->where('id_tenant', $this->id_tenant);
     }
 
     /**

@@ -70,11 +70,11 @@ final class Caronte
     {
         $user = $this->getUser();
 
-        if (!isset($user->tenant_id) || $user->tenant_id === null || $user->tenant_id === '') {
+        if (!isset($user->id_tenant) || $user->id_tenant === null || $user->id_tenant === '') {
             throw new TenantMissingException('No tenant provided');
         }
 
-        return (string) $user->tenant_id;
+        return (string) $user->id_tenant;
     }
 
     public static function getRouteUser(): string
@@ -131,8 +131,8 @@ final class Caronte
         }
 
         try {
-            $tenantId = isset($user->tenant_id) && $user->tenant_id !== ''
-                ? (string) $user->tenant_id
+            $tenantId = isset($user->id_tenant) && $user->id_tenant !== ''
+                ? (string) $user->id_tenant
                 : null;
 
             if ($tenantId === null) {
@@ -144,7 +144,7 @@ final class Caronte
                 fn(): CaronteUser => CaronteUser::withoutGlobalScopes()->updateOrCreate(
                     [
                         'uri_user' => $user->uri_user,
-                        'tenant_id' => $tenantId,
+                        'id_tenant' => $tenantId,
                     ],
                     [
                         'name' => $user->name,
@@ -163,7 +163,7 @@ final class Caronte
                 $localUser->metadata()->updateOrCreate(
                     [
                         'uri_user' => $user->uri_user,
-                        'tenant_id' => $tenantId,
+                        'id_tenant' => $tenantId,
                         'scope' => $item->scope ?? CaronteApplicationToken::appId(),
                         'key' => $item->key,
                     ],

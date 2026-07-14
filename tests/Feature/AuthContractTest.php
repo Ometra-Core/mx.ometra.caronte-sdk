@@ -119,8 +119,8 @@ class AuthContractTest extends TestCase
                 'errors' => [
                     'code' => 'tenant_selection_required',
                     'tenants' => [
-                        ['tenant_id' => 'tenant-a', 'name' => 'Tenant A', 'global' => false],
-                        ['tenant_id' => 'tenant-b', 'name' => 'Tenant B', 'global' => false],
+                        ['id_tenant' => 'tenant-a', 'name' => 'Tenant A', 'global' => false],
+                        ['id_tenant' => 'tenant-b', 'name' => 'Tenant B', 'global' => false],
                     ],
                     'tenant_selection_token' => 'selection-token',
                 ],
@@ -132,7 +132,7 @@ class AuthContractTest extends TestCase
             'password' => 'Password123!',
         ])
             ->assertStatus(409)
-            ->assertJsonPath('data.tenants.0.tenant_id', 'tenant-a')
+            ->assertJsonPath('data.tenants.0.id_tenant', 'tenant-a')
             ->assertJsonPath('data.tenant_selection_token', 'selection-token');
 
         $this->assertFalse(session()->has('caronte.pending_login'));
@@ -152,7 +152,7 @@ class AuthContractTest extends TestCase
 
         $this->postJson('/api/caronte/auth/login', [
             'email' => 'shared@example.com',
-            'tenant_id' => 'tenant-b',
+            'id_tenant' => 'tenant-b',
             'tenant_selection_token' => 'selection-token',
         ])
             ->assertOk()
@@ -161,7 +161,7 @@ class AuthContractTest extends TestCase
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/auth/login'
                 && $request['email'] === 'shared@example.com'
-                && ($request['tenant_id'] ?? null) === 'tenant-b'
+                && ($request['id_tenant'] ?? null) === 'tenant-b'
                 && ($request['tenant_selection_token'] ?? null) === 'selection-token'
                 && ! array_key_exists('password', $request->data());
         });
@@ -176,7 +176,7 @@ class AuthContractTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.user.uri_user', 'user-123')
             ->assertJsonPath('data.user.email', 'root@example.com')
-            ->assertJsonPath('data.tenant_id', 'tenant-1')
+            ->assertJsonPath('data.id_tenant', 'tenant-1')
             ->assertJsonPath('data.roles.0.name', 'root');
     }
 
@@ -193,7 +193,7 @@ class AuthContractTest extends TestCase
             'uri_user' => 'user-foreign',
             'name' => 'Foreign User',
             'email' => 'foreign@example.com',
-            'tenant_id' => 'tenant-1',
+            'id_tenant' => 'tenant-1',
             'roles' => [
                 [
                     'name' => 'viewer',
@@ -245,7 +245,7 @@ class AuthContractTest extends TestCase
             'uri_user' => 'user-123',
             'name' => 'Root User',
             'email' => 'root@example.com',
-            'tenant_id' => 'tenant-1',
+            'id_tenant' => 'tenant-1',
             'roles' => [
                 [
                     'name' => 'root',
@@ -369,8 +369,8 @@ class AuthContractTest extends TestCase
                 'errors' => [
                     'code' => 'tenant_selection_required',
                     'tenants' => [
-                        ['tenant_id' => 'tenant-a', 'name' => 'Tenant A', 'global' => false],
-                        ['tenant_id' => 'tenant-b', 'name' => 'Tenant B', 'global' => false],
+                        ['id_tenant' => 'tenant-a', 'name' => 'Tenant A', 'global' => false],
+                        ['id_tenant' => 'tenant-b', 'name' => 'Tenant B', 'global' => false],
                     ],
                     'tenant_selection_token' => 'selection-token',
                 ],
@@ -383,7 +383,7 @@ class AuthContractTest extends TestCase
         ]);
 
         $response->assertRedirect('/login');
-        $response->assertSessionHas('data.tenants.0.tenant_id', 'tenant-a');
+        $response->assertSessionHas('data.tenants.0.id_tenant', 'tenant-a');
         $response->assertSessionHas('info', 'Select a tenant to continue.');
         $response->assertSessionHasNoErrors();
         $this->assertSame(
@@ -407,23 +407,23 @@ class AuthContractTest extends TestCase
         $this->post('/login', [
             'email' => 'shared@example.com',
             'password' => 'Password123!',
-            'tenant_id' => 'tenant-b',
+            'id_tenant' => 'tenant-b',
         ])->assertRedirect('/');
 
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/auth/login'
                 && $request['email'] === 'shared@example.com'
                 && $request['password'] === 'Password123!'
-                && ($request['tenant_id'] ?? null) === 'tenant-b';
+                && ($request['id_tenant'] ?? null) === 'tenant-b';
         });
     }
 
     public function test_single_tenant_login_sends_configured_tenant_to_caronte(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
-        config()->set('caronte.tenancy.tenant_id', 'mobig');
+        config()->set('caronte.tenancy.id_tenant', 'mobig');
 
-        $token = $this->makeToken(['tenant_id' => 'mobig'] + [
+        $token = $this->makeToken(['id_tenant' => 'mobig'] + [
             'uri_user' => 'user-123',
             'name' => 'Root User',
             'email' => 'root@example.com',
@@ -452,19 +452,19 @@ class AuthContractTest extends TestCase
 
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/auth/login'
-                && ($request['tenant_id'] ?? null) === 'mobig';
+                && ($request['id_tenant'] ?? null) === 'mobig';
         });
     }
 
     public function test_single_tenant_login_rejects_explicit_tenant_mismatch(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
-        config()->set('caronte.tenancy.tenant_id', 'mobig');
+        config()->set('caronte.tenancy.id_tenant', 'mobig');
 
         $this->postJson('/login', [
             'email' => 'root@example.com',
             'password' => 'Password123!',
-            'tenant_id' => 'other-tenant',
+            'id_tenant' => 'other-tenant',
         ])
             ->assertStatus(403)
             ->assertJsonPath('message', 'Tenant mismatch.');
@@ -482,7 +482,7 @@ class AuthContractTest extends TestCase
             }
 
             if (
-                ($request['tenant_id'] ?? null) === 'tenant-b'
+                ($request['id_tenant'] ?? null) === 'tenant-b'
                 && ($request['tenant_selection_token'] ?? null) === 'selection-token'
                 && ! array_key_exists('password', $request->data())
             ) {
@@ -499,8 +499,8 @@ class AuthContractTest extends TestCase
                 'errors' => [
                     'code' => 'tenant_selection_required',
                     'tenants' => [
-                        ['tenant_id' => 'tenant-a', 'name' => 'Tenant A', 'global' => false],
-                        ['tenant_id' => 'tenant-b', 'name' => 'Tenant B', 'global' => false],
+                        ['id_tenant' => 'tenant-a', 'name' => 'Tenant A', 'global' => false],
+                        ['id_tenant' => 'tenant-b', 'name' => 'Tenant B', 'global' => false],
                     ],
                     'tenant_selection_token' => 'selection-token',
                 ],
@@ -514,7 +514,7 @@ class AuthContractTest extends TestCase
 
         $this->post('/login', [
             'email' => 'shared@example.com',
-            'tenant_id' => 'tenant-b',
+            'id_tenant' => 'tenant-b',
         ])->assertRedirect('/');
 
         $this->assertSame($token, session(config('caronte.session_key')));
@@ -523,7 +523,7 @@ class AuthContractTest extends TestCase
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/auth/login'
                 && $request['email'] === 'shared@example.com'
-                && ($request['tenant_id'] ?? null) === 'tenant-b'
+                && ($request['id_tenant'] ?? null) === 'tenant-b'
                 && ($request['tenant_selection_token'] ?? null) === 'selection-token'
                 && ! array_key_exists('password', $request->data());
         });
@@ -534,17 +534,17 @@ class AuthContractTest extends TestCase
         Schema::dropIfExists('Users');
         Schema::create('Users', function (Blueprint $table): void {
             $table->string('uri_user', 40);
-            $table->string('tenant_id', 64)->index();
+            $table->string('id_tenant', 64)->index();
             $table->string('name', 150);
             $table->string('email', 150);
-            $table->primary(['uri_user', 'tenant_id']);
+            $table->primary(['uri_user', 'id_tenant']);
         });
 
         Caronte::updateUserData((object) [
             'uri_user' => 'user-123',
             'name' => 'Root User',
             'email' => 'root@example.com',
-            'tenant_id' => 'tenant-1',
+            'id_tenant' => 'tenant-1',
             'metadata' => [],
         ]);
 
@@ -552,8 +552,8 @@ class AuthContractTest extends TestCase
             'tenant-1',
             CaronteUser::withoutGlobalScopes()
                 ->where('uri_user', 'user-123')
-                ->where('tenant_id', 'tenant-1')
-                ->value('tenant_id')
+                ->where('id_tenant', 'tenant-1')
+                ->value('id_tenant')
         );
     }
 
@@ -563,7 +563,7 @@ class AuthContractTest extends TestCase
             'uri_user' => 'user-claims',
             'name' => 'Claim User',
             'email' => 'claims@example.com',
-            'tenant_id' => 'claims-tenant',
+            'id_tenant' => 'claims-tenant',
             'tenant_name' => 'Claims Tenant',
             'roles' => [],
             'metadata' => [],
@@ -575,7 +575,7 @@ class AuthContractTest extends TestCase
         $this->assertSame('user-claims', $user->uri_user);
         $this->assertSame('Claim User', $user->name);
         $this->assertSame('claims@example.com', $user->email);
-        $this->assertSame('claims-tenant', $user->tenant_id);
+        $this->assertSame('claims-tenant', $user->id_tenant);
         $this->assertSame('Claims Tenant', $user->tenant_name);
     }
 
@@ -585,7 +585,7 @@ class AuthContractTest extends TestCase
             'uri_user' => 'user-flat',
             'name' => 'Flat Claim User',
             'email' => 'flat@example.com',
-            'tenant_id' => 'tenant-flat',
+            'id_tenant' => 'tenant-flat',
             'roles' => [
                 [
                     'name' => 'root',
@@ -608,7 +608,7 @@ class AuthContractTest extends TestCase
         $this->assertSame('user-flat', $user->uri_user);
         $this->assertSame('Flat Claim User', $user->name);
         $this->assertSame('flat@example.com', $user->email);
-        $this->assertSame('tenant-flat', $user->tenant_id);
+        $this->assertSame('tenant-flat', $user->id_tenant);
         $this->assertSame('root', $user->roles[0]->name);
         $this->assertSame('theme', $user->metadata[0]->key);
     }
@@ -706,7 +706,7 @@ class AuthContractTest extends TestCase
             'routes' => $routes,
             'callback_url' => null,
             'tenant_options' => [
-                ['tenant_id' => 'tenant-a', 'name' => 'Tenant A'],
+                ['id_tenant' => 'tenant-a', 'name' => 'Tenant A'],
             ],
             'pending_login' => [
                 'email' => 'shared@example.com',
@@ -804,13 +804,13 @@ class AuthContractTest extends TestCase
     public function test_user_request_injects_single_tenant_context_header(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
-        config()->set('caronte.tenancy.tenant_id', 'mobig');
+        config()->set('caronte.tenancy.id_tenant', 'mobig');
 
         $token = $this->makeToken([
             'uri_user' => 'user-123',
             'name' => 'Root User',
             'email' => 'root@example.com',
-            'tenant_id' => 'mobig',
+            'id_tenant' => 'mobig',
             'roles' => [
                 [
                     'name' => 'root',
