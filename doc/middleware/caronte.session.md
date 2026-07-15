@@ -16,7 +16,7 @@ User JWTs must contain `iss`, `aud`, `sub`, `jti`, `iat`, `nbf`, `exp`, `token_a
 1. The middleware calls `Ometra\Caronte\Facades\Caronte::getToken()`.
 2. The token is loaded from the request context.
 3. Bearer tokens are used for API requests and session tokens are used for web requests.
-4. The token is validated by the user token validator.
+4. The token is validated by the user token validator. Refreshed web-route tokens are persisted in the session, regardless of the requested response format.
 5. The middleware checks whether the user belongs to the current application.
 6. If the package is in single-tenant mode, the configured tenant id is compared with the token tenant.
 7. When the tenant matches, tenant context is bound for the request lifecycle.
@@ -57,6 +57,7 @@ flowchart TD
 ## Debugging tips
 
 - Inspect the inbound request token source. Web routes use session; API routes use `Authorization`.
+- Web routes that request JSON still persist refreshed tokens in the Laravel session.
 - Confirm `config(caronte.tenancy.mode)` and `config(caronte.tenancy.id_tenant)`.
 - Check the user token claims for `id_tenant`, `app_id`, and roles.
 - If an API client expects token refresh, verify it reads `X-User-Token` from the response.
