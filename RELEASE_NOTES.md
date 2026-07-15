@@ -1,3 +1,18 @@
+# Release v7.1.2
+
+> **Release date:** 2026-07-15
+> **Type:** Patch - Session token refresh persistence.
+
+## Summary
+
+v7.1.2 persists refreshed JWTs for session-authenticated web routes even when
+the request expects a JSON response. Bearer-authenticated API requests retain
+their existing behavior: refreshed tokens are returned through the
+`X-User-Token` response header without creating or changing Laravel session
+state.
+
+---
+
 # Release v7.1.1
 
 > **Release date:** 2026-07-15

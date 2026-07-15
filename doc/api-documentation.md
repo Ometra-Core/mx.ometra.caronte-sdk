@@ -95,7 +95,7 @@ Base path: `/api/caronte/auth`
     - Auth: `Authorization: Bearer <user_jwt>` with `caronte.session`
     - Revokes the current user token through Caronte
 
-Token renewal is passive for API clients. When a protected route using `caronte.session` refreshes a token, the response includes `X-User-Token`; clients should replace their stored token with that header value.
+Token renewal is passive for API clients. When a protected API route using `caronte.session` refreshes a token, the response includes `X-User-Token`; clients should replace their stored token with that header value. Session-authenticated web routes persist refreshed tokens in Laravel's session, including web requests that expect JSON.
 
 ## 2. Management Endpoints
 

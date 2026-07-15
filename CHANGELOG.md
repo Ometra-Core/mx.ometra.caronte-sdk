@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.1.2] - 2026-07-15
+
+### Fixed
+
+- Refreshed JWTs are now persisted for session-authenticated web routes even when the request expects JSON.
+- API Bearer token refresh continues to return `X-User-Token` without creating or changing Laravel session state.
+
 ## [7.1.1] - 2026-07-15
 
 ### Fixed

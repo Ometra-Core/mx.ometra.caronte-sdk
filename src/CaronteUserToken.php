@@ -464,7 +464,7 @@ final class CaronteUserToken
 
     private static function isWebRequest(): bool
     {
-        return ! RouteHelper::wantsJson();
+        return RouteHelper::isWeb();
     }
 
     private static function configForToken(Plain $token): Configuration

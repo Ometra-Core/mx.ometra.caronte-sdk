@@ -81,6 +81,7 @@ Flow variants:
 Business rules:
 
 - If user token was exchanged and request expects JSON, response includes X-User-Token.
+- Refreshed tokens from web routes are persisted in the Laravel session even when the request expects JSON.
 - Middleware caches the validated token on the request so downstream auth flows reuse the same credential instance.
 - Single-tenant mode binds tenant context and enforces tenant match.
 - Scope checks are strict for required middleware parameters.

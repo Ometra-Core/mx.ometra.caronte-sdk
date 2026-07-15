@@ -569,6 +569,32 @@ class MiddlewareBehaviorTest extends TestCase
         $response->assertHeaderMissing('X-User-Token');
     }
 
+    public function test_session_middleware_persists_refreshed_jwt_for_web_json_requests(): void
+    {
+        $expired = $this->makeToken(
+            issuedAt: new DateTimeImmutable('-30 minutes', new DateTimeZone('UTC')),
+            expiresAt: new DateTimeImmutable('-5 minutes', new DateTimeZone('UTC')),
+        );
+        $fresh = $this->makeToken();
+
+        Http::fake([
+            'https://caronte.test/api/auth/exchange' => Http::response([
+                'status' => 200,
+                'message' => 'Token exchanged',
+                'data' => ['token' => $fresh],
+            ], 200),
+        ]);
+
+        $sessionKey = (string) config('caronte.session_key', 'caronte.user_token');
+        $response = $this->withSession([$sessionKey => $expired])
+            ->get('/_caronte/session-check', ['Accept' => 'application/json']);
+
+        $response->assertOk();
+        $response->assertHeader('X-User-Token', $fresh);
+        $this->assertSame($fresh, session($sessionKey));
+        Http::assertSentCount(1);
+    }
+
     public function test_oidc_session_middleware_refreshes_with_refresh_token(): void
     {
         config()->set('caronte.auth_mode', 'oidc');
