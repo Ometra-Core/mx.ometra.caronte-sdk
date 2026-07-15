@@ -1,3 +1,20 @@
+# Release v7.1.1
+
+> **Release date:** 2026-07-15
+> **Type:** Patch - Multi-tenant session context propagation.
+
+## Summary
+
+v7.1.1 ensures that `caronte.session` binds Bee Hive's `TenantContext` from
+the authenticated user's `id_tenant` in both multi-tenant and single-tenant
+applications. Downstream Caronte HTTP clients can therefore propagate the
+matching `X-Tenant-Id` header consistently.
+
+Session tokens without a tenant now fail closed with HTTP 403 and are removed
+from the session. Existing single-tenant mismatch validation is unchanged.
+
+---
+
 # Release v7.1.0
 
 > **Release date:** 2026-07-15
