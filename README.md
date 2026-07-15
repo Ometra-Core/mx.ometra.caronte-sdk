@@ -30,6 +30,39 @@ Primary audience: internal development teams integrating Caronte into Laravel ap
 - Queue: no package-owned queue workers required
 - External services: Caronte server HTTP API, optional OIDC issuer endpoints
 
+## Service HTTP client
+
+Extend `Ometra\Caronte\Support\CaronteHttpClient` to call services with the
+configured application or application-group identity. JSON endpoints use
+`applicationRequest()` and `userRequest()`. For downloads and other responses
+that must not be parsed, use `applicationRawRequest()` or `userRawRequest()`;
+both return an `Illuminate\Http\Client\Response`.
+
+Payloads containing Laravel `UploadedFile` instances or stream resources are
+sent as multipart automatically, including nested fields and lists of files.
+Authentication headers remain mutually exclusive: group-enabled applications
+send `X-Group-Token`; other applications send `X-Application-Token`.
+
+```php
+$download = $client->applicationRawRequest(
+    'GET',
+    'reports/monthly.pdf'
+);
+
+$upload = $client->userRawRequest(
+    'POST',
+    'documents',
+    [
+        'title' => 'Contract',
+        'file' => $request->file('document'),
+    ]
+);
+```
+
+Raw methods return `Illuminate\Http\Client\Response` and use `Accept: */*`.
+The existing parsed methods continue to use `Accept: application/json` and
+return the SDK's normalized response array.
+
 ## Quick Start (High-Level)
 
 1. Install package dependencies in your host app with composer.

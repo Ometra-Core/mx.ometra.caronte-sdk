@@ -16,7 +16,14 @@ class CaronteResponse
         array $headers = [],
         ?string $forwardUrl = null
     ): SymfonyResponse {
-        return static::respond(200, $message, [], $data, $headers, $forwardUrl);
+        return static::respond(
+            200,
+            $message,
+            [],
+            $data,
+            $headers,
+            $forwardUrl
+        );
     }
 
     public static function badRequest(
@@ -25,7 +32,14 @@ class CaronteResponse
         array $headers = [],
         ?string $forwardUrl = null
     ): SymfonyResponse {
-        return static::respond(400, $message, $errors, null, $headers, $forwardUrl);
+        return static::respond(
+            400,
+            $message,
+            $errors,
+            null,
+            $headers,
+            $forwardUrl
+        );
     }
 
     public static function unauthorized(
@@ -34,7 +48,14 @@ class CaronteResponse
         array $headers = [],
         ?string $forwardUrl = null
     ): SymfonyResponse {
-        return static::respond(401, $message, $errors, null, $headers, $forwardUrl);
+        return static::respond(
+            401,
+            $message,
+            $errors,
+            null,
+            $headers,
+            $forwardUrl
+        );
     }
 
     public static function forbidden(
@@ -43,7 +64,14 @@ class CaronteResponse
         array $headers = [],
         ?string $forwardUrl = null
     ): SymfonyResponse {
-        return static::respond(403, $message, $errors, null, $headers, $forwardUrl);
+        return static::respond(
+            403,
+            $message,
+            $errors,
+            null,
+            $headers,
+            $forwardUrl
+        );
     }
 
     public static function conflict(
@@ -53,7 +81,14 @@ class CaronteResponse
         array $headers = [],
         ?string $forwardUrl = null
     ): SymfonyResponse {
-        return static::respond(409, $message, $errors, $data, $headers, $forwardUrl);
+        return static::respond(
+            409,
+            $message,
+            $errors,
+            $data,
+            $headers,
+            $forwardUrl
+        );
     }
 
     public static function notFound(
@@ -62,7 +97,14 @@ class CaronteResponse
         array $headers = [],
         ?string $forwardUrl = null
     ): SymfonyResponse {
-        return static::respond(404, $message, $errors, null, $headers, $forwardUrl);
+        return static::respond(
+            404,
+            $message,
+            $errors,
+            null,
+            $headers,
+            $forwardUrl
+        );
     }
 
     public static function unprocessable(
@@ -71,7 +113,14 @@ class CaronteResponse
         array $headers = [],
         ?string $forwardUrl = null
     ): SymfonyResponse {
-        return static::respond(422, $message, $errors, null, $headers, $forwardUrl);
+        return static::respond(
+            422,
+            $message,
+            $errors,
+            null,
+            $headers,
+            $forwardUrl
+        );
     }
 
     public static function error(
@@ -80,7 +129,14 @@ class CaronteResponse
         array $headers = [],
         ?string $forwardUrl = null
     ): SymfonyResponse {
-        return static::respond(500, $message, $errors, null, $headers, $forwardUrl);
+        return static::respond(
+            500,
+            $message,
+            $errors,
+            null,
+            $headers,
+            $forwardUrl
+        );
     }
 
     public static function handleException(
@@ -104,13 +160,49 @@ class CaronteResponse
         }
 
         return match ($status) {
-            400 => static::badRequest($exception->getMessage(), $errors, $headers, $forwardUrl),
-            401 => static::unauthorized($exception->getMessage(), $errors, $headers, $forwardUrl),
-            403 => static::forbidden($exception->getMessage(), $errors, $headers, $forwardUrl),
-            404 => static::notFound($exception->getMessage(), $errors, $headers, $forwardUrl),
-            409 => static::conflict($exception->getMessage(), $errors, null, $headers, $forwardUrl),
-            422 => static::unprocessable($exception->getMessage(), $errors, $headers, $forwardUrl),
-            default => static::error($exception->getMessage(), $errors, $headers, $forwardUrl),
+            400 => static::badRequest(
+                $exception->getMessage(),
+                $errors,
+                $headers,
+                $forwardUrl
+            ),
+            401 => static::unauthorized(
+                $exception->getMessage(),
+                $errors,
+                $headers,
+                $forwardUrl
+            ),
+            403 => static::forbidden(
+                $exception->getMessage(),
+                $errors,
+                $headers,
+                $forwardUrl
+            ),
+            404 => static::notFound(
+                $exception->getMessage(),
+                $errors,
+                $headers,
+                $forwardUrl
+            ),
+            409 => static::conflict(
+                $exception->getMessage(),
+                $errors,
+                null,
+                $headers,
+                $forwardUrl
+            ),
+            422 => static::unprocessable(
+                $exception->getMessage(),
+                $errors,
+                $headers,
+                $forwardUrl
+            ),
+            default => static::error(
+                $exception->getMessage(),
+                $errors,
+                $headers,
+                $forwardUrl
+            ),
         };
     }
 
@@ -123,10 +215,23 @@ class CaronteResponse
         ?string $forwardUrl = null
     ): SymfonyResponse {
         if (RouteHelper::wantsJson()) {
-            return static::json($status, $message, $errors, $data, $headers);
+            return static::json(
+                $status,
+                $message,
+                $errors,
+                $data,
+                $headers
+            );
         }
 
-        return static::redirect($status, $message, $errors, $data, $headers, $forwardUrl);
+        return static::redirect(
+            $status,
+            $message,
+            $errors,
+            $data,
+            $headers,
+            $forwardUrl
+        );
     }
 
     private static function json(

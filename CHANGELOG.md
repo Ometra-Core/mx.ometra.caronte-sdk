@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.1.0] - 2026-07-15
+
+### Added
+
+- `CaronteHttpClient::applicationRawRequest()` and `userRawRequest()` return unparsed Laravel HTTP responses for downloads, streams, and other non-JSON endpoints.
+- Shared HTTP transport now supports automatic multipart payloads containing uploaded files, streams, nested fields, and file lists.
+
+### Changed
+
+- JSON and raw requests now share one transport path while preserving the existing authentication, tenant, timeout, retry, and error contracts.
+- Method calls with more than three arguments are formatted with one argument per line for consistency and readability.
+
 ## [7.0.0] - 2026-07-14 "Ariadne"
 
 ### Changed

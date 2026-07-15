@@ -1,3 +1,92 @@
+# Release v7.1.0
+
+> **Release date:** 2026-07-15
+> **Type:** Minor - Raw HTTP responses and automatic multipart uploads.
+
+## Summary
+
+v7.1.0 expands `CaronteHttpClient` for endpoints that do not use the SDK's
+standard JSON response envelope. Applications can now download files, consume
+binary or streamed responses, and upload files or stream resources while
+reusing the existing Caronte authentication and HTTP configuration.
+
+This release is additive. Existing `applicationRequest()` and `userRequest()`
+signatures and parsed-response contracts remain unchanged.
+
+## Highlights
+
+- **Raw application requests** - `applicationRawRequest()` returns the original
+  Laravel HTTP `Response` and supports the optional delegated user token.
+- **Raw user requests** - `userRawRequest()` returns the original response while
+  using the current user's JWT.
+- **Automatic multipart transport** - payloads containing `UploadedFile`
+  instances or stream resources are converted to multipart requests.
+- **Nested upload support** - nested fields and lists of uploaded files retain
+  their expected multipart field names.
+- **Shared request behavior** - raw and JSON requests use the same tenant header,
+  TLS verification, timeout, retry, query-string, and credential handling.
+
+## Usage
+
+Use a raw request when the response must not be decoded into the standard SDK
+array:
+
+```php
+$response = $client->applicationRawRequest(
+    'GET',
+    'reports/monthly.pdf'
+);
+
+$contents = $response->body();
+```
+
+File payloads are detected automatically:
+
+```php
+$response = $client->applicationRawRequest(
+    'POST',
+    'documents',
+    [
+        'title' => 'Contract',
+        'file' => $request->file('document'),
+    ]
+);
+```
+
+For endpoints authenticated as the current user:
+
+```php
+$response = $client->userRawRequest(
+    'GET',
+    'exports/latest'
+);
+```
+
+## Upgrade requirements
+
+No migrations or configuration changes are required. Consumers that do not use
+the new raw-response or multipart APIs require no code changes.
+
+## Compatibility
+
+- Existing JSON requests continue to send `Accept: application/json` and return
+  the normalized SDK response array.
+- Raw requests default to `Accept: */*` and return
+  `Illuminate\Http\Client\Response` without invoking `parseResponse()`.
+- Application and group credentials remain mutually exclusive.
+- Tenant context, optional delegated user tokens, query parameters, TLS options,
+  timeouts, and retries behave consistently across parsed and raw requests.
+
+## Validation
+
+- Raw application and user authentication headers are covered by feature tests.
+- Tenant propagation and delegated user-token trimming are covered.
+- JSON parsing remains compatible with the existing response contract.
+- Multipart conversion covers uploaded files, streams, nested fields, and file
+  lists.
+- Unsupported HTTP methods continue to raise `CaronteApiException`.
+- The complete suite passes: 135 tests and 445 assertions.
+
 # Release v7.0.0 "Ariadne"
 
 > **Release date:** 2026-07-14

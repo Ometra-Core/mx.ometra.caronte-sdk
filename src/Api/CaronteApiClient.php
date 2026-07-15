@@ -35,7 +35,13 @@ final class CaronteApiClient extends CaronteHttpClient
             $headers['X-User-Token'] = $userToken;
         }
 
-        return $this->request($method, $endpoint, $payload, $query, $headers);
+        return $this->request(
+            $method,
+            $endpoint,
+            $payload,
+            $query,
+            $headers
+        );
     }
 
     protected function getBaseUrl(): string

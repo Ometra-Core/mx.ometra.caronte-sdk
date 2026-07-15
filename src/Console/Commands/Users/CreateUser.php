@@ -76,7 +76,13 @@ class CreateUser extends Command
 
         if ($selected === []) {
             $choices = array_keys($configured);
-            $selected = (array) $this->choice('Select roles', $choices, default: null, attempts: null, multiple: true);
+            $selected = (array) $this->choice(
+                'Select roles',
+                $choices,
+                default: null,
+                attempts: null,
+                multiple: true
+            );
         }
 
         $uris = [];
