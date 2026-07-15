@@ -34,20 +34,20 @@ class ValidateUserToken
                 );
             }
 
+            try {
+                $tokenTenantId = Caronte::getTenantId();
+            } catch (Throwable) {
+                Caronte::clearToken();
+
+                return CaronteResponse::forbidden(
+                    message: 'Tenant is required for this application.',
+                    errors: ['Tenant is required for this application.'],
+                    forwardUrl: $this->loginForwardUrl($request)
+                );
+            }
+
             if (CaronteTenancy::isSingleTenant()) {
                 $configuredTenantId = CaronteTenancy::requireConfiguredTenantId();
-
-                try {
-                    $tokenTenantId = Caronte::getTenantId();
-                } catch (Throwable) {
-                    Caronte::clearToken();
-
-                    return CaronteResponse::forbidden(
-                        message: 'Tenant is required for this application.',
-                        errors: ['Tenant is required for this application.'],
-                        forwardUrl: $this->loginForwardUrl($request)
-                    );
-                }
 
                 if ($tokenTenantId !== $configuredTenantId) {
                     Caronte::clearToken();
@@ -58,9 +58,9 @@ class ValidateUserToken
                         forwardUrl: $this->loginForwardUrl($request)
                     );
                 }
-
-                CaronteTenancy::bindTenantContext($configuredTenantId);
             }
+
+            CaronteTenancy::bindTenantContext($tokenTenantId);
 
             $response = $next($request);
 

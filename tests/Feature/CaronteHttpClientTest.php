@@ -76,6 +76,9 @@ class CaronteHttpClientTest extends TestCase
     {
         config()->set('caronte.application_group_id', 'group-alpha');
         config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+        $tenant = new TenantContext();
+        $tenant->set('tenant-42');
+        app()->instance(TenantContext::class, $tenant);
         app()->instance(Caronte::class, new class {
             public function getToken(): object
             {
@@ -96,6 +99,7 @@ class CaronteHttpClientTest extends TestCase
             $request->hasHeader('X-Group-Token')
             && ! $request->hasHeader('X-Application-Token')
             && $request->hasHeader('X-User-Token', 'current-user-token')
+            && $request->hasHeader('X-Tenant-Id', 'tenant-42')
         );
     }
 

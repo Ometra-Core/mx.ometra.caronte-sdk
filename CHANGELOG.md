@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.1.1] - 2026-07-15
+
+### Fixed
+
+- `caronte.session` now binds `TenantContext` from the authenticated user's `id_tenant` in multi-tenant mode.
+- Session-authenticated requests now fail closed with HTTP 403 when the user token has no tenant context.
+
 ## [7.1.0] - 2026-07-15
 
 ### Added
