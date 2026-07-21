@@ -27,6 +27,7 @@ class RouteRegistrationTest extends TestCase
         $this->assertFalse(Route::has('caronte.management.users.delete'));
         $this->assertTrue(Route::has('caronte.management.users.delete.direct'));
         $this->assertTrue(Route::has('caronte.management.users.roles.list'));
-        $this->assertTrue(Route::has('caronte.management.suite.users.applications.roles.sync'));
+        $this->assertTrue(Route::has('caronte.management.users.applications.roles.sync'));
+        $this->assertFalse(Route::has('caronte.management.suite.users.applications.roles.sync'));
     }
 }

@@ -70,6 +70,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'routes' => [
+        'auth_enabled' => env('CARONTE_AUTH_ROUTES_ENABLED', true),
         'prefix' => env('CARONTE_ROUTES_PREFIX', ''),
         'success_url' => env('CARONTE_SUCCESS_URL', '/'),
         'login_url' => env('CARONTE_LOGIN_URL', '/login'),

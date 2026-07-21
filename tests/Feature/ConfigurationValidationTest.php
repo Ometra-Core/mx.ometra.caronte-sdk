@@ -80,6 +80,29 @@ class ConfigurationValidationTest extends TestCase
         $this->assertTrue(true);
     }
 
+    public function test_delegated_login_requires_an_absolute_url(): void
+    {
+        config()->set('caronte.routes.auth_enabled', false);
+        config()->set('caronte.routes.login_url', '/login');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('CARONTE_LOGIN_URL must be an absolute HTTP(S) URL');
+
+        $this->validatePackageConfig();
+    }
+
+    public function test_delegated_login_requires_https_by_default(): void
+    {
+        config()->set('caronte.routes.auth_enabled', false);
+        config()->set('caronte.routes.login_url', 'http://identity.example.test/login');
+        config()->set('caronte.allow_http_requests', false);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('delegated CARONTE_LOGIN_URL must use HTTPS');
+
+        $this->validatePackageConfig();
+    }
+
     public function test_tenancy_mode_must_be_valid(): void
     {
         config()->set('caronte.tenancy.mode', 'shared');

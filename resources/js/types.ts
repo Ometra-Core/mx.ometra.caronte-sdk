@@ -30,6 +30,7 @@ export type User = {
   name?: string;
   email?: string;
   roles?: Role[];
+  role_assignments?: Array<{ app_id: string; roles: Role[] }>;
   metadata?: UserMetadata[];
 };
 
@@ -42,15 +43,15 @@ export type FeatureFlags = {
   metadata?: boolean;
 };
 
-export type SuiteApplication = {
+export type GroupApplication = {
   app_id: string;
   name?: string;
   roles?: Role[];
 };
 
-export type SuiteAccess = {
+export type GroupAccess = {
   enabled: boolean;
   error?: string | null;
-  applications?: SuiteApplication[];
+  applications?: GroupApplication[];
   users?: User[];
 };

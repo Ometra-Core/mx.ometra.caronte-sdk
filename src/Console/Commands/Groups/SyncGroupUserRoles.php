@@ -10,14 +10,14 @@ class SyncGroupUserRoles extends Command
 {
     use BindsTenantContext;
 
-    protected $signature = 'caronte:groups:users:roles:sync
+    protected $signature = 'caronte:group:users:roles:sync
         {uri_user? : Caronte user URI}
         {--tenant= : Tenant identifier required for group user endpoints}
         {--app= : Target application identifier within the configured group}
         {--role=* : Role names or role URIs to assign}
         {--clear : Remove every non-root assigned role for the user within the target application}';
 
-    protected $description = 'Synchronize a user role set for an application in the configured Caronte application group.';
+    protected $description = 'Synchronize a user role set for an application in the configured Caronte group.';
 
     public function handle(): int
     {
@@ -92,7 +92,7 @@ class SyncGroupUserRoles extends Command
      */
     private function manageableRolesForApp(string $appId): array
     {
-        $response = GroupApi::showGroupRoles();
+        $response = GroupApi::showGroup();
         $applications = $response['data']['applications'] ?? [];
 
         foreach ((array) $applications as $application) {

@@ -16,9 +16,8 @@ This package registers custom commands only when running in console.
 | caronte:users:update {uri_user?}     | Update user display name                                 |
 | caronte:users:delete {uri_user?}     | Delete user                                              |
 | caronte:users:roles:sync {uri_user?} | Sync user roles                                          |
-| caronte:groups:roles:list            | List roles visible in the current application group      |
-| caronte:groups:users:list            | List tenant users with application-group role context    |
-| caronte:groups:users:roles:sync {uri_user?} | Sync non-root suite roles for one user/app       |
+| caronte:group:show                   | Show the complete current group description              |
+| caronte:group:users:roles:sync {uri_user?} | Sync non-root group roles for one user/app        |
 
 ## 2. Detailed Commands
 
@@ -101,23 +100,19 @@ Example:
     - --tenant=
     - --role=\*
     - --clear
+    - --force
+- Treats `--role` as the complete desired role set, not as incremental grants.
+- Reads the current roles, displays additions and removals, and asks for confirmation before writing.
+- `--clear` sets the final role set to empty; `--force` is required for unattended execution.
 
-### caronte:groups:roles:list
+### caronte:group:show
 
-- Class: Ometra\Caronte\Console\Commands\Groups\ListGroupRoles
-- Lists applications and roles returned by Caronte's current application-group role catalog.
-- Requires the application to have `groups.roles.read`.
+- Class: Ometra\Caronte\Console\Commands\Groups\ShowGroup
+- Option: `--tenant=`
+- Shows the group, applications, assignable roles, API scopes and tenant user mappings returned by `GET /api/group`.
+- Uses `X-Group-Token`; internal Caronte permissions are not part of the response.
 
-### caronte:groups:users:list
-
-- Class: Ometra\Caronte\Console\Commands\Groups\ListGroupUsers
-- Options:
-    - --tenant=
-    - --search=
-- Lists tenant users and their roles across the current application group.
-- Requires `groups.users.read`.
-
-### caronte:groups:users:roles:sync
+### caronte:group:users:roles:sync
 
 - Class: Ometra\Caronte\Console\Commands\Groups\SyncGroupUserRoles
 - Arguments/options:
@@ -128,7 +123,7 @@ Example:
     - --clear
 - Syncs non-root roles for one user in one application from the current application group.
 - Role arguments can use either role URI or role name from the group catalog.
-- Requires `groups.roles.read` to resolve the catalog and `groups.user_roles.write` to sync roles.
+- Uses the group catalog to resolve roles and requires `groups.user_roles.write` to sync them.
 
 ## 3. Scheduling
 
@@ -138,5 +133,5 @@ No command scheduling is defined by this package. Host applications may schedule
 
 - Most commands rely on Caronte server connectivity.
 - User and tenant commands require tenant context for tenant-scoped endpoints.
-- Group user commands require tenant context and Caronte suite permissions on the calling application.
+- Group commands require tenant context. Only role synchronization requires an internal Caronte write permission.
 - Role/scope sync should be part of deployment or release workflows when config changes.

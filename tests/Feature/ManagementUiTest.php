@@ -25,7 +25,7 @@ class ManagementUiTest extends TestCase
                     ['uri_applicationRole' => sha1(\Ometra\Caronte\Support\CaronteApplicationToken::appId() . 'admin'), 'name' => 'admin', 'description' => 'Administrative access'],
                 ],
             ], 200),
-            'https://caronte.test/api/application-groups/current/roles' => Http::response([
+            'https://caronte.test/api/group' => Http::response([
                 'status' => 200,
                 'message' => 'Application group roles retrieved',
                 'data' => [
@@ -39,14 +39,8 @@ class ManagementUiTest extends TestCase
                             ],
                         ],
                     ],
-                ],
-            ], 200),
-            'https://caronte.test/api/application-groups/current/users*' => Http::response([
-                'status' => 200,
-                'message' => 'Application group users retrieved',
-                'data' => [
                     'users' => [
-                        ['uri_user' => 'user-1', 'name' => 'Jane Doe', 'email' => 'jane@example.com', 'roles' => []],
+                        ['uri_user' => 'user-1', 'name' => 'Jane Doe', 'email' => 'jane@example.com', 'role_assignments' => []],
                     ],
                 ],
             ], 200),
@@ -57,7 +51,7 @@ class ManagementUiTest extends TestCase
         ])->get('/caronte/management')
             ->assertOk()
             ->assertSee('User management')
-            ->assertSee('Suite access')
+            ->assertSee('Group access')
             ->assertSee('Create user')
             ->assertSee('Jane Doe');
     }

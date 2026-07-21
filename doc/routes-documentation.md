@@ -15,7 +15,7 @@ Package routes are loaded by Ometra\Caronte\Providers\CaronteServiceProvider fro
     - web auth routes use `config(caronte.routes.prefix)` with the `caronte.` name prefix
     - API client auth routes use the fixed `/api/caronte/auth` prefix with the `caronte.api.auth.` name prefix
 
-Management routes are conditionally registered only when config(caronte.management.enabled) is true.
+Management routes are conditionally registered only when config(caronte.management.enabled) is true. Browser login, OIDC, two-factor, password-recovery, and `POST /api/caronte/auth/login` routes are registered only when `config(caronte.routes.auth_enabled)` is true. Logout and authenticated-session inspection remain local in both modes.
 
 ## 2. Browser Authentication Routes
 
@@ -74,20 +74,16 @@ Common middleware for all management routes:
 | ------ | --------------------------------------------- | ---------------------------------------- | ---------------------------------------- |
 | GET    | /caronte/management                           | caronte.management.dashboard             | ManagementController@dashboard           |
 | POST   | /caronte/management/roles/sync                | caronte.management.roles.sync            | RoleController@sync                      |
-| POST   | /caronte/management/roles/create              | caronte.management.roles.create          | RoleController@unsupportedLegacyMutation |
-| POST   | /caronte/management/roles/update              | caronte.management.roles.update          | RoleController@unsupportedLegacyMutation |
-| POST   | /caronte/management/roles/delete              | caronte.management.roles.delete          | RoleController@unsupportedLegacyMutation |
 | GET    | /caronte/management/users/list                | caronte.management.users.list            | UserController@list                      |
 | POST   | /caronte/management/users                     | caronte.management.users.store           | UserController@store                     |
 | GET    | /caronte/management/users/{uri_user}          | caronte.management.users.show            | UserController@show                      |
-| POST   | /caronte/management/users/update              | caronte.management.users.update          | UserController@updateLegacy              |
 | PUT    | /caronte/management/users/{uri_user}          | caronte.management.users.update.direct   | UserController@update                    |
-| POST   | /caronte/management/users/delete              | caronte.management.users.delete          | UserController@deleteLegacy              |
 | DELETE | /caronte/management/users/{uri_user}          | caronte.management.users.delete.direct   | UserController@delete                    |
 | GET    | /caronte/management/users/{uri_user}/roles    | caronte.management.users.roles.list      | UserController@listRoles                 |
 | PUT    | /caronte/management/users/{uri_user}/roles    | caronte.management.users.roles.sync      | UserController@syncRoles                 |
 | POST   | /caronte/management/users/{uri_user}/metadata | caronte.management.users.metadata.store  | UserController@storeMetadata             |
 | DELETE | /caronte/management/users/{uri_user}/metadata | caronte.management.users.metadata.delete | UserController@deleteMetadata            |
+| PUT    | /caronte/management/users/{uri_user}/applications/{app_id}/roles | caronte.management.users.applications.roles.sync | UserController@syncGroupRoles |
 
 ## 5. Middleware Aliases Exposed by the Package
 

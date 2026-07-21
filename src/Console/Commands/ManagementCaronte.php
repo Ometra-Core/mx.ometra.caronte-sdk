@@ -22,9 +22,8 @@ class ManagementCaronte extends Command
                 'Update user',
                 'Delete user',
                 'Sync user roles',
-                'List suite roles',
-                'List suite users',
-                'Sync suite user roles',
+                'Show group',
+                'Sync group user roles',
                 'Exit',
             ]);
 
@@ -39,9 +38,8 @@ class ManagementCaronte extends Command
                 'Update user' => $this->call('caronte:users:update'),
                 'Delete user' => $this->call('caronte:users:delete'),
                 'Sync user roles' => $this->call('caronte:users:roles:sync'),
-                'List suite roles' => $this->call('caronte:groups:roles:list'),
-                'List suite users' => $this->call('caronte:groups:users:list'),
-                'Sync suite user roles' => $this->call('caronte:groups:users:roles:sync'),
+                'Show group' => $this->call('caronte:group:show'),
+                'Sync group user roles' => $this->call('caronte:group:users:roles:sync'),
                 'Exit' => null,
             };
 

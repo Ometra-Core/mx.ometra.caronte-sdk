@@ -38,7 +38,10 @@ Common optional variables:
 Back up `Users` and `UsersMetadata`, then run `php artisan migrate` during the SDK upgrade. The corrective tenant-column migration restores Bee Hive's canonical `id_tenant` column from the short-lived `tenant_id` column when present.
 
 Grouped applications require a Caronte v6 server that accepts `X-Group-Token` as the sole application credential. When group configuration is present, this SDK does not generate or send `X-Application-Token`.
+- CARONTE_AUTH_ROUTES_ENABLED=true
 - CARONTE_LOGIN_URL=/login
+
+For delegated login, set `CARONTE_AUTH_ROUTES_ENABLED=false` and use the absolute HTTPS login URL of the group application responsible for authentication.
 - CARONTE_SUCCESS_URL=/
 - CARONTE_SESSION_KEY=caronte.user_token
 - CARONTE_TENANCY_MODE=multi

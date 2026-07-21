@@ -25,7 +25,7 @@ class ManagementController extends BaseController
             $users = collect(is_array($response['data']) ? $response['data'] : []);
             $paginator = $this->paginateUsers($users, $request);
             $preview = $this->previewRoleSync();
-            $suiteAccess = $this->suiteAccess($search);
+            $groupAccess = $this->groupAccess($search);
             $configuredRoles = ConfiguredRoles::all();
 
             return $this->toView('management.index', [
@@ -38,7 +38,7 @@ class ManagementController extends BaseController
                 'remote_roles' => array_values($preview['remote']),
                 'missing_roles' => $preview['missing'],
                 'outdated_roles' => $preview['outdated'],
-                'suite_access' => $suiteAccess,
+                'group_access' => $groupAccess,
                 'features' => config('caronte.management.features', []),
                 'csrf_token' => csrf_token(),
                 'routes' => [
@@ -46,7 +46,7 @@ class ManagementController extends BaseController
                     'rolesSync' => route('caronte.management.roles.sync'),
                     'usersStore' => route('caronte.management.users.store'),
                     'usersShow' => route('caronte.management.users.show', ['uri_user' => '__USER__']),
-                    'suiteRolesSync' => route('caronte.management.suite.users.applications.roles.sync', [
+                    'groupRolesSync' => route('caronte.management.users.applications.roles.sync', [
                         'uri_user' => '__USER__',
                         'app_id' => '__APP__',
                     ]),
@@ -117,20 +117,25 @@ class ManagementController extends BaseController
     /**
      * @return array{enabled: bool, error: string|null, applications: array<int, mixed>, users: array<int, mixed>}
      */
-    private function suiteAccess(string $search): array
+    private function groupAccess(string $search): array
     {
         try {
-            $rolesResponse = GroupApi::showGroupRoles();
-            $usersResponse = GroupApi::showGroupUsers($search);
+            $groupResponse = GroupApi::showGroup();
 
             return [
                 'enabled' => true,
                 'error' => null,
-                'applications' => is_array($rolesResponse['data']['applications'] ?? null)
-                    ? $rolesResponse['data']['applications']
+                'applications' => is_array($groupResponse['data']['applications'] ?? null)
+                    ? $groupResponse['data']['applications']
                     : [],
-                'users' => is_array($usersResponse['data']['users'] ?? null)
-                    ? $usersResponse['data']['users']
+                'users' => is_array($groupResponse['data']['users'] ?? null)
+                    ? array_values(array_filter(
+                        $groupResponse['data']['users'],
+                        fn (mixed $user): bool => $search === '' || (is_array($user) && str_contains(
+                            strtolower(($user['name'] ?? '').' '.($user['email'] ?? '')),
+                            strtolower($search)
+                        ))
+                    ))
                     : [],
             ];
         } catch (\Throwable $exception) {

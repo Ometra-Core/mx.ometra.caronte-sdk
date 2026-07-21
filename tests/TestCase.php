@@ -45,6 +45,7 @@ abstract class TestCase extends Orchestra
         $app['config']->set('caronte.app_cn', 'test-app-id');
         $app['config']->set('caronte.app_secret', 'test-app-secret-with-minimum-length-32');
         $app['config']->set('caronte.routes.login_url', '/login');
+        $app['config']->set('caronte.routes.auth_enabled', true);
         $app['config']->set('caronte.issuer_id', 'caronte');
         $app['config']->set('caronte.routes.prefix', '');
         $app['config']->set('caronte.ui.use_inertia', false);

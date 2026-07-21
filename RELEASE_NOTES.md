@@ -1,3 +1,40 @@
+# Release v8.0.0
+
+> **Release date:** 2026-07-21
+> **Type:** Major - Delegated authentication and consolidated group access.
+
+## Summary
+
+v8.0.0 adds delegated-login support and aligns group access with Caronte's
+aggregate `/api/group` contract. It also removes legacy management routes and
+plural group commands, so consumers must migrate to the resource-oriented
+routes and singular `caronte:group:*` commands.
+
+## Highlights
+
+- Set `CARONTE_AUTH_ROUTES_ENABLED=false` and an absolute HTTPS
+  `CARONTE_LOGIN_URL` to delegate login-producing routes to another group app.
+- Use `GroupApi::showGroup()` or `caronte:group:show` to retrieve applications,
+  assignable roles, API scopes, and tenant user mappings in one request.
+- Use `caronte:group:users:roles:sync` for group role synchronization.
+- User role synchronization previews additions and removals and requires
+  confirmation; use `--force` for unattended execution.
+
+## Breaking changes
+
+- Removed `caronte:groups:roles:list`, `caronte:groups:users:list`, and the
+  plural group role-sync alias.
+- Removed legacy management role/user mutation routes.
+- Group clients now call `/api/group` and
+  `/api/group/users/{uri_user}/applications/{app_id}/roles`.
+
+## Validation
+
+- PHPUnit: 144 tests, 487 assertions.
+- TypeScript: `tsc --noEmit` passes.
+
+---
+
 # Release v7.1.2
 
 > **Release date:** 2026-07-15

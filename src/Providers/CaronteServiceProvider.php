@@ -10,8 +10,7 @@ use Inertia\Inertia;
 use Ometra\Caronte\Api\CaronteApiClient;
 use Ometra\Caronte\Caronte;
 use Ometra\Caronte\Console\Commands\ManagementCaronte;
-use Ometra\Caronte\Console\Commands\Groups\ListGroupRoles;
-use Ometra\Caronte\Console\Commands\Groups\ListGroupUsers;
+use Ometra\Caronte\Console\Commands\Groups\ShowGroup;
 use Ometra\Caronte\Console\Commands\Groups\SyncGroupUserRoles;
 use Ometra\Caronte\Console\Commands\ProtectedApi\SyncScopes;
 use Ometra\Caronte\Console\Commands\Roles\SyncRoles;
@@ -148,8 +147,7 @@ class CaronteServiceProvider extends ServiceProvider
                 ManagementCaronte::class,
                 SyncScopes::class,
                 SyncRoles::class,
-                ListGroupRoles::class,
-                ListGroupUsers::class,
+                ShowGroup::class,
                 SyncGroupUserRoles::class,
                 ListTenants::class,
                 ShowTenant::class,
@@ -212,6 +210,24 @@ class CaronteServiceProvider extends ServiceProvider
             throw new InvalidArgumentException(
                 'Caronte: CARONTE_URL must use HTTPS unless CARONTE_ALLOW_HTTP_REQUESTS=true.'
             );
+        }
+
+        if (! (bool) config('caronte.routes.auth_enabled', true)) {
+            $loginUrl = (string) config('caronte.routes.login_url');
+            $loginScheme = parse_url($loginUrl, PHP_URL_SCHEME);
+            $loginHost = parse_url($loginUrl, PHP_URL_HOST);
+
+            if (! is_string($loginHost) || $loginHost === '' || ! in_array($loginScheme, ['http', 'https'], true)) {
+                throw new InvalidArgumentException(
+                    'Caronte: CARONTE_LOGIN_URL must be an absolute HTTP(S) URL when authentication routes are disabled.'
+                );
+            }
+
+            if ($loginScheme !== 'https' && ! (bool) config('caronte.allow_http_requests', false)) {
+                throw new InvalidArgumentException(
+                    'Caronte: delegated CARONTE_LOGIN_URL must use HTTPS unless CARONTE_ALLOW_HTTP_REQUESTS=true.'
+                );
+            }
         }
 
         if ((int) config('caronte.token.ttl_seconds', 300) < 1) {
