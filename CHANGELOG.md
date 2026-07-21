@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.0.0] - 2026-07-21
+
+### Added
+
+- Added delegated-login mode through `CARONTE_AUTH_ROUTES_ENABLED=false`; logout and authenticated-session inspection remain local.
+- Added the aggregate `GroupApi::showGroup()` contract and the `caronte:group:show` command.
+- User role synchronization now previews the complete replacement set and requires confirmation unless `--force` is supplied.
+
+### Changed
+
+- Group access now uses the Caronte v8 `/api/group` contract for the API client, management UI, and Artisan commands.
+- Renamed group role synchronization to `caronte:group:users:roles:sync`.
+- Management group-role synchronization now uses `/users/{uri_user}/applications/{app_id}/roles`.
+
+### Removed
+
+- Removed the split `caronte:groups:roles:list` and `caronte:groups:users:list` commands and all plural group command aliases.
+- Removed legacy management role and user mutation routes; consumers must use the resource-oriented routes.
+
 ## [7.1.2] - 2026-07-15
 
 ### Fixed

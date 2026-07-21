@@ -289,7 +289,7 @@ class UserController extends BaseController
      */
     private function manageableGroupRoleUris(string $appId): array
     {
-        $response = GroupApi::showGroupRoles();
+        $response = GroupApi::showGroup();
         $applications = $response['data']['applications'] ?? [];
 
         foreach ((array) $applications as $application) {

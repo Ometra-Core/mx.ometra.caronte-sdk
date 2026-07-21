@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Equidna\BeeHive\Tenancy\TenantContext;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Ometra\Caronte\Api\GroupApi;
 use Ometra\Caronte\Support\CaronteApplicationToken;
@@ -11,6 +12,18 @@ use Tests\TestCase;
 
 class CommandBehaviorTest extends TestCase
 {
+    public function test_only_singular_group_commands_are_registered(): void
+    {
+        $commands = Artisan::all();
+
+        $this->assertArrayHasKey('caronte:group:show', $commands);
+        $this->assertArrayHasKey('caronte:group:users:roles:sync', $commands);
+        $this->assertArrayNotHasKey('caronte:groups:applications:list', $commands);
+        $this->assertArrayNotHasKey('caronte:groups:roles:list', $commands);
+        $this->assertArrayNotHasKey('caronte:groups:users:list', $commands);
+        $this->assertArrayNotHasKey('caronte:groups:users:roles:sync', $commands);
+    }
+
     public function test_roles_sync_dry_run_does_not_push_remote_changes(): void
     {
         Http::fake([
@@ -187,19 +200,21 @@ class CommandBehaviorTest extends TestCase
         });
     }
 
-    public function test_group_roles_list_command_calls_group_roles_endpoint_with_group_token(): void
+    public function test_group_show_command_uses_group_token_and_tenant_context(): void
     {
         config()->set('caronte.application_group_id', 'core-suite');
         config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
 
         Http::fake([
-            'https://caronte.test/api/application-groups/current/roles' => Http::response([
+            'https://caronte.test/api/group' => Http::response([
                 'status' => 200,
-                'message' => 'Application group roles retrieved',
+                'message' => 'Application group retrieved',
                 'data' => [
+                    'group' => ['group_id' => 'core-suite', 'name' => 'Core Suite'],
                     'applications' => [
                         [
                             'app_id' => 'billing-app',
+                            'cn' => 'billing',
                             'name' => 'Billing',
                             'roles' => [
                                 [
@@ -208,67 +223,45 @@ class CommandBehaviorTest extends TestCase
                                     'manageable' => true,
                                 ],
                             ],
+                            'scopes' => [
+                                ['scope' => 'billing.read'],
+                            ],
                         ],
                     ],
+                    'users' => [[
+                        'uri_user' => 'user-1',
+                        'id_tenant' => 'tenant-1',
+                        'name' => 'Jane Doe',
+                        'email' => 'jane@example.com',
+                        'role_assignments' => [['app_id' => 'billing-app', 'roles' => [['name' => 'billing.viewer']]]],
+                    ]],
                 ],
             ], 200),
         ]);
 
-        $this->artisan('caronte:groups:roles:list')
+        $this->artisan('caronte:group:show', ['--tenant' => 'tenant-1'])
             ->expectsTable(
-                ['Application', 'Role', 'URI', 'Manageable'],
-                [['Billing', 'billing.viewer', 'role-billing-viewer', 'yes']]
+                ['Application', 'Canonical name', 'Assignable roles', 'API scopes'],
+                [['Billing', 'billing', 'billing.viewer', 'billing.read']]
+            )
+            ->expectsTable(
+                ['User', 'Email', 'Tenant', 'Role assignments'],
+                [['Jane Doe', 'jane@example.com', 'tenant-1', 1]]
             )
             ->assertExitCode(0);
 
         Http::assertSent(function ($request): bool {
-            return $request->url() === 'https://caronte.test/api/application-groups/current/roles'
+            return $request->url() === 'https://caronte.test/api/group'
                 && $this->hasValidGroupTokenHeader($request)
-                && ! $request->hasHeader('X-Application-Token');
-        });
-    }
-
-    public function test_group_users_list_command_sends_tenant_header(): void
-    {
-        Http::fake([
-            'https://caronte.test/api/application-groups/current/users*' => Http::response([
-                'status' => 200,
-                'message' => 'Application group users retrieved',
-                'data' => [
-                    'users' => [
-                        [
-                            'uri_user' => 'user-1',
-                            'id_tenant' => 'tenant-1',
-                            'name' => 'Jane Doe',
-                            'email' => 'jane@example.com',
-                            'roles' => [['name' => 'billing.viewer']],
-                        ],
-                    ],
-                ],
-            ], 200),
-        ]);
-
-        $this->artisan('caronte:groups:users:list', [
-            '--tenant' => 'tenant-1',
-            '--search' => 'jane',
-        ])
-            ->expectsTable(
-                ['URI', 'Tenant', 'Name', 'Email', 'Group roles'],
-                [['user-1', 'tenant-1', 'Jane Doe', 'jane@example.com', '1']]
-            )
-            ->assertExitCode(0);
-
-        Http::assertSent(function ($request): bool {
-            return str_starts_with($request->url(), 'https://caronte.test/api/application-groups/current/users')
                 && $request->hasHeader('X-Tenant-Id', 'tenant-1')
-                && $request['search'] === 'jane';
+                && ! $request->hasHeader('X-Application-Token');
         });
     }
 
     public function test_group_user_roles_sync_command_uses_group_role_catalog_and_blocks_root_choices(): void
     {
         Http::fake([
-            'https://caronte.test/api/application-groups/current/roles' => Http::response([
+            'https://caronte.test/api/group' => Http::response([
                 'status' => 200,
                 'message' => 'Application group roles retrieved',
                 'data' => [
@@ -292,14 +285,14 @@ class CommandBehaviorTest extends TestCase
                     ],
                 ],
             ], 200),
-            'https://caronte.test/api/application-groups/current/users/user-1/applications/billing-app/roles' => Http::response([
+            'https://caronte.test/api/group/users/user-1/applications/billing-app/roles' => Http::response([
                 'status' => 200,
                 'message' => 'Application group user roles synchronized',
                 'data' => ['roles' => []],
             ], 200),
         ]);
 
-        $this->artisan('caronte:groups:users:roles:sync', [
+        $this->artisan('caronte:group:users:roles:sync', [
             'uri_user' => 'user-1',
             '--tenant' => 'tenant-1',
             '--app' => 'billing-app',
@@ -309,7 +302,7 @@ class CommandBehaviorTest extends TestCase
             ->assertExitCode(0);
 
         Http::assertSent(function ($request): bool {
-            return $request->url() === 'https://caronte.test/api/application-groups/current/users/user-1/applications/billing-app/roles'
+            return $request->url() === 'https://caronte.test/api/group/users/user-1/applications/billing-app/roles'
                 && $request->method() === 'PUT'
                 && $request->hasHeader('X-Tenant-Id', 'tenant-1')
                 && $request['roles'] === ['role-billing-viewer'];
@@ -323,7 +316,7 @@ class CommandBehaviorTest extends TestCase
         app()->instance(TenantContext::class, $tenantContext);
 
         Http::fake([
-            'https://caronte.test/api/application-groups/current/users/user-1/applications/billing-app/roles' => Http::response([
+            'https://caronte.test/api/group/users/user-1/applications/billing-app/roles' => Http::response([
                 'status' => 200,
                 'message' => 'Application group user roles synchronized',
                 'data' => ['roles' => []],
@@ -389,5 +382,64 @@ class CommandBehaviorTest extends TestCase
                 && $request->hasHeader('X-Tenant-Id', 'tenant-1')
                 && $request['roles'] === [sha1(CaronteApplicationToken::appId() . 'admin')];
         });
+    }
+
+    public function test_user_roles_sync_previews_replacement_and_requires_confirmation(): void
+    {
+        $adminUri = sha1(CaronteApplicationToken::appId().'admin');
+        $rootUri = sha1(CaronteApplicationToken::appId().'root');
+
+        Http::fake(fn ($request) => $request->method() === 'GET'
+            ? Http::response([
+                'status' => 200,
+                'message' => 'User roles retrieved',
+                'data' => [[
+                    'uri_applicationRole' => $rootUri,
+                    'name' => 'root',
+                ]],
+            ])
+            : Http::response([
+                'status' => 200,
+                'message' => 'Roles synchronized',
+                'data' => [],
+            ]));
+
+        $this->artisan('caronte:users:roles:sync', [
+            'uri_user' => 'user-1',
+            '--tenant' => 'tenant-1',
+            '--role' => ['admin'],
+        ])
+            ->expectsConfirmation('Apply this final role set?', 'yes')
+            ->expectsOutput('Roles synchronized')
+            ->assertExitCode(0);
+
+        Http::assertSent(fn ($request): bool => $request->method() === 'GET'
+            && $request->url() === 'https://caronte.test/api/users/user-1/roles');
+        Http::assertSent(fn ($request): bool => $request->method() === 'PUT'
+            && $request->url() === 'https://caronte.test/api/users/user-1/roles'
+            && $request['roles'] === [$adminUri]);
+    }
+
+    public function test_user_roles_sync_does_not_write_when_confirmation_is_rejected(): void
+    {
+        Http::fake([
+            'https://caronte.test/api/users/user-1/roles' => Http::response([
+                'status' => 200,
+                'message' => 'User roles retrieved',
+                'data' => [],
+            ]),
+        ]);
+
+        $this->artisan('caronte:users:roles:sync', [
+            'uri_user' => 'user-1',
+            '--tenant' => 'tenant-1',
+            '--clear' => true,
+        ])
+            ->expectsConfirmation('Apply this final role set?', 'no')
+            ->expectsOutput('Role synchronization cancelled.')
+            ->assertExitCode(0);
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request): bool => $request->method() === 'GET');
     }
 }

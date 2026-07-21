@@ -162,48 +162,49 @@
 
         <div class="caronte-card mt-4">
             <div class="caronte-card__header">
-                <h2>Suite access</h2>
+                <h2>Group access</h2>
                 <p>Manage non-root roles for applications in the configured application group.</p>
             </div>
 
-            @if (!($suite_access['enabled'] ?? false))
+            @if (!($group_access['enabled'] ?? false))
                 <div class="alert alert-warning mb-0">
-                    {{ $suite_access['error'] ?? 'Suite access is not available for this application.' }}
+                    {{ $group_access['error'] ?? 'Group access is not available for this application.' }}
                 </div>
-            @elseif (empty($suite_access['applications']) || empty($suite_access['users']))
-                <div class="text-muted">No suite applications or users matched the current filters.</div>
+            @elseif (empty($group_access['applications']) || empty($group_access['users']))
+                <div class="text-muted">No group applications or users matched the current filters.</div>
             @else
-                <div class="accordion" id="suiteAccessAccordion">
-                    @foreach ($suite_access['users'] as $suiteUser)
+                <div class="accordion" id="groupAccessAccordion">
+                    @foreach ($group_access['users'] as $groupUser)
                         <div class="accordion-item">
-                            <h3 class="accordion-header" id="suite-user-{{ $suiteUser['uri_user'] }}">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#suite-collapse-{{ $suiteUser['uri_user'] }}">
-                                    {{ $suiteUser['name'] ?? '' }} · {{ $suiteUser['email'] ?? '' }}
+                            <h3 class="accordion-header" id="group-user-{{ $groupUser['uri_user'] }}">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#group-collapse-{{ $groupUser['uri_user'] }}">
+                                    {{ $groupUser['name'] ?? '' }} · {{ $groupUser['email'] ?? '' }}
                                 </button>
                             </h3>
-                            <div id="suite-collapse-{{ $suiteUser['uri_user'] }}" class="accordion-collapse collapse" data-bs-parent="#suiteAccessAccordion">
+                            <div id="group-collapse-{{ $groupUser['uri_user'] }}" class="accordion-collapse collapse" data-bs-parent="#groupAccessAccordion">
                                 <div class="accordion-body">
                                     <div class="row g-3">
-                                        @foreach ($suite_access['applications'] as $suiteApp)
+                                        @foreach ($group_access['applications'] as $groupApp)
                                             @php
-                                                $manageableRoles = collect($suiteApp['roles'] ?? [])
+                                                $manageableRoles = collect($groupApp['roles'] ?? [])
                                                     ->filter(fn ($role) => ($role['manageable'] ?? true) !== false)
                                                     ->values();
-                                                $assignedRoleUris = collect($suiteUser['roles'] ?? [])
-                                                    ->where('app_id', $suiteApp['app_id'])
+                                                $assignedRoleUris = collect($groupUser['role_assignments'] ?? [])
+                                                    ->where('app_id', $groupApp['app_id'])
+                                                    ->flatMap(fn ($assignment) => $assignment['roles'] ?? [])
                                                     ->pluck('uri_applicationRole')
                                                     ->all();
                                                 $syncUrl = str_replace(
                                                     ['__USER__', '__APP__'],
-                                                    [$suiteUser['uri_user'], $suiteApp['app_id']],
-                                                    $routes['suiteRolesSync']
+                                                    [$groupUser['uri_user'], $groupApp['app_id']],
+                                                    $routes['groupRolesSync']
                                                 );
                                             @endphp
                                             <div class="col-12 col-lg-6">
                                                 <form method="POST" action="{{ $syncUrl }}" class="border rounded p-3 h-100">
                                                     @csrf
                                                     @method('PUT')
-                                                    <div class="fw-semibold mb-2">{{ $suiteApp['name'] ?? $suiteApp['app_id'] }}</div>
+                                                    <div class="fw-semibold mb-2">{{ $groupApp['name'] ?? $groupApp['app_id'] }}</div>
                                                     @forelse ($manageableRoles as $role)
                                                         <label class="caronte-checkbox">
                                                             <input
@@ -220,7 +221,7 @@
                                                     @empty
                                                         <div class="text-muted small mb-3">Only reserved roles are defined for this app.</div>
                                                     @endforelse
-                                                    <button type="submit" class="btn caronte-btn-secondary btn-sm mt-2">Save suite roles</button>
+                                                    <button type="submit" class="btn caronte-btn-secondary btn-sm mt-2">Save group roles</button>
                                                 </form>
                                             </div>
                                         @endforeach

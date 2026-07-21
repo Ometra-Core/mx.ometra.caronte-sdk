@@ -9,30 +9,36 @@ use Ometra\Caronte\Http\Controllers\UserController;
 use Ometra\Caronte\Support\ConfiguredRoles;
 
 $authPrefix = trim((string) config('caronte.routes.prefix', ''), '/');
-$configuredLoginUrl = (string) config('caronte.routes.login_url', '/login');
-$loginPath = trim((string) (parse_url($configuredLoginUrl, PHP_URL_PATH) ?: $configuredLoginUrl), '/');
 $managementPrefix = trim((string) config('caronte.management.route_prefix', 'caronte/management'), '/');
 $managementRoles = implode(',', ConfiguredRoles::accessRoles());
 
-Route::prefix($authPrefix)->name('caronte.')->group(function () use ($loginPath): void {
-    Route::get($loginPath, [AuthController::class, 'loginForm'])->name('login.form');
-    Route::post($loginPath, [AuthController::class, 'login'])->name('login');
+Route::prefix($authPrefix)->name('caronte.')->group(function (): void {
     Route::match(['get', 'post'], 'logout', [AuthController::class, 'logout'])->name('logout');
-
-    Route::get('oidc/login', [OidcAuthController::class, 'redirect'])->name('oidc.login');
-    Route::get('oidc/callback', [OidcAuthController::class, 'callback'])->name('oidc.callback');
-    Route::post('oidc/logout', [OidcAuthController::class, 'logout'])->name('oidc.logout');
-
-    Route::post('two-factor', [AuthController::class, 'twoFactorTokenRequest'])->name('twoFactor.request');
-    Route::get('two-factor/{token}', [AuthController::class, 'twoFactorTokenLogin'])->name('twoFactor.login');
-
-    Route::prefix('password/recover')->name('password.recover.')->group(function (): void {
-        Route::get('', [AuthController::class, 'passwordRecoverRequestForm'])->name('form');
-        Route::post('', [AuthController::class, 'passwordRecoverRequest'])->name('request');
-        Route::get('{token}', [AuthController::class, 'passwordRecoverTokenValidation'])->name('validate-token');
-        Route::post('{token}', [AuthController::class, 'passwordRecover'])->name('submit');
-    });
 });
+
+if ((bool) config('caronte.routes.auth_enabled', true)) {
+    $configuredLoginUrl = (string) config('caronte.routes.login_url', '/login');
+    $loginPath = trim((string) (parse_url($configuredLoginUrl, PHP_URL_PATH) ?: $configuredLoginUrl), '/');
+
+    Route::prefix($authPrefix)->name('caronte.')->group(function () use ($loginPath): void {
+        Route::get($loginPath, [AuthController::class, 'loginForm'])->name('login.form');
+        Route::post($loginPath, [AuthController::class, 'login'])->name('login');
+
+        Route::get('oidc/login', [OidcAuthController::class, 'redirect'])->name('oidc.login');
+        Route::get('oidc/callback', [OidcAuthController::class, 'callback'])->name('oidc.callback');
+        Route::post('oidc/logout', [OidcAuthController::class, 'logout'])->name('oidc.logout');
+
+        Route::post('two-factor', [AuthController::class, 'twoFactorTokenRequest'])->name('twoFactor.request');
+        Route::get('two-factor/{token}', [AuthController::class, 'twoFactorTokenLogin'])->name('twoFactor.login');
+
+        Route::prefix('password/recover')->name('password.recover.')->group(function (): void {
+            Route::get('', [AuthController::class, 'passwordRecoverRequestForm'])->name('form');
+            Route::post('', [AuthController::class, 'passwordRecoverRequest'])->name('request');
+            Route::get('{token}', [AuthController::class, 'passwordRecoverTokenValidation'])->name('validate-token');
+            Route::post('{token}', [AuthController::class, 'passwordRecover'])->name('submit');
+        });
+    });
+}
 
 if (config('caronte.management.enabled')) {
     Route::prefix($managementPrefix)
@@ -53,8 +59,8 @@ if (config('caronte.management.enabled')) {
             Route::delete('users/{uri_user}/metadata', [UserController::class, 'deleteMetadata'])->name('users.metadata.delete');
 
             Route::put(
-                'suite/users/{uri_user}/applications/{app_id}/roles',
+                'users/{uri_user}/applications/{app_id}/roles',
                 [UserController::class, 'syncGroupRoles']
-            )->name('suite.users.applications.roles.sync');
+            )->name('users.applications.roles.sync');
         });
 }

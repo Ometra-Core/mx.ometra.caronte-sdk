@@ -1,4 +1,4 @@
-import type { Branding, Paginated, Role, Routes, SuiteAccess, User } from "../../types";
+import type { Branding, GroupAccess, Paginated, Role, Routes, User } from "../../types";
 
 type ManagementIndexProps = {
   branding?: Branding;
@@ -8,7 +8,7 @@ type ManagementIndexProps = {
   configured_roles?: Role[];
   missing_roles?: Role[];
   outdated_roles?: Role[];
-  suite_access?: SuiteAccess;
+  group_access?: GroupAccess;
   routes?: Routes;
   csrf_token?: string;
 };
@@ -21,7 +21,7 @@ export default function ManagementIndex({
   configured_roles = [],
   missing_roles = [],
   outdated_roles = [],
-  suite_access = { enabled: false, applications: [], users: [] },
+  group_access = { enabled: false, applications: [], users: [] },
   routes = {},
   csrf_token,
 }: ManagementIndexProps) {
@@ -222,33 +222,34 @@ export default function ManagementIndex({
 
       <div className="caronte-card mt-4">
         <div className="caronte-card__header">
-          <h2>Suite access</h2>
+          <h2>Group access</h2>
           <p>Manage non-root roles for applications in the configured application group.</p>
         </div>
 
-        {!suite_access.enabled ? (
+        {!group_access.enabled ? (
           <div className="alert alert-warning mb-0">
-            {suite_access.error || "Suite access is not available for this application."}
+            {group_access.error || "Group access is not available for this application."}
           </div>
-        ) : (suite_access.applications || []).length === 0 || (suite_access.users || []).length === 0 ? (
-          <div className="text-muted">No suite applications or users matched the current filters.</div>
+        ) : (group_access.applications || []).length === 0 || (group_access.users || []).length === 0 ? (
+          <div className="text-muted">No group applications or users matched the current filters.</div>
         ) : (
           <div className="row g-3">
-            {(suite_access.users || []).map((user) => (
+            {(group_access.users || []).map((user) => (
               <div className="col-12" key={user.uri_user}>
                 <div className="border rounded p-3">
                   <div className="fw-semibold mb-3">
                     {user.name} · {user.email}
                   </div>
                   <div className="row g-3">
-                    {(suite_access.applications || []).map((application) => {
+                    {(group_access.applications || []).map((application) => {
                       const manageableRoles = (application.roles || []).filter(
                         (role) => role.manageable !== false,
                       );
-                      const assignedRoleUris = (user.roles || [])
-                        .filter((role) => role.app_id === application.app_id)
+                      const assignedRoleUris = (user.role_assignments || [])
+                        .filter((assignment) => assignment.app_id === application.app_id)
+                        .flatMap((assignment) => assignment.roles || [])
                         .map((role) => role.uri_applicationRole);
-                      const action = (routes.suiteRolesSync || "")
+                      const action = (routes.groupRolesSync || "")
                         .replace("__USER__", user.uri_user || "")
                         .replace("__APP__", application.app_id);
 
@@ -279,7 +280,7 @@ export default function ManagementIndex({
                               </div>
                             )}
                             <button type="submit" className="btn caronte-btn-secondary btn-sm mt-2">
-                              Save suite roles
+                              Save group roles
                             </button>
                           </div>
                         </form>

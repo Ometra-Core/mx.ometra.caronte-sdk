@@ -5,7 +5,9 @@ use Equidna\Toolkit\Http\Middleware\ForceJsonResponse;
 use Ometra\Caronte\Http\Controllers\ApiAuthController;
 
 Route::prefix('api/caronte/auth')->middleware(ForceJsonResponse::class)->name('caronte.api.auth.')->group(function (): void {
-    Route::post('login', [ApiAuthController::class, 'login'])->name('login');
+    if ((bool) config('caronte.routes.auth_enabled', true)) {
+        Route::post('login', [ApiAuthController::class, 'login'])->name('login');
+    }
 
     Route::middleware('caronte.session')->group(function (): void {
         Route::get('me', [ApiAuthController::class, 'me'])->name('me');

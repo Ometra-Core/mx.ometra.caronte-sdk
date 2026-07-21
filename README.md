@@ -11,7 +11,7 @@ Main capabilities:
 - User authentication via Caronte (login, logout, 2FA, password recovery)
 - User token validation and renewal middleware
 - Management UI for users and role synchronization
-- Suite access management for application groups with non-root role synchronization
+- Group access management with non-root role synchronization across applications
 - Application-to-application authentication middleware
 - Protected API access token validation and scope checks
 - Tenant-aware behavior for single-tenant and multi-tenant modes
@@ -75,21 +75,31 @@ return the SDK's normalized response array.
 
 Full steps: see doc/deployment-instructions.md.
 
-## Suite Access
+## Delegated Login
 
-Applications that belong to a Caronte `ApplicationGroup` can use the SDK to manage tenant user access across the suite after the server grants these Caronte platform permissions to the application:
+An application can delegate its login UI to another application in its group and avoid registering local login, OIDC, two-factor, and password-recovery routes:
 
-- `groups.roles.read`
-- `groups.users.read`
+```dotenv
+CARONTE_AUTH_ROUTES_ENABLED=false
+CARONTE_LOGIN_URL=https://identity.example.com/login
+```
+
+Protected browser routes redirect to `CARONTE_LOGIN_URL` and append the intended URL as a base64-encoded `callback_url`. The delegated application must accept that callback and complete the shared-session or token-handoff flow. Local browser and API logout routes, plus `GET /api/caronte/auth/me`, remain available; only login-producing routes are disabled. Management routes are unaffected.
+
+## Group Access
+
+Applications that belong to a Caronte `ApplicationGroup` can use the SDK to read their group and manage tenant user access after the server grants the write permission to the application:
+
 - `groups.user_roles.write`
 
 The SDK exposes `Ometra\Caronte\Api\GroupApi` with:
 
-- `showGroupRoles()`
-- `showGroupUsers(string $search = '')`
+- `showGroup()`
 - `syncGroupUserRoles(string $uriUser, string $appId, array $roleUris, ?string $actorToken = null)`
 
-The management UI includes a "Suite access" mode that lists tenant users, groups roles by application, and prevents selecting roles marked as non-manageable such as `root`.
+`showGroup()` calls `GET /api/group` with `X-Group-Token` and the current tenant context. It returns the group, applications, assignable roles, API scopes, and tenant user mappings. It never returns secrets, tokens, or internal Caronte permissions.
+
+The management UI includes a "Group access" mode that lists tenant users, groups roles by application, and prevents selecting reserved roles such as `root`.
 
 ## Documentation Index
 

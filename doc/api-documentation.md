@@ -114,12 +114,6 @@ Default management prefix: /caronte/management.
 - POST /caronte/management/roles/sync (caronte.management.roles.sync)
     - Purpose: sync configured roles to Caronte server
 
-Legacy role mutation routes exist for compatibility and redirect with warning:
-
-- POST /roles/create (caronte.management.roles.create)
-- POST /roles/update (caronte.management.roles.update)
-- POST /roles/delete (caronte.management.roles.delete)
-
 ### 2.2 Users
 
 - GET /users/list (caronte.management.users.list)
@@ -141,11 +135,6 @@ Legacy role mutation routes exist for compatibility and redirect with warning:
 
 - DELETE /users/{uri_user} (caronte.management.users.delete.direct)
 
-Legacy user mutation compatibility routes:
-
-- POST /users/update (caronte.management.users.update)
-- POST /users/delete (caronte.management.users.delete)
-
 Roles and metadata:
 
 - GET /users/{uri_user}/roles (caronte.management.users.roles.list)
@@ -153,11 +142,11 @@ Roles and metadata:
 - POST /users/{uri_user}/metadata (caronte.management.users.metadata.store)
 - DELETE /users/{uri_user}/metadata (caronte.management.users.metadata.delete)
 
-Suite access:
+Group access:
 
-- PUT /suite/users/{uri_user}/applications/{app_id}/roles (caronte.management.suite.users.applications.roles.sync)
+- PUT /users/{uri_user}/applications/{app_id}/roles (caronte.management.users.applications.roles.sync)
     - Body: roles array of manageable role URIs for the target application
-    - Uses GroupApi to call Caronte `/api/application-groups/current/users/{uri_user}/applications/{app_id}/roles`
+    - Uses GroupApi to call Caronte `/api/group/users/{uri_user}/applications/{app_id}/roles`
     - Sends the current user token as optional actor token when available
     - Rejects roles that are not part of the target app's manageable group-role catalog
 
@@ -220,5 +209,5 @@ Failure:
 
 - There is no package-shipped REST API versioning layer.
 - Public routes are web-routed and can still return JSON.
-- `GroupApi` wraps Caronte server suite endpoints under `/api/application-groups/current`.
+- `GroupApi::showGroup()` wraps the aggregate `GET /api/group` contract. Applications include assignable roles and API scopes; users include tenant-scoped role assignments. Internal Caronte permissions are excluded.
 - Unknown downstream schemas from Caronte server are tracked in doc/open-questions-and-assumptions.md.
