@@ -77,6 +77,43 @@ class CallbackUrlSecurityTest extends TestCase
         $this->assertSame('/safe', CaronteCallbackUrl::resolve($request, 'https://app.example.test.evil.test/path'));
     }
 
+    public function test_it_allows_exact_hosts_and_subdomain_wildcards_in_allowlist_policy(): void
+    {
+        config()->set('caronte.callback_url.policy', 'allowlist');
+        config()->set('caronte.callback_url.allowed_hosts', [
+            'apollo.ometra.mx',
+            '*.apollo.ometra.mx',
+        ]);
+
+        $request = Request::create('https://apollo.ometra.mx/login', 'GET');
+
+        $this->assertSame(
+            'https://apollo.ometra.mx/dashboard',
+            CaronteCallbackUrl::resolve($request, 'https://apollo.ometra.mx/dashboard')
+        );
+        $this->assertSame(
+            'https://admin.apollo.ometra.mx/dashboard',
+            CaronteCallbackUrl::resolve($request, 'https://admin.apollo.ometra.mx/dashboard')
+        );
+        $this->assertSame(
+            'https://tenant.admin.apollo.ometra.mx/dashboard',
+            CaronteCallbackUrl::resolve($request, base64_encode('https://tenant.admin.apollo.ometra.mx/dashboard'))
+        );
+    }
+
+    public function test_subdomain_wildcards_do_not_match_the_root_or_similar_domains(): void
+    {
+        config()->set('caronte.routes.success_url', '/safe');
+        config()->set('caronte.callback_url.policy', 'allowlist');
+        config()->set('caronte.callback_url.allowed_hosts', ['*.apollo.ometra.mx']);
+
+        $request = Request::create('https://login.apollo.ometra.mx/login', 'GET');
+
+        $this->assertSame('/safe', CaronteCallbackUrl::resolve($request, 'https://apollo.ometra.mx/path'));
+        $this->assertSame('/safe', CaronteCallbackUrl::resolve($request, 'https://fakeapollo.ometra.mx/path'));
+        $this->assertSame('/safe', CaronteCallbackUrl::resolve($request, 'https://apollo.ometra.mx.evil.test/path'));
+    }
+
     /** @return array<string, array{string}> */
     public static function unsafeCallbacks(): array
     {

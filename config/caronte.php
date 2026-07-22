@@ -82,7 +82,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | strict_same_host: Requires same scheme, host and port as current request.
-    | allowlist: Allows absolute callback hosts only when explicitly listed.
+    | allowlist: Allows absolute callback hosts when explicitly listed. A
+    | leading wildcard (for example, *.example.com) allows subdomains only;
+    | list example.com separately when the root domain must also be allowed.
     |
     */
     'callback_url' => [
