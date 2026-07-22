@@ -89,7 +89,7 @@ final class CaronteCallbackUrl
         }
 
         if (static::policy() === self::POLICY_ALLOWLIST) {
-            return in_array($host, static::allowedHosts(), true);
+            return static::isAllowedHost($host);
         }
 
         return hash_equals(strtolower($request->getHost()), $host);
@@ -130,6 +130,27 @@ final class CaronteCallbackUrl
         }
 
         return array_values(array_unique($normalizedHosts));
+    }
+
+    private static function isAllowedHost(string $host): bool
+    {
+        foreach (static::allowedHosts() as $allowedHost) {
+            if (hash_equals($allowedHost, $host)) {
+                return true;
+            }
+
+            if (! str_starts_with($allowedHost, '*.')) {
+                continue;
+            }
+
+            $suffix = substr($allowedHost, 1);
+
+            if ($suffix !== '.' && str_ends_with($host, $suffix)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return array{scheme: string, host: string, port?: int}|null */
