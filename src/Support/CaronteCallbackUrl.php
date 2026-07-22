@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 
 final class CaronteCallbackUrl
 {
+    private const POLICY_STRICT_SAME_HOST = 'strict_same_host';
+    private const POLICY_ALLOWLIST = 'allowlist';
+
     public static function resolve(Request $request, mixed $candidate): string
     {
         return static::normalize($request, $candidate)
@@ -66,18 +69,14 @@ final class CaronteCallbackUrl
                 && ! isset($parts['pass']);
         }
 
-        $parts = parse_url($url);
+        $parts = static::parseAbsoluteUrl($url);
 
-        if (
-            ! is_array($parts)
-            || isset($parts['user'])
-            || isset($parts['pass'])
-            || ! isset($parts['scheme'], $parts['host'])
-        ) {
+        if ($parts === null) {
             return false;
         }
 
         $scheme = strtolower((string) $parts['scheme']);
+        $host = strtolower((string) $parts['host']);
 
         if (! in_array($scheme, ['http', 'https'], true)) {
             return false;
@@ -85,9 +84,71 @@ final class CaronteCallbackUrl
 
         $port = isset($parts['port']) ? (int) $parts['port'] : static::defaultPort($scheme);
 
-        return hash_equals(strtolower($request->getScheme()), $scheme)
-            && hash_equals(strtolower($request->getHost()), strtolower((string) $parts['host']))
-            && $request->getPort() === $port;
+        if (! hash_equals(strtolower($request->getScheme()), $scheme) || $request->getPort() !== $port) {
+            return false;
+        }
+
+        if (static::policy() === self::POLICY_ALLOWLIST) {
+            return in_array($host, static::allowedHosts(), true);
+        }
+
+        return hash_equals(strtolower($request->getHost()), $host);
+    }
+
+    private static function policy(): string
+    {
+        $policy = strtolower((string) config('caronte.callback_url.policy', self::POLICY_STRICT_SAME_HOST));
+
+        return in_array($policy, [self::POLICY_STRICT_SAME_HOST, self::POLICY_ALLOWLIST], true)
+            ? $policy
+            : self::POLICY_STRICT_SAME_HOST;
+    }
+
+    /** @return array<int, string> */
+    private static function allowedHosts(): array
+    {
+        $hosts = config('caronte.callback_url.allowed_hosts', []);
+
+        if (! is_array($hosts)) {
+            return [];
+        }
+
+        $normalizedHosts = [];
+
+        foreach ($hosts as $host) {
+            if (! is_string($host)) {
+                continue;
+            }
+
+            $normalized = strtolower(trim($host));
+
+            if ($normalized === '') {
+                continue;
+            }
+
+            $normalizedHosts[] = $normalized;
+        }
+
+        return array_values(array_unique($normalizedHosts));
+    }
+
+    /** @return array{scheme: string, host: string, port?: int}|null */
+    private static function parseAbsoluteUrl(string $url): ?array
+    {
+        $parts = parse_url($url);
+
+        if (
+            ! is_array($parts)
+            || isset($parts['user'])
+            || isset($parts['pass'])
+            || ! isset($parts['scheme'], $parts['host'])
+            || ! is_string($parts['scheme'])
+            || ! is_string($parts['host'])
+        ) {
+            return null;
+        }
+
+        return $parts;
     }
 
     private static function defaultPort(string $scheme): int

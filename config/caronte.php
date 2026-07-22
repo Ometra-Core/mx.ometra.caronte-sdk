@@ -78,6 +78,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Callback URL Security
+    |--------------------------------------------------------------------------
+    |
+    | strict_same_host: Requires same scheme, host and port as current request.
+    | allowlist: Allows absolute callback hosts only when explicitly listed.
+    |
+    */
+    'callback_url' => [
+        'policy' => env('CARONTE_CALLBACK_URL_POLICY', 'strict_same_host'),
+        'allowed_hosts' => array_values(
+            array_filter(
+                array_map('trim', explode(',', (string) env('CARONTE_CALLBACK_URL_ALLOWED_HOSTS', '')))
+            )
+        ),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Tenancy Mode
     |--------------------------------------------------------------------------
     */

@@ -33,6 +33,50 @@ class CallbackUrlSecurityTest extends TestCase
         $this->assertSame('/safe', CaronteCallbackUrl::resolve($request, $callback));
     }
 
+    public function test_it_allows_explicit_hosts_in_allowlist_policy(): void
+    {
+        config()->set('caronte.callback_url.policy', 'allowlist');
+        config()->set('caronte.callback_url.allowed_hosts', [
+            'app.example.test',
+            'admin.app.example.test',
+            'portal.app.example.test',
+        ]);
+
+        $request = Request::create('https://app.example.test/login', 'GET');
+
+        $this->assertSame(
+            'https://app.example.test/dashboard',
+            CaronteCallbackUrl::resolve($request, 'https://app.example.test/dashboard')
+        );
+
+        $this->assertSame(
+            'https://admin.app.example.test/home',
+            CaronteCallbackUrl::resolve($request, base64_encode('https://admin.app.example.test/home'))
+        );
+
+        $this->assertSame(
+            'https://portal.app.example.test/start',
+            CaronteCallbackUrl::resolve($request, 'https://portal.app.example.test/start')
+        );
+    }
+
+    public function test_it_rejects_hosts_not_present_in_allowlist_policy(): void
+    {
+        config()->set('caronte.routes.success_url', '/safe');
+        config()->set('caronte.callback_url.policy', 'allowlist');
+        config()->set('caronte.callback_url.allowed_hosts', [
+            'app.example.test',
+            'admin.app.example.test',
+            'portal.app.example.test',
+        ]);
+
+        $request = Request::create('https://other.app.example.test/login', 'GET');
+
+        $this->assertSame('/safe', CaronteCallbackUrl::resolve($request, 'https://evil.app.example.test/path'));
+        $this->assertSame('/safe', CaronteCallbackUrl::resolve($request, 'https://example.org/path'));
+        $this->assertSame('/safe', CaronteCallbackUrl::resolve($request, 'https://app.example.test.evil.test/path'));
+    }
+
     /** @return array<string, array{string}> */
     public static function unsafeCallbacks(): array
     {
