@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.2.0] - 2026-08-07
+
+### Added
+
+- Server-side tenant token portfolios for web sessions, with request-scoped selection by `id_tenant` query or
+  `X-Tenant-Id` header.
+- Public tenant discovery APIs and shared Inertia properties for available and current tenants.
+- Accessible Blade and React tenant switcher components with independent browser-tab navigation.
+
+### Changed
+
+- Web password and 2FA login request all eligible tenant tokens while API bearer and OIDC flows retain their
+  existing contracts.
+- Token refresh replaces only the selected tenant entry, and web logout revokes and clears the complete portfolio.
+- Legacy single-token sessions remain supported as a compatibility fallback.
+
+### Security
+
+- Tenant selectors are validated against the server-side portfolio; conflicting or unavailable tenant overrides
+  fail closed with HTTP 403.
+- Business payload fields named `id_tenant` are not treated as navigation context.
+
 ## [8.0.0] - 2026-07-21
 
 ### Added

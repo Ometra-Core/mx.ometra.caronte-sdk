@@ -113,6 +113,7 @@ The management UI includes a "Group access" mode that lists tenant users, groups
 - [Monitoring](doc/monitoring.md)
 - [Business Logic & Core Processes](doc/business-logic-and-core-processes.md)
 - [Open Questions & Assumptions](doc/open-questions-and-assumptions.md)
+- [Multitenant Session UI](doc/multitenant-session-ui.md)
 
 ## Standards Note
 

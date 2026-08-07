@@ -12,6 +12,15 @@ export type TenantOption = {
   name: string;
 };
 
+export type TenantSwitcherProps = {
+  tenants: TenantOption[];
+  currentTenantId?: string | null;
+  label?: string;
+  className?: string;
+  disabled?: boolean;
+  onTenantChange?: (tenantId: string, tenant: TenantOption) => void;
+};
+
 export type Role = {
   uri_applicationRole: string;
   app_id?: string;

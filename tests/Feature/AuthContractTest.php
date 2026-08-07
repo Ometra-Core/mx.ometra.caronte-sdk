@@ -360,6 +360,60 @@ class AuthContractTest extends TestCase
         });
     }
 
+    public function test_web_login_requests_and_stores_all_tenant_tokens(): void
+    {
+        $tenantA = $this->makeToken();
+        $tenantB = $this->makeToken([
+            'uri_user' => 'user-123', 'name' => 'Root User', 'email' => 'root@example.com',
+            'id_tenant' => 'tenant-2', 'tenant_name' => 'Tenant 2', 'roles' => [[
+                'name' => 'root', 'app_id' => CaronteApplicationToken::appId(),
+                'uri_applicationRole' => sha1(CaronteApplicationToken::appId() . 'root'),
+            ]], 'metadata' => [],
+        ]);
+
+        Http::fake(['https://caronte.test/api/auth/login' => Http::response([
+            'status' => 200,
+            'message' => 'Token generated',
+            'data' => [
+                'token' => $tenantA,
+                'tokens' => [
+                    ['id_tenant' => 'tenant-1', 'name' => 'Tenant 1', 'token' => $tenantA],
+                    ['id_tenant' => 'tenant-2', 'name' => 'Tenant 2', 'token' => $tenantB],
+                ],
+            ],
+        ])]);
+
+        $this->post('/login', ['email' => 'root@example.com', 'password' => 'Password123!'])
+            ->assertRedirect('/');
+
+        $this->assertSame($tenantA, session('caronte.tenant_tokens.tenant-1.token'));
+        $this->assertSame($tenantB, session('caronte.tenant_tokens.tenant-2.token'));
+        $this->assertSame('tenant-1', session('caronte.last_tenant_id'));
+        Http::assertSent(fn($request): bool => $request->url() === 'https://caronte.test/api/auth/login'
+            && $request['include_tenant_tokens'] === true);
+    }
+
+    public function test_web_logout_revokes_globally_and_clears_the_portfolio(): void
+    {
+        $token = $this->makeToken();
+        Http::fake(['https://caronte.test/api/auth/logoutAll' => Http::response([
+            'status' => 200, 'message' => 'Logged out', 'data' => [],
+        ])]);
+
+        $this->withSession([
+            config('caronte.session_key') => $token,
+            'caronte.tenant_tokens' => [
+                'tenant-1' => ['id_tenant' => 'tenant-1', 'name' => 'Tenant 1', 'token' => $token],
+            ],
+            'caronte.last_tenant_id' => 'tenant-1',
+        ])->post('/logout')->assertRedirect('/login');
+
+        $this->assertNull(session(config('caronte.session_key')));
+        $this->assertNull(session('caronte.tenant_tokens'));
+        $this->assertNull(session('caronte.last_tenant_id'));
+        Http::assertSent(fn($request): bool => $request->url() === 'https://caronte.test/api/auth/logoutAll');
+    }
+
     public function test_login_redirects_with_tenant_options_when_selection_is_required(): void
     {
         Http::fake([

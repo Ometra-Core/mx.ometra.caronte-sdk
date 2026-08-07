@@ -209,6 +209,22 @@ body {
     color: var(--caronte-muted);
 }
 
+.caronte-tenant-switcher {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.caronte-tenant-switcher__label {
+    font-weight: 700;
+}
+
+.caronte-tenant-switcher__select {
+    min-width: 12rem;
+    max-width: 24rem;
+}
+
 .table {
     --bs-table-bg: transparent;
     --bs-table-striped-bg: rgba(15, 118, 110, 0.03);
