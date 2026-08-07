@@ -94,7 +94,7 @@ class MiddlewareBehaviorTest extends TestCase
             ->get('/api/_caronte/session-check', fn() => response()->json(['ok' => true]));
 
         Route::middleware(['web', 'caronte.session'])
-            ->get('/_caronte/session-check', function () {
+            ->match(['get', 'post'], '/_caronte/session-check', function () {
                 return response()->json([
                     'tenant_context' => app()->bound(TenantContext::class)
                         ? app(TenantContext::class)->get()
@@ -593,6 +593,92 @@ class MiddlewareBehaviorTest extends TestCase
         $response->assertHeader('X-User-Token', $fresh);
         $this->assertSame($fresh, session($sessionKey));
         Http::assertSentCount(1);
+    }
+
+    public function test_web_session_selects_a_portfolio_token_per_request(): void
+    {
+        $tenantA = $this->makeToken();
+        $tenantB = $this->makeToken([
+            'uri_user' => 'user-123', 'name' => 'Root User', 'email' => 'root@example.com',
+            'id_tenant' => 'tenant-2', 'roles' => [[
+                'name' => 'root', 'app_id' => CaronteApplicationToken::appId(),
+                'uri_applicationRole' => sha1(CaronteApplicationToken::appId() . 'root'),
+            ]], 'metadata' => [],
+        ]);
+        $portfolio = [
+            'tenant-1' => ['id_tenant' => 'tenant-1', 'name' => 'Tenant 1', 'token' => $tenantA],
+            'tenant-2' => ['id_tenant' => 'tenant-2', 'name' => 'Tenant 2', 'token' => $tenantB],
+        ];
+
+        $this->withSession(['caronte.tenant_tokens' => $portfolio, 'caronte.last_tenant_id' => 'tenant-1'])
+            ->get('/_caronte/session-check?id_tenant=tenant-2')
+            ->assertOk()
+            ->assertJsonPath('tenant_context', 'tenant-2');
+
+        $this->withSession(['caronte.tenant_tokens' => $portfolio, 'caronte.last_tenant_id' => 'tenant-2'])
+            ->withHeader('X-Tenant-Id', 'tenant-1')
+            ->get('/_caronte/session-check')
+            ->assertOk()
+            ->assertJsonPath('tenant_context', 'tenant-1');
+    }
+
+    public function test_web_session_rejects_conflicting_or_unavailable_tenant_selection(): void
+    {
+        $token = $this->makeToken();
+        $session = ['caronte.tenant_tokens' => [
+            'tenant-1' => ['id_tenant' => 'tenant-1', 'name' => 'Tenant 1', 'token' => $token],
+        ]];
+
+        $this->withSession($session)->withHeaders(['X-Tenant-Id' => 'tenant-2', 'Accept' => 'application/json'])
+            ->get('/_caronte/session-check?id_tenant=tenant-1')
+            ->assertStatus(403);
+
+        $this->withSession($session)->withHeader('Accept', 'application/json')
+            ->get('/_caronte/session-check?id_tenant=tenant-2')
+            ->assertStatus(403);
+    }
+
+    public function test_web_session_does_not_treat_business_payload_tenant_as_navigation_context(): void
+    {
+        $token = $this->makeToken();
+        $portfolio = [
+            'tenant-1' => ['id_tenant' => 'tenant-1', 'name' => 'Tenant 1', 'token' => $token],
+        ];
+
+        $this->withSession([
+            'caronte.tenant_tokens' => $portfolio,
+            'caronte.last_tenant_id' => 'tenant-1',
+        ])->post('/_caronte/session-check', ['id_tenant' => 'business-record-tenant'])
+            ->assertOk()
+            ->assertJsonPath('tenant_context', 'tenant-1');
+    }
+
+    public function test_refresh_replaces_only_the_selected_portfolio_token(): void
+    {
+        $expired = $this->makeToken(
+            issuedAt: new DateTimeImmutable('-30 minutes', new DateTimeZone('UTC')),
+            expiresAt: new DateTimeImmutable('-5 minutes', new DateTimeZone('UTC')),
+        );
+        $fresh = $this->makeToken();
+        $other = $this->makeToken([
+            'uri_user' => 'user-123', 'name' => 'Root User', 'email' => 'root@example.com',
+            'id_tenant' => 'tenant-2', 'roles' => [[
+                'name' => 'root', 'app_id' => CaronteApplicationToken::appId(),
+                'uri_applicationRole' => sha1(CaronteApplicationToken::appId() . 'root'),
+            ]], 'metadata' => [],
+        ]);
+        Http::fake(['https://caronte.test/api/auth/exchange' => Http::response([
+            'status' => 200, 'message' => 'Token exchanged', 'data' => ['token' => $fresh],
+        ])]);
+
+        $response = $this->withSession(['caronte.tenant_tokens' => [
+            'tenant-1' => ['id_tenant' => 'tenant-1', 'name' => 'Tenant 1', 'token' => $expired],
+            'tenant-2' => ['id_tenant' => 'tenant-2', 'name' => 'Tenant 2', 'token' => $other],
+        ]])->get('/_caronte/session-check?id_tenant=tenant-1', ['Accept' => 'application/json']);
+
+        $response->assertOk();
+        $this->assertSame($fresh, session('caronte.tenant_tokens.tenant-1.token'));
+        $this->assertSame($other, session('caronte.tenant_tokens.tenant-2.token'));
     }
 
     public function test_oidc_session_middleware_refreshes_with_refresh_token(): void

@@ -118,7 +118,7 @@ class AuthController extends BaseController
 
     public function logout(Request $request): Response
     {
-        return $this->handleLogout($request->boolean('all'));
+        return $this->handleLogout();
     }
 
     private function handleUserPasswordLogin(Request $request): Response
@@ -182,14 +182,15 @@ class AuthController extends BaseController
                 email: $email,
                 password: $password,
                 tenantId: $tenantId,
-                tenantSelectionToken: $tenantSelectionToken
+                tenantSelectionToken: $tenantSelectionToken,
+                includeTenantTokens: $this->isWebRequest($request)
             );
 
             $tokenString = (string) data_get($response, 'data.token', '');
             $token = CaronteUserToken::validateToken($tokenString, skipExchange: true);
 
             if ($this->isWebRequest($request)) {
-                Caronte::saveToken($token->toString());
+                $this->saveWebTokenResponse($response, $token->toString(), $tenantId);
             }
 
             $this->forgetPendingLogin($request);
@@ -306,13 +307,13 @@ class AuthController extends BaseController
     private function handleTwoFactorTokenLogin(Request $request, string $token): Response
     {
         try {
-            $response = AuthApi::consumeTwoFactor($token);
+            $response = AuthApi::consumeTwoFactor($token, $this->isWebRequest($request));
 
             $tokenString = (string) data_get($response, 'data.token', '');
             $validatedToken = CaronteUserToken::validateToken($tokenString, skipExchange: true);
 
             if ($this->isWebRequest($request)) {
-                Caronte::saveToken($validatedToken->toString());
+                $this->saveWebTokenResponse($response, $validatedToken->toString());
             }
 
             return CaronteResponse::success(
@@ -447,14 +448,12 @@ class AuthController extends BaseController
         }
     }
 
-    private function handleLogout(bool $logoutAllSessions = false): Response
+    private function handleLogout(): Response
     {
         try {
             $response = AuthApi::logout(
-                allSessions: $logoutAllSessions
+                allSessions: true
             );
-
-            Caronte::clearToken();
 
             return CaronteResponse::success(
                 message: $response['message'],
@@ -467,7 +466,49 @@ class AuthController extends BaseController
                 errors: $exception->errors(),
                 forwardUrl: (string) config('caronte.routes.login_url')
             );
+        } finally {
+            Caronte::clearToken();
         }
+    }
+
+    /** @param array<string, mixed> $response */
+    private function saveWebTokenResponse(array $response, string $fallbackToken, ?string $preferredTenantId = null): void
+    {
+        $entries = data_get($response, 'data.tokens', []);
+        $validated = [];
+
+        if (is_array($entries)) {
+            foreach ($entries as $entry) {
+                if (! is_array($entry)) {
+                    continue;
+                }
+
+                $tenantId = trim((string) ($entry['id_tenant'] ?? ''));
+                $rawToken = (string) ($entry['token'] ?? '');
+                if ($tenantId === '' || $rawToken === '') {
+                    continue;
+                }
+
+                $token = CaronteUserToken::validateToken($rawToken, skipExchange: true);
+                $payload = CaronteUserToken::userPayload($token);
+                if ((string) ($payload->id_tenant ?? '') !== $tenantId) {
+                    continue;
+                }
+
+                $validated[] = [
+                    'id_tenant' => $tenantId,
+                    'name' => (string) ($entry['name'] ?? ($payload->tenant_name ?? '')),
+                    'token' => $token->toString(),
+                ];
+            }
+        }
+
+        if ($validated !== []) {
+            Caronte::saveTenantTokens($validated, $preferredTenantId);
+            return;
+        }
+
+        Caronte::saveToken($fallbackToken);
     }
 
     private function absoluteUrl(string $url): string

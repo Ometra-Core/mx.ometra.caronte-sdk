@@ -57,14 +57,26 @@ class ResolvedOpenQuestionsTest extends TestCase
             ], 200),
         ]);
 
+        $token = $this->makeToken();
+
         $this->withSession([
-            config('caronte.session_key') => $this->makeToken(),
+            config('caronte.session_key') => $token,
+            'caronte.tenant_tokens' => [
+                'tenant-1' => [
+                    'id_tenant' => 'tenant-1',
+                    'name' => 'Tenant 1',
+                    'token' => $token,
+                ],
+            ],
+            'caronte.last_tenant_id' => 'tenant-1',
         ])->get('/caronte/management', [
             'X-Inertia' => 'true',
         ])
             ->assertOk()
             ->assertJsonPath('component', 'management/index')
             ->assertJsonPath('props.id_tenant', 'tenant-1')
+            ->assertJsonPath('props.caronte.current_tenant_id', 'tenant-1')
+            ->assertJsonPath('props.caronte.tenants.0.id_tenant', 'tenant-1')
             ->assertJsonPath('props.group_access.enabled', true)
             ->assertJsonPath('props.users.data.0.email', 'jane@example.com');
     }

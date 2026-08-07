@@ -167,6 +167,8 @@ class CaronteServiceProvider extends ServiceProvider
                     'access_roles' => ConfiguredRoles::accessRoles(),
                 ],
                 'user' => CaronteFacade::checkToken() ? CaronteFacade::getUser() : null,
+                'tenants' => CaronteFacade::getAvailableTenants(),
+                'current_tenant_id' => CaronteFacade::getCurrentTenantId(),
             ];
         });
     }

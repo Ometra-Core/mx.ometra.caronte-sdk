@@ -88,7 +88,103 @@ final class Caronte
             return;
         }
 
-        request()->session()->put((string) config('caronte.session_key', 'caronte.user_token'), $token);
+        $session = request()->session();
+        $session->put((string) config('caronte.session_key', 'caronte.user_token'), $token);
+
+        $tenantId = request()->attributes->get('caronte.current_tenant_id');
+        $portfolio = $this->tenantTokenPortfolio();
+
+        if (is_string($tenantId) && $tenantId !== '' && isset($portfolio[$tenantId])) {
+            $portfolio[$tenantId]['token'] = $token;
+            $session->put($this->tenantTokensSessionKey(), $portfolio);
+        }
+    }
+
+    /** @param array<int, array<string, mixed>> $tokens */
+    public function saveTenantTokens(array $tokens, ?string $preferredTenantId = null): void
+    {
+        if (! $this->hasRequestSession()) {
+            return;
+        }
+
+        $portfolio = [];
+        foreach ($tokens as $entry) {
+            $tenantId = trim((string) ($entry['id_tenant'] ?? ''));
+            $token = (string) ($entry['token'] ?? '');
+            if ($tenantId === '' || $token === '') {
+                continue;
+            }
+            $portfolio[$tenantId] = [
+                'id_tenant' => $tenantId,
+                'name' => (string) ($entry['name'] ?? ''),
+                'token' => $token,
+            ];
+        }
+
+        if ($portfolio === []) {
+            return;
+        }
+
+        $selected = is_string($preferredTenantId) && isset($portfolio[$preferredTenantId])
+            ? $preferredTenantId
+            : (string) array_key_first($portfolio);
+        request()->session()->put($this->tenantTokensSessionKey(), $portfolio);
+        request()->session()->put($this->lastTenantSessionKey(), $selected);
+        request()->session()->put(
+            (string) config('caronte.session_key', 'caronte.user_token'),
+            $portfolio[$selected]['token']
+        );
+    }
+
+    /** @return array<int, array{id_tenant: string, name: string}> */
+    public function getAvailableTenants(): array
+    {
+        $tenants = array_values(array_map(
+            static fn(array $entry): array => [
+                'id_tenant' => $entry['id_tenant'],
+                'name' => $entry['name'],
+            ],
+            $this->tenantTokenPortfolio()
+        ));
+
+        if ($tenants !== [] || ! app()->bound('request')) {
+            return $tenants;
+        }
+
+        $user = request()->attributes->get('caronte.user');
+        $tenantId = is_object($user) ? trim((string) ($user->id_tenant ?? '')) : '';
+        return $tenantId === '' ? [] : [[
+            'id_tenant' => $tenantId,
+            'name' => (string) ($user->tenant_name ?? ''),
+        ]];
+    }
+
+    public function getCurrentTenantId(): ?string
+    {
+        if (app()->bound('request')) {
+            $current = request()->attributes->get('caronte.current_tenant_id');
+            if (is_string($current) && $current !== '') {
+                return $current;
+            }
+        }
+
+        if (! $this->hasRequestSession()) {
+            return null;
+        }
+
+        $last = request()->session()->get($this->lastTenantSessionKey());
+        return is_string($last) && isset($this->tenantTokenPortfolio()[$last]) ? $last : null;
+    }
+
+    /** @return array<string, array{id_tenant: string, name: string, token: string}> */
+    public function tenantTokenPortfolio(): array
+    {
+        if (! $this->hasRequestSession()) {
+            return [];
+        }
+
+        $stored = request()->session()->get($this->tenantTokensSessionKey(), []);
+        return is_array($stored) ? $stored : [];
     }
 
     public function clearToken(): void
@@ -98,6 +194,36 @@ final class Caronte
         }
 
         request()->session()->forget((string) config('caronte.session_key', 'caronte.user_token'));
+        request()->session()->forget($this->tenantTokensSessionKey());
+        request()->session()->forget($this->lastTenantSessionKey());
+    }
+
+    public function clearCurrentToken(): void
+    {
+        if (! $this->hasRequestSession()) {
+            return;
+        }
+
+        $tenantId = request()->attributes->get('caronte.current_tenant_id');
+        $portfolio = $this->tenantTokenPortfolio();
+        if (! is_string($tenantId) || ! isset($portfolio[$tenantId])) {
+            $this->clearToken();
+            return;
+        }
+
+        unset($portfolio[$tenantId]);
+        if ($portfolio === []) {
+            $this->clearToken();
+            return;
+        }
+
+        $fallbackTenantId = (string) array_key_first($portfolio);
+        request()->session()->put($this->tenantTokensSessionKey(), $portfolio);
+        request()->session()->put($this->lastTenantSessionKey(), $fallbackTenantId);
+        request()->session()->put(
+            (string) config('caronte.session_key', 'caronte.user_token'),
+            $portfolio[$fallbackTenantId]['token']
+        );
     }
 
     public function setTokenWasExchanged(): void
@@ -216,6 +342,12 @@ final class Caronte
             return null;
         }
 
+        $tenantId = request()->attributes->get('caronte.current_tenant_id');
+        $portfolio = $this->tenantTokenPortfolio();
+        if (is_string($tenantId) && isset($portfolio[$tenantId])) {
+            return $portfolio[$tenantId]['token'];
+        }
+
         return request()->session()->get((string) config('caronte.session_key', 'caronte.user_token'));
     }
 
@@ -241,5 +373,15 @@ final class Caronte
         } catch (Throwable) {
             return false;
         }
+    }
+
+    private function tenantTokensSessionKey(): string
+    {
+        return (string) config('caronte.tenant_tokens_session_key', 'caronte.tenant_tokens');
+    }
+
+    private function lastTenantSessionKey(): string
+    {
+        return (string) config('caronte.last_tenant_session_key', 'caronte.last_tenant_id');
     }
 }

@@ -1,3 +1,29 @@
+# Release v8.2.0
+
+> **Release date:** 2026-08-07
+> **Type:** Minor - Concurrent tenant web sessions.
+
+## Summary
+
+v8.2.0 keeps one tenant-scoped JWT per authorized tenant in the Laravel session. Users can switch tenants without
+authenticating again, and separate tabs can operate in different tenant contexts through the URL or request header.
+
+## Highlights
+
+- Web login and 2FA store the complete tenant token portfolio returned by Caronte 4.1.0.
+- `Caronte::getAvailableTenants()` and `Caronte::getCurrentTenantId()` expose safe UI context.
+- Blade and React switchers preserve navigation state and never expose JWTs to the browser.
+- Refresh and access failures affect only the selected tenant; logout clears the complete session.
+- Existing single-token sessions, bearer authentication, and OIDC remain compatible.
+
+## Validation
+
+- PHPUnit: 154 tests, 524 assertions.
+- TypeScript: `tsc --noEmit` passes.
+- `git diff --check` passed.
+
+---
+
 # Release v8.0.0
 
 > **Release date:** 2026-07-21

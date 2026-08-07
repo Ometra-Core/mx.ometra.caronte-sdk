@@ -94,7 +94,7 @@ final class CaronteUserToken
                 return static::currentValidToken($rawToken);
             }
 
-            Caronte::clearToken();
+            Caronte::clearCurrentToken();
 
             throw new UnprocessableEntityException(
                 'Cannot exchange token: ' . $exception->getMessage(),

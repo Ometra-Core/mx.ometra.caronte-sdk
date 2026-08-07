@@ -52,6 +52,8 @@ return [
     'update_local_user'     => env('CARONTE_UPDATE_LOCAL_USER', false),
     'notification_delivery' => env('CARONTE_NOTIFICATION_DELIVERY', 'server'),
     'session_key'           => env('CARONTE_SESSION_KEY', 'caronte.user_token'),
+    'tenant_tokens_session_key' => env('CARONTE_TENANT_TOKENS_SESSION_KEY', 'caronte.tenant_tokens'),
+    'last_tenant_session_key' => env('CARONTE_LAST_TENANT_SESSION_KEY', 'caronte.last_tenant_id'),
 
     'notifications' => [
         'two_factor_sender'       => env(

@@ -13,7 +13,8 @@ class AuthApi
         string $email,
         ?string $password = null,
         ?string $tenantId = null,
-        ?string $tenantSelectionToken = null
+        ?string $tenantSelectionToken = null,
+        bool $includeTenantTokens = false
     ): array
     {
         $payload = [
@@ -30,6 +31,10 @@ class AuthApi
 
         if (is_string($tenantSelectionToken) && trim($tenantSelectionToken) !== '') {
             $payload['tenant_selection_token'] = trim($tenantSelectionToken);
+        }
+
+        if ($includeTenantTokens) {
+            $payload['include_tenant_tokens'] = true;
         }
 
         return app(CaronteApiClient::class)->authRequest(
@@ -72,11 +77,12 @@ class AuthApi
     /**
      * @return array{status: int, message: string, data: mixed, errors: array<int|string, mixed>}
      */
-    public static function consumeTwoFactor(string $token): array
+    public static function consumeTwoFactor(string $token, bool $includeTenantTokens = false): array
     {
         return app(CaronteApiClient::class)->authRequest(
             method: 'post',
-            endpoint: 'api/auth/two-factor/' . $token
+            endpoint: 'api/auth/two-factor/' . $token,
+            payload: $includeTenantTokens ? ['include_tenant_tokens' => true] : []
         );
     }
 
