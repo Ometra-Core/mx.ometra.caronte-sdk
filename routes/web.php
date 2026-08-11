@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Ometra\Caronte\Http\Controllers\AuthController;
 use Ometra\Caronte\Http\Controllers\ManagementController;
 use Ometra\Caronte\Http\Controllers\OidcAuthController;
+use Ometra\Caronte\Http\Middleware\BlockLoginRouteWhenDisabled;
 use Ometra\Caronte\Http\Controllers\RoleController;
 use Ometra\Caronte\Http\Controllers\UserController;
 use Ometra\Caronte\Support\ConfiguredRoles;
@@ -20,7 +21,7 @@ if ((bool) config('caronte.routes.auth_enabled', true)) {
     $configuredLoginUrl = (string) config('caronte.routes.login_url', '/login');
     $loginPath = trim((string) (parse_url($configuredLoginUrl, PHP_URL_PATH) ?: $configuredLoginUrl), '/');
 
-    Route::prefix($authPrefix)->name('caronte.')->group(function () use ($loginPath): void {
+    Route::prefix($authPrefix)->name('caronte.')->middleware([BlockLoginRouteWhenDisabled::class])->group(function () use ($loginPath): void {
         Route::get($loginPath, [AuthController::class, 'loginForm'])->name('login.form');
         Route::post($loginPath, [AuthController::class, 'login'])->name('login');
 

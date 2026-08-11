@@ -76,6 +76,7 @@ return [
         'prefix' => env('CARONTE_ROUTES_PREFIX', ''),
         'success_url' => env('CARONTE_SUCCESS_URL', '/'),
         'login_url' => env('CARONTE_LOGIN_URL', '/login'),
+        'login_view_enabled' => env('CARONTE_LOGIN_VIEW_ENABLED', true),
     ],
 
     /*
