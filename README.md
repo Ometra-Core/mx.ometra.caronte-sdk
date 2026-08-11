@@ -82,9 +82,12 @@ An application can delegate its login UI to another application in its group and
 ```dotenv
 CARONTE_AUTH_ROUTES_ENABLED=false
 CARONTE_LOGIN_URL=https://identity.example.com/login
+CARONTE_LOGIN_VIEW_ENABLED=false
 ```
 
 Protected browser routes redirect to `CARONTE_LOGIN_URL` and append the intended URL as a base64-encoded `callback_url`. The delegated application must accept that callback and complete the shared-session or token-handoff flow. Local browser and API logout routes, plus `GET /api/caronte/auth/me`, remain available; only login-producing routes are disabled. Management routes are unaffected.
+
+When `CARONTE_LOGIN_VIEW_ENABLED=false`, the `caronte.block-login-route-when-disabled` middleware blocks direct access to login form routes and redirects to the external `CARONTE_LOGIN_URL`.
 
 ## Group Access
 

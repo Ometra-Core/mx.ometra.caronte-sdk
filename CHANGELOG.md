@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.4.0] - 2026-08-11
+
+### Added
+
+- Login route blocking middleware (`BlockLoginRouteWhenDisabled`) to prevent access to the login form when it is provided by an external service.
+
 ## [8.2.0] - 2026-08-07
 
 ### Added

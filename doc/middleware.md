@@ -9,6 +9,7 @@ This directory contains one document per middleware alias registered by the pack
 - [caronte.application](middleware/caronte.application.md)
 - [caronte.protected-api-token](middleware/caronte.protected-api-token.md)
 - [caronte.protected-api-scopes](middleware/caronte.protected-api-scopes.md)
+- [caronte.block-login-route-when-disabled](middleware/block-login-route-when-disabled.md)
 
 ## How To Read These Docs
 
