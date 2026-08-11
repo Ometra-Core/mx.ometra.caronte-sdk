@@ -1,3 +1,32 @@
+# Release v8.3.0
+
+> **Release date:** 2026-08-11
+> **Type:** Patch - Login form route protection for delegated authentication.
+
+## Summary
+
+Introduces the `caronte.block-login-route-when-disabled` middleware to protect login form routes when delegated to an external service.
+
+## Highlights
+
+- New middleware blocks direct access to built-in login form when `CARONTE_LOGIN_VIEW_ENABLED=false`
+- Redirects to external login URL configured in `CARONTE_LOGIN_URL`
+- Automatically applied to auth route group
+
+## Configuration
+
+```dotenv
+CARONTE_AUTH_ROUTES_ENABLED=false
+CARONTE_LOGIN_URL=https://identity.example.com/login
+CARONTE_LOGIN_VIEW_ENABLED=false
+```
+
+## Breaking Changes
+
+None.
+
+---
+
 # Release v8.2.0
 
 > **Release date:** 2026-08-07
