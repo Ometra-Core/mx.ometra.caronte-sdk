@@ -140,11 +140,11 @@ class MiddlewareBehaviorTest extends TestCase
         ])->assertOk();
     }
 
-    public function test_blocked_login_route_redirects_with_root_callback(): void
+    public function test_blocked_login_route_uses_app_url_when_success_url_is_root(): void
     {
         config()->set('caronte.routes.login_view_enabled', false);
         config()->set('caronte.routes.login_url', 'https://identity.example.test/login');
-        config()->set('caronte.routes.success_url', '');
+        config()->set('caronte.routes.success_url', '/');
 
         $response = $this->get('/login');
 

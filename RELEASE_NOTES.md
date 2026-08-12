@@ -1,3 +1,25 @@
+# Release v8.3.2
+
+> **Release date:** 2026-08-12
+> **Type:** Patch - Delegated login callback root handling.
+
+## Summary
+
+Adjusts delegated login callback resolution in `BlockLoginRouteWhenDisabled` so a root-only callback setting (`/`) resolves to the host application URL.
+
+## Highlights
+
+- When `caronte.routes.success_url` is `/`, the middleware now uses `APP_URL` for `callback_url`.
+- If `caronte.routes.success_url` is empty, `APP_URL` remains the fallback callback source.
+- If neither value is available, redirect to delegated login continues without appending `callback_url`.
+- Feature tests now cover the `/` -> `APP_URL` behavior and the no-fallback behavior.
+
+## Breaking Changes
+
+None.
+
+---
+
 # Release v8.3.1
 
 > **Release date:** 2026-08-12
