@@ -1,3 +1,24 @@
+# Release v8.3.1
+
+> **Release date:** 2026-08-12
+> **Type:** Patch - Delegated login callback fallback behavior.
+
+## Summary
+
+Refines delegated login redirects produced by `BlockLoginRouteWhenDisabled` so callback behavior is explicit and fail-safe.
+
+## Highlights
+
+- Callback fallback order is now `caronte.routes.success_url`, then `APP_URL`.
+- If no fallback URL is available, redirect to delegated login no longer appends `callback_url`.
+- Added feature-test coverage for both callback-present and callback-absent scenarios.
+
+## Breaking Changes
+
+None.
+
+---
+
 # Release v8.3.0
 
 > **Release date:** 2026-08-11

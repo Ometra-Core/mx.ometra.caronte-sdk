@@ -140,6 +140,43 @@ class MiddlewareBehaviorTest extends TestCase
         ])->assertOk();
     }
 
+    public function test_blocked_login_route_redirects_with_root_callback(): void
+    {
+        config()->set('caronte.routes.login_view_enabled', false);
+        config()->set('caronte.routes.login_url', 'https://identity.example.test/login');
+        config()->set('caronte.routes.success_url', '');
+
+        $response = $this->get('/login');
+
+        $response->assertRedirect();
+
+        $location = (string) $response->baseResponse->headers->get('Location');
+
+        $this->assertSame('/login', parse_url($location, PHP_URL_PATH));
+
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+        $this->assertArrayHasKey('callback_url', $query);
+        $this->assertSame('https://client.test', base64_decode((string) $query['callback_url'], true));
+    }
+
+    public function test_blocked_login_route_redirects_without_callback_when_no_fallback_is_available(): void
+    {
+        config()->set('caronte.routes.login_view_enabled', false);
+        config()->set('caronte.routes.login_url', 'https://identity.example.test/login');
+        config()->set('caronte.routes.success_url', '');
+        config()->set('app.url', '');
+
+        $response = $this->get('/login');
+
+        $response->assertRedirect('https://identity.example.test/login');
+
+        $location = (string) $response->baseResponse->headers->get('Location');
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+        $this->assertArrayNotHasKey('callback_url', $query);
+    }
+
     public function test_application_middleware_accepts_optional_tenant_context(): void
     {
         $this->getJson('/api/_caronte/application-only-check', [
