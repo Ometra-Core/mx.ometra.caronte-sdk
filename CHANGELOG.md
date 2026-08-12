@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.3.1] - 2026-08-12
+
+### Changed
+
+- `BlockLoginRouteWhenDisabled` now builds delegated login callback fallback with `caronte.routes.success_url` first, then `APP_URL`.
+
+### Fixed
+
+- When both `caronte.routes.success_url` and `APP_URL` are empty, delegated login redirects no longer append `callback_url`.
+
+### Added
+
+- Feature-test coverage for blocked-login redirects with callback fallback present and absent.
+
 ## [8.3.0] - 2026-08-11
 
 ### Added

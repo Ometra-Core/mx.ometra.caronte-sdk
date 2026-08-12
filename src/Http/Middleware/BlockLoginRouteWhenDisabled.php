@@ -17,7 +17,21 @@ class BlockLoginRouteWhenDisabled
             $redirectUrl = config('caronte.routes.login_url');
 
             if (is_string($redirectUrl) && $redirectUrl !== '') {
-                return redirect()->away($redirectUrl);
+                $callbackUrl = (string) config('caronte.routes.success_url', (string) config('app.url', ''));
+
+                if ($callbackUrl === '') {
+                    $callbackUrl = (string) config('app.url', '');
+                }
+
+                if ($callbackUrl === '') {
+                    return redirect()->away($redirectUrl);
+                }
+
+                $separator = str_contains($redirectUrl, '?') ? '&' : '?';
+
+                return redirect()->away($redirectUrl . $separator . http_build_query([
+                    'callback_url' => base64_encode($callbackUrl),
+                ]));
             }
 
             abort(404);
