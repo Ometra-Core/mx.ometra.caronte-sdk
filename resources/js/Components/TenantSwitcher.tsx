@@ -24,11 +24,12 @@ export default function TenantSwitcher({
   disabled = false,
   onTenantChange,
 }: TenantSwitcherProps) {
+  const generatedId = useId();
+
   if (tenants.length < 2) {
     return null;
   }
 
-  const generatedId = useId();
   const selectId = `caronte-tenant-switcher-${generatedId.replace(/:/g, "")}`;
   const selectedTenantId =
     tenants.find((tenant) => tenant.id_tenant === currentTenantId)?.id_tenant ??
