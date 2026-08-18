@@ -3,6 +3,9 @@ export type Branding = {
   headline?: string;
   subheadline?: string;
   accent?: string;
+  logo_url?: string;
+  background_url?: string;
+  footer_logo_url?: string;
 };
 
 export type Routes = Record<string, string | undefined>;

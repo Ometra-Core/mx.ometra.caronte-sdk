@@ -1,3 +1,27 @@
+# Release v8.4.0
+
+> **Release date:** 2026-08-17
+> **Type:** Minor - Caronte authentication visual parity.
+
+## Summary
+
+Aligns the SDK authentication surface with the current Caronte identity experience without coupling consumers to
+local asset copies.
+
+## Highlights
+
+- Dark, blurred authentication panel over the canonical Caronte background.
+- Gold Caronte accent, responsive mobile treatment, brand logo, and Ometra footer.
+- Matching Blade and Inertia login markup.
+- Configurable `CARONTE_UI_LOGO_URL`, `CARONTE_UI_BACKGROUND_URL`, and `CARONTE_UI_FOOTER_LOGO_URL` overrides.
+- Management surfaces retain their existing light visual treatment.
+
+## Breaking Changes
+
+None.
+
+---
+
 # Release v8.3.2
 
 > **Release date:** 2026-08-12
