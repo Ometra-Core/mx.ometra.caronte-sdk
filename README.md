@@ -104,6 +104,19 @@ The SDK exposes `Ometra\Caronte\Api\GroupApi` with:
 
 The management UI includes a "Group access" mode that lists tenant users, groups roles by application, and prevents selecting reserved roles such as `root`.
 
+### Portal applications without a base role
+
+The default `CARONTE_ACCESS_MODE=application_role` requires the authenticated
+user to have at least one role in the current application. A suite portal may
+instead use `CARONTE_ACCESS_MODE=application_group`. In that mode the SDK
+accepts only a user token signed for the configured application group; tenant,
+audience, signature, and group identifier validation remain mandatory.
+
+Group access only opens the portal. It does not grant functional roles in the
+portal or any child application. Launchers must continue filtering child apps
+from the authenticated user's role assignments, and privileged routes must
+continue using `caronte.roles`.
+
 ## Documentation Index
 
 - [Deployment Instructions](doc/deployment-instructions.md)

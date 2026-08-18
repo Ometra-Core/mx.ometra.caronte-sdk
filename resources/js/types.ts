@@ -24,6 +24,14 @@ export type TenantSwitcherProps = {
   onTenantChange?: (tenantId: string, tenant: TenantOption) => void;
 };
 
+export type CarontePageProps<TUser = unknown> = {
+  caronte?: {
+    user?: TUser | null;
+    tenants?: TenantOption[];
+    current_tenant_id?: string | null;
+  } | null;
+};
+
 export type Role = {
   uri_applicationRole: string;
   app_id?: string;

@@ -13,6 +13,12 @@ return [
     'application_group_id' => env('CARONTE_APPLICATION_GROUP_ID', ''),
     'application_group_secret' => env('CARONTE_APPLICATION_GROUP_SECRET', ''),
 
+    'access' => [
+        // application_role: require at least one role for this application.
+        // application_group: accept a valid user token issued for the configured group.
+        'mode' => env('CARONTE_ACCESS_MODE', 'application_role'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | JWT Token Configuration

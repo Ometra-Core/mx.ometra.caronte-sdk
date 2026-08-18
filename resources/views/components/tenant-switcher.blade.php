@@ -14,6 +14,7 @@
     $selectId = 'caronte-tenant-switcher-'.$attributes->get('id', 'default');
 @endphp
 
+@if ($tenantOptions->count() >= 2)
 <form
     method="GET"
     action="{{ $action ?? request()->url() }}"
@@ -36,22 +37,20 @@
         id="{{ $selectId }}"
         name="id_tenant"
         class="form-select caronte-tenant-switcher__select"
-        onchange="this.form.requestSubmit()"
-        @disabled($tenantOptions->count() < 2)
+        onchange="const url = new URL(window.location.href); url.searchParams.set('id_tenant', this.value); window.location.assign(url.toString())"
     >
-        @forelse ($tenantOptions as $tenant)
+        @foreach ($tenantOptions as $tenant)
             <option
                 value="{{ data_get($tenant, 'id_tenant') }}"
                 @selected((string) data_get($tenant, 'id_tenant') === $selectedTenantId)
             >
                 {{ data_get($tenant, 'name', data_get($tenant, 'id_tenant')) }}
             </option>
-        @empty
-            <option value="">No tenants available</option>
-        @endforelse
+        @endforeach
     </select>
 
     <noscript>
         <button type="submit" class="btn caronte-btn-secondary">Change tenant</button>
     </noscript>
 </form>
+@endif

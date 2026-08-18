@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.5.0] - 2026-08-18
+
+### Added
+
+- Opt-in `application_group` portal access mode for applications that must authenticate suite members without a base application role.
+- Shared `CarontePageProps` TypeScript contract.
+
+### Changed
+
+- React and Blade tenant switchers now render only when at least two authorized tenants are available.
+- Tenant switcher documentation now standardizes published imports, thin visual wrappers, and full URL preservation.
+
+### Security
+
+- Group portal access still requires a correctly signed application-group user token with matching audience, group identifier, and tenant context.
+
 ## [8.4.0] - 2026-08-17
 
 ### Added

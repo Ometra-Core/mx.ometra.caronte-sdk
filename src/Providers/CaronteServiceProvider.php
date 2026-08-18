@@ -201,6 +201,19 @@ class CaronteServiceProvider extends ServiceProvider
             );
         }
 
+        $accessMode = config('caronte.access.mode', 'application_role');
+        if (! in_array($accessMode, ['application_role', 'application_group'], true)) {
+            throw new InvalidArgumentException(
+                'Caronte: caronte.access.mode must be application_role or application_group.'
+            );
+        }
+
+        if ($accessMode === 'application_group' && ! CaronteApplicationToken::hasGroup()) {
+            throw new InvalidArgumentException(
+                'Caronte: application_group access requires CARONTE_APPLICATION_GROUP_ID and CARONTE_APPLICATION_GROUP_SECRET.'
+            );
+        }
+
         if ($missing !== []) {
             throw new InvalidArgumentException(
                 'Caronte: Missing required configuration: ' . implode(', ', $missing) . '.'

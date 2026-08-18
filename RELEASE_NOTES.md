@@ -1,3 +1,27 @@
+# Release v8.5.0
+
+> **Release date:** 2026-08-18
+> **Type:** Minor - suite portal access and centralized tenant selection.
+
+## Summary
+
+Adds an opt-in application-group access policy for suite portals and makes the
+SDK tenant switcher the canonical React/Blade implementation.
+
+## Highlights
+
+- `CARONTE_ACCESS_MODE=application_group` for portals such as APOLLO Lumina.
+- Default `application_role` behavior remains unchanged for ordinary applications.
+- Tenant selectors hide themselves unless switching is possible.
+- Shared React types and documented published-asset upgrade workflow.
+
+## Breaking Changes
+
+None. Hosts that published the Inertia resources should republish them with
+`php artisan vendor:publish --tag=caronte:inertia --force` after upgrading.
+
+---
+
 # Release v8.4.0
 
 > **Release date:** 2026-08-17

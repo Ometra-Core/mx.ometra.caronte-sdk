@@ -9,6 +9,18 @@ class PermissionHelper
 {
     public static function hasApplication(): bool
     {
+        if (config('caronte.access.mode', 'application_role') === 'application_group') {
+            $token = Caronte::getToken();
+            $claims = $token->claims();
+
+            return CaronteApplicationToken::hasGroup()
+                && $claims->get('token_audience', '') === 'application_group'
+                && hash_equals(
+                    CaronteApplicationToken::groupId(),
+                    (string) $claims->get('group_id', '')
+                );
+        }
+
         $user = Caronte::getUser();
         $roles = collect($user->roles ?? []);
 
