@@ -173,8 +173,10 @@ return [
                 'Authenticate users and administer access from a polished package surface.'
             ),
             'support_email' => env('CARONTE_UI_SUPPORT_EMAIL', ''),
-            'logo_url'      => env('CARONTE_UI_LOGO_URL', ''),
-            'accent'        => env('CARONTE_UI_ACCENT', '#0f766e'),
+            'logo_url'      => env('CARONTE_UI_LOGO_URL', 'https://id.ometra.mx/brand/logo_caronte.png'),
+            'background_url' => env('CARONTE_UI_BACKGROUND_URL', 'https://id.ometra.mx/brand/bg.png'),
+            'footer_logo_url' => env('CARONTE_UI_FOOTER_LOGO_URL', 'https://id.ometra.mx/brand/ometra-logo.png'),
+            'accent'        => env('CARONTE_UI_ACCENT', '#f7c948'),
         ],
     ],
 

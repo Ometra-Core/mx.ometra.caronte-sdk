@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.4.0] - 2026-08-17
+
+### Added
+
+- Configurable authentication background, Caronte logo, and footer logo URLs for Blade and Inertia consumers.
+
+### Changed
+
+- Authentication pages now use Caronte's dark translucent panel, photographic background, gold accent, responsive
+  behavior, and typography while management pages retain their existing light surface.
+- The Blade and React login contracts now render the same configurable Caronte brand mark.
+
 ## [8.3.1] - 2026-08-12
 
 ### Changed

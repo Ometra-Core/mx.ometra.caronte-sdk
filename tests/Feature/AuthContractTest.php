@@ -755,6 +755,11 @@ class AuthContractTest extends TestCase
             'routes' => $routes,
             'callback_url' => null,
         ])->render());
+        $this->assertStringContainsString('caronte-auth__logo', view('caronte::auth.login', [
+            'routes' => $routes,
+            'callback_url' => null,
+        ])->render());
+        $this->assertStringContainsString('caronte-auth-background', view('caronte::layouts.base')->render());
 
         $tenantSelectionHtml = view('caronte::auth.login', [
             'routes' => $routes,

@@ -1,6 +1,6 @@
 :root {
-    --caronte-accent: #0f766e;
-    --caronte-accent-dark: #115e59;
+    --caronte-accent: #f7c948;
+    --caronte-accent-dark: #d7a91e;
     --caronte-surface: #f8fafc;
     --caronte-panel: #ffffff;
     --caronte-border: #d9e2ec;
@@ -17,6 +17,12 @@ body {
     color: var(--caronte-text);
 }
 
+.caronte-auth-shell {
+    min-width: 320px;
+    background: #111317;
+    color: #f4f6f8;
+}
+
 .caronte-shell {
     min-height: 100vh;
 }
@@ -25,27 +31,48 @@ body {
     min-height: 100vh;
 }
 
+.caronte-auth-shell .caronte-shell {
+    position: relative;
+    background: #111317 var(--caronte-auth-background) center / cover no-repeat;
+}
+
 .caronte-management-shell .caronte-shell__content {
     min-height: 100vh;
 }
 
 .caronte-auth {
-    min-height: calc(100vh - 2rem);
-    display: grid;
-    place-items: center;
-    padding: 2rem 1rem;
+    display: flex;
+    min-height: 100vh;
+    justify-content: flex-end;
 }
 
 .caronte-auth__panel {
-    width: min(100%, 540px);
+    display: grid;
+    width: min(520px, 100%);
+    min-height: 100vh;
+    align-content: center;
+    gap: 0.75rem;
+    border-left: 1px solid #343a43;
+    background: rgb(24 27 32 / 82%);
+    padding: clamp(2rem, 6vw, 5.25rem);
+    box-shadow: 0 18px 42px rgb(0 0 0 / 28%);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.caronte-auth__logo {
+    display: block;
+    width: min(260px, 80%);
+    height: auto;
+    margin: 0 auto 1.5rem;
 }
 
 .caronte-kicker {
     display: inline-flex;
     padding: 0.35rem 0.75rem;
     border-radius: 999px;
-    background: rgba(15, 118, 110, 0.1);
-    color: var(--caronte-accent-dark);
+    background: rgb(247 201 72 / 12%);
+    color: var(--caronte-accent);
     font-size: 0.85rem;
     font-weight: 700;
     letter-spacing: 0.02em;
@@ -60,15 +87,15 @@ body {
 }
 
 .caronte-copy {
-    color: var(--caronte-muted);
+    color: #a6afb9;
     max-width: 64ch;
 }
 
 .caronte-card {
-    background: var(--caronte-panel);
-    border: 1px solid rgba(217, 226, 236, 0.9);
-    border-radius: 24px;
-    box-shadow: 0 24px 55px rgba(15, 23, 42, 0.08);
+    background: rgb(17 19 23 / 44%);
+    border: 1px solid #343a43;
+    border-radius: 8px;
+    box-shadow: 0 18px 42px rgb(0 0 0 / 22%);
     padding: 1.5rem;
 }
 
@@ -85,6 +112,10 @@ body {
 .caronte-card__header p {
     margin-bottom: 0;
     color: var(--caronte-muted);
+}
+
+.caronte-auth-shell .caronte-card__header p {
+    color: #a6afb9;
 }
 
 .caronte-form {
@@ -106,6 +137,27 @@ body {
     padding: 0.85rem 1rem;
 }
 
+.caronte-auth-shell .caronte-form .form-control,
+.caronte-auth-shell .caronte-form .form-select,
+.caronte-auth-shell .caronte-form textarea {
+    border-color: #343a43;
+    background: transparent;
+    color: #f4f6f8;
+    caret-color: #f4f6f8;
+}
+
+.caronte-auth-shell .caronte-form .form-control:focus,
+.caronte-auth-shell .caronte-form .form-select:focus,
+.caronte-auth-shell .caronte-form textarea:focus {
+    border-color: var(--caronte-accent);
+    box-shadow: 0 0 0 0.2rem rgb(247 201 72 / 22%);
+}
+
+.caronte-auth-shell .caronte-form .form-select option {
+    background: #181b20;
+    color: #f4f6f8;
+}
+
 .caronte-form .form-control:focus,
 .caronte-form textarea:focus {
     border-color: rgba(15, 118, 110, 0.45);
@@ -121,14 +173,14 @@ body {
 
 .caronte-btn-primary {
     background: var(--caronte-accent);
-    color: #fff;
+    color: #111317;
     border: 1px solid var(--caronte-accent);
 }
 
 .caronte-btn-primary:hover,
 .caronte-btn-primary:focus {
-    background: var(--caronte-accent-dark);
-    color: #fff;
+    background: #ffdb62;
+    color: #111317;
     border-color: var(--caronte-accent-dark);
 }
 
@@ -151,9 +203,29 @@ body {
 
 .caronte-card__footer a,
 .caronte-backlink {
-    color: var(--caronte-accent-dark);
+    color: var(--caronte-accent);
     font-weight: 700;
     text-decoration: none;
+}
+
+.caronte-copyright {
+    display: none;
+}
+
+.caronte-auth-shell .caronte-copyright {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #a6afb9;
+    font-size: 0.75rem;
+}
+
+.caronte-auth-shell .caronte-copyright img {
+    width: 72px;
+    height: auto;
 }
 
 .caronte-management-header {
@@ -248,5 +320,17 @@ body {
 @media (max-width: 991.98px) {
     .caronte-management-header {
         flex-direction: column;
+    }
+}
+
+@media (max-width: 720px) {
+    .caronte-auth__panel {
+        width: 100%;
+        border-left: 0;
+        background: rgb(24 27 32 / 96%);
+    }
+
+    .caronte-auth-shell .caronte-copyright {
+        z-index: 1;
     }
 }
