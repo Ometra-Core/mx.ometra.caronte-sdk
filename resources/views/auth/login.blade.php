@@ -8,6 +8,11 @@
 @section('content')
     <section class="caronte-auth">
         <div class="caronte-auth__panel">
+            <img
+                class="caronte-auth__logo"
+                src="{{ data_get($branding, 'logo_url', 'https://id.ometra.mx/brand/logo_caronte.png') }}"
+                alt="Caronte"
+            >
             <span class="caronte-kicker">{{ data_get($branding, 'app_name', config('app.name')) }}</span>
             <h1 class="caronte-title">{{ data_get($branding, 'headline', 'Secure access with Caronte') }}</h1>
             <p class="caronte-copy">{{ data_get($branding, 'subheadline', 'Authenticate users and administer access from a polished package surface.') }}</p>

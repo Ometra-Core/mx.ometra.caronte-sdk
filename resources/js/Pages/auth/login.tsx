@@ -24,6 +24,11 @@ export default function Login({
   return (
     <section className="caronte-auth">
       <div className="caronte-auth__panel">
+        <img
+          className="caronte-auth__logo"
+          src={branding.logo_url || "https://id.ometra.mx/brand/logo_caronte.png"}
+          alt="Caronte"
+        />
         <span className="caronte-kicker">
           {branding.app_name || "Caronte"}
         </span>
