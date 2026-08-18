@@ -10,7 +10,7 @@
         <div class="caronte-auth__panel">
             <img
                 class="caronte-auth__logo"
-                src="{{ data_get($branding, 'logo_url', 'https://id.ometra.mx/brand/logo_caronte.png') }}"
+                src="{{ data_get($branding, 'logo_url', '/vendor/caronte/brand/logo_caronte.png') }}"
                 alt="Caronte"
             >
             <span class="caronte-kicker">{{ data_get($branding, 'app_name', config('app.name')) }}</span>

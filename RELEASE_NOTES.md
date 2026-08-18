@@ -1,3 +1,28 @@
+# Release v8.6.0
+
+> **Release date:** 2026-08-18
+> **Type:** Minor - reliable SDK installation and self-contained authentication branding.
+
+## Summary
+
+Makes the SDK authentication UI self-contained and introduces supported install
+and update commands so host applications consistently receive required assets.
+
+## Highlights
+
+- `php artisan caronte:install` publishes configuration, assets, and migrations.
+- `php artisan caronte:ui:update` refreshes assets and Inertia components after upgrades.
+- Default Caronte branding is packaged locally instead of depending on `id.ometra.mx`.
+- Blade and Inertia authentication surfaces share local branding paths and Inter typography.
+- Installation tests verify the complete asset publication contract.
+
+## Breaking Changes
+
+None. Existing URL overrides remain supported. Hosts upgrading from an earlier
+version should run `php artisan caronte:ui:update` after updating the package.
+
+---
+
 # Release v8.5.0
 
 > **Release date:** 2026-08-18
@@ -18,7 +43,7 @@ SDK tenant switcher the canonical React/Blade implementation.
 ## Breaking Changes
 
 None. Hosts that published the Inertia resources should republish them with
-`php artisan vendor:publish --tag=caronte:inertia --force` after upgrading.
+`php artisan caronte:ui:update` after upgrading.
 
 ---
 

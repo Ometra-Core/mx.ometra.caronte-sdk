@@ -9,7 +9,9 @@ use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 use Ometra\Caronte\Api\CaronteApiClient;
 use Ometra\Caronte\Caronte;
+use Ometra\Caronte\Console\Commands\InstallCaronte;
 use Ometra\Caronte\Console\Commands\ManagementCaronte;
+use Ometra\Caronte\Console\Commands\UpdateCaronteUi;
 use Ometra\Caronte\Console\Commands\Groups\ShowGroup;
 use Ometra\Caronte\Console\Commands\Groups\SyncGroupUserRoles;
 use Ometra\Caronte\Console\Commands\ProtectedApi\SyncScopes;
@@ -146,7 +148,9 @@ class CaronteServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
+                InstallCaronte::class,
                 ManagementCaronte::class,
+                UpdateCaronteUi::class,
                 SyncScopes::class,
                 SyncRoles::class,
                 ShowGroup::class,

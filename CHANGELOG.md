@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.6.0] - 2026-08-18
+
+### Added
+
+- `caronte:install` command to publish configuration, required UI assets, and migrations in one step.
+- `caronte:ui:update` command to refresh published assets and Inertia components after an SDK upgrade.
+- Package-owned default Caronte background, logo, and footer branding assets.
+- Feature coverage for installation, UI updates, command registration, and local branding defaults.
+
+### Changed
+
+- Authentication views now use package-published branding assets by default instead of remote URLs.
+- Authentication typography now consistently uses the imported Inter font.
+- Deployment and upgrade documentation now treats UI assets as required resources.
+
+### Removed
+
+- Empty legacy `resources/assets/caronte.css` placeholder.
+
 ## [8.5.0] - 2026-08-18
 
 ### Added

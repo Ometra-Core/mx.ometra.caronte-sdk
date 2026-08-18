@@ -36,7 +36,7 @@ Publish the SDK resources after every SDK update, then import the molecule from
 the published namespace:
 
 ```bash
-php artisan vendor:publish --tag=caronte:inertia --force
+php artisan caronte:ui:update
 ```
 
 ```tsx

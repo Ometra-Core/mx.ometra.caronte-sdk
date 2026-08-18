@@ -66,7 +66,7 @@ return the SDK's normalized response array.
 ## Quick Start (High-Level)
 
 1. Install package dependencies in your host app with composer.
-2. Publish package configuration and migrations.
+2. Run `php artisan caronte:install` to publish configuration, required assets, and migrations.
 3. Set required environment variables for CARONTE_URL, CARONTE_APP_CN, and CARONTE_APP_SECRET.
 4. Run migrations in the host application.
 5. Add package middleware to protected host routes.
@@ -74,6 +74,9 @@ return the SDK's normalized response array.
 7. Verify authentication and management routes in a local environment.
 
 Full steps: see doc/deployment-instructions.md.
+
+After upgrading the SDK, run `php artisan caronte:ui:update` to refresh the
+published UI assets and Inertia components.
 
 ## Delegated Login
 
