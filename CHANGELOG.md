@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.6.1] - 2026-08-18
+
+### Fixed
+
+- Fixed application boot in `application_group` access mode by resolving the
+  group-token validator from its public support namespace.
+
 ## [8.6.0] - 2026-08-18
 
 ### Added

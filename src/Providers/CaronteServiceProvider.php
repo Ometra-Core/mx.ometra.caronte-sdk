@@ -35,6 +35,7 @@ use Ometra\Caronte\Http\Middleware\ValidateUserRoles;
 use Ometra\Caronte\Http\Middleware\ValidateUserToken;
 use Ometra\Caronte\Notifications\PasswordRecoverySender;
 use Ometra\Caronte\Notifications\TwoFactorChallengeSender;
+use Ometra\Caronte\Support\CaronteApplicationToken;
 use Ometra\Caronte\Support\ConfiguredRoles;
 use Ometra\Caronte\Support\CaronteTenancy;
 use InvalidArgumentException;
