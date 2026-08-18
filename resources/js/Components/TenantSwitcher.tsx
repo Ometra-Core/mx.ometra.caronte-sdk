@@ -2,8 +2,8 @@ import { useId } from "react";
 
 import type { TenantOption, TenantSwitcherProps } from "../types";
 
-function tenantUrl(tenantId: string): string {
-  const url = new URL(window.location.href);
+export function tenantUrl(tenantId: string, currentUrl = window.location.href): string {
+  const url = new URL(currentUrl);
   url.searchParams.set("id_tenant", tenantId);
 
   return url.toString();
@@ -24,6 +24,10 @@ export default function TenantSwitcher({
   disabled = false,
   onTenantChange,
 }: TenantSwitcherProps) {
+  if (tenants.length < 2) {
+    return null;
+  }
+
   const generatedId = useId();
   const selectId = `caronte-tenant-switcher-${generatedId.replace(/:/g, "")}`;
   const selectedTenantId =
@@ -53,18 +57,14 @@ export default function TenantSwitcher({
         className="form-select caronte-tenant-switcher__select"
         value={selectedTenantId}
         onChange={handleChange}
-        disabled={disabled || tenants.length < 2}
+        disabled={disabled}
         aria-label={label}
       >
-        {tenants.length === 0 ? (
-          <option value="">No tenants available</option>
-        ) : (
-          tenants.map((tenant: TenantOption) => (
-            <option key={tenant.id_tenant} value={tenant.id_tenant}>
-              {tenant.name}
-            </option>
-          ))
-        )}
+        {tenants.map((tenant: TenantOption) => (
+          <option key={tenant.id_tenant} value={tenant.id_tenant}>
+            {tenant.name}
+          </option>
+        ))}
       </select>
     </div>
   );

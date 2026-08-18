@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.6.1] - 2026-08-18
+
+### Fixed
+
+- Fixed application boot in `application_group` access mode by resolving the
+  group-token validator from its public support namespace.
+
+## [8.6.0] - 2026-08-18
+
+### Added
+
+- `caronte:install` command to publish configuration, required UI assets, and migrations in one step.
+- `caronte:ui:update` command to refresh published assets and Inertia components after an SDK upgrade.
+- Package-owned default Caronte background, logo, and footer branding assets.
+- Feature coverage for installation, UI updates, command registration, and local branding defaults.
+
+### Changed
+
+- Authentication views now use package-published branding assets by default instead of remote URLs.
+- Authentication typography now consistently uses the imported Inter font.
+- Deployment and upgrade documentation now treats UI assets as required resources.
+
+### Removed
+
+- Empty legacy `resources/assets/caronte.css` placeholder.
+
+## [8.5.0] - 2026-08-18
+
+### Added
+
+- Opt-in `application_group` portal access mode for applications that must authenticate suite members without a base application role.
+- Shared `CarontePageProps` TypeScript contract.
+
+### Changed
+
+- React and Blade tenant switchers now render only when at least two authorized tenants are available.
+- Tenant switcher documentation now standardizes published imports, thin visual wrappers, and full URL preservation.
+
+### Security
+
+- Group portal access still requires a correctly signed application-group user token with matching audience, group identifier, and tenant context.
+
 ## [8.4.0] - 2026-08-17
 
 ### Added

@@ -15,7 +15,7 @@
     <style>
         :root {
             --caronte-accent: {{ data_get($branding ?? [], 'accent', '#f7c948') }};
-            --caronte-auth-background: url("{{ data_get($branding ?? [], 'background_url', 'https://id.ometra.mx/brand/bg.png') }}");
+            --caronte-auth-background: url("{{ data_get($branding ?? [], 'background_url', '/vendor/caronte/brand/bg.png') }}");
         }
     </style>
 </head>
@@ -30,7 +30,7 @@
         <footer class="caronte-copyright">
             <span>&copy; {{ date('Y') }}</span>
             <img
-                src="{{ data_get($branding ?? [], 'footer_logo_url', 'https://id.ometra.mx/brand/ometra-logo.png') }}"
+                src="{{ data_get($branding ?? [], 'footer_logo_url', '/vendor/caronte/brand/ometra-logo.png') }}"
                 alt="Ometra"
             >
         </footer>

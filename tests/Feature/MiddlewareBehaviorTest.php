@@ -836,6 +836,52 @@ class MiddlewareBehaviorTest extends TestCase
         $this->assertSame('/_caronte/session-check', parse_url($this->decodedCallbackUrlFromRedirect($response), PHP_URL_PATH));
     }
 
+    public function test_group_access_mode_accepts_group_user_without_a_role_for_the_host_application(): void
+    {
+        config()->set('caronte.access.mode', 'application_group');
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $token = $this->makeToken([
+            'uri_user' => 'suite-user',
+            'name' => 'Suite User',
+            'email' => 'suite@example.com',
+            'id_tenant' => 'tenant-1',
+            'roles' => [[
+                'name' => 'viewer',
+                'app_id' => 'another-suite-app',
+                'uri_applicationRole' => sha1('another-suite-appviewer'),
+            ]],
+            'metadata' => [],
+        ], group: true);
+
+        $this->withSession([(string) config('caronte.session_key', 'caronte.user_token') => $token])
+            ->getJson('/_caronte/session-check')
+            ->assertOk()
+            ->assertJsonPath('tenant_context', 'tenant-1');
+    }
+
+    public function test_group_access_mode_rejects_an_application_token_without_a_host_role(): void
+    {
+        config()->set('caronte.access.mode', 'application_group');
+        config()->set('caronte.application_group_id', 'core-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $token = $this->makeToken([
+            'uri_user' => 'application-user',
+            'name' => 'Application User',
+            'email' => 'application@example.com',
+            'id_tenant' => 'tenant-1',
+            'roles' => [],
+            'metadata' => [],
+        ]);
+
+        $this->withSession([(string) config('caronte.session_key', 'caronte.user_token') => $token])
+            ->getJson('/_caronte/session-check')
+            ->assertForbidden()
+            ->assertJsonPath('message', 'User does not have access to this application.');
+    }
+
     public function test_web_session_middleware_redirects_to_login_with_intended_callback(): void
     {
         $response = $this->get('/_caronte/session-check?tab=roles');

@@ -13,6 +13,12 @@ return [
     'application_group_id' => env('CARONTE_APPLICATION_GROUP_ID', ''),
     'application_group_secret' => env('CARONTE_APPLICATION_GROUP_SECRET', ''),
 
+    'access' => [
+        // application_role: require at least one role for this application.
+        // application_group: accept a valid user token issued for the configured group.
+        'mode' => env('CARONTE_ACCESS_MODE', 'application_role'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | JWT Token Configuration
@@ -173,9 +179,9 @@ return [
                 'Authenticate users and administer access from a polished package surface.'
             ),
             'support_email' => env('CARONTE_UI_SUPPORT_EMAIL', ''),
-            'logo_url'      => env('CARONTE_UI_LOGO_URL', 'https://id.ometra.mx/brand/logo_caronte.png'),
-            'background_url' => env('CARONTE_UI_BACKGROUND_URL', 'https://id.ometra.mx/brand/bg.png'),
-            'footer_logo_url' => env('CARONTE_UI_FOOTER_LOGO_URL', 'https://id.ometra.mx/brand/ometra-logo.png'),
+            'logo_url'      => env('CARONTE_UI_LOGO_URL', '/vendor/caronte/brand/logo_caronte.png'),
+            'background_url' => env('CARONTE_UI_BACKGROUND_URL', '/vendor/caronte/brand/bg.png'),
+            'footer_logo_url' => env('CARONTE_UI_FOOTER_LOGO_URL', '/vendor/caronte/brand/ometra-logo.png'),
             'accent'        => env('CARONTE_UI_ACCENT', '#f7c948'),
         ],
     ],

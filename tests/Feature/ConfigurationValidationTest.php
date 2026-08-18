@@ -154,6 +154,17 @@ class ConfigurationValidationTest extends TestCase
         $this->validatePackageConfig();
     }
 
+    public function test_application_group_mode_boots_with_complete_group_credentials(): void
+    {
+        config()->set('caronte.access.mode', 'application_group');
+        config()->set('caronte.application_group_id', 'apollo-suite');
+        config()->set('caronte.application_group_secret', 'group-secret-with-minimum-length-32');
+
+        $this->validatePackageConfig();
+
+        $this->addToAssertionCount(1);
+    }
+
     private function validatePackageConfig(): void
     {
         $provider = new CaronteServiceProvider($this->app);

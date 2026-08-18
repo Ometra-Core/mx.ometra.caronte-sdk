@@ -9,7 +9,9 @@ use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 use Ometra\Caronte\Api\CaronteApiClient;
 use Ometra\Caronte\Caronte;
+use Ometra\Caronte\Console\Commands\InstallCaronte;
 use Ometra\Caronte\Console\Commands\ManagementCaronte;
+use Ometra\Caronte\Console\Commands\UpdateCaronteUi;
 use Ometra\Caronte\Console\Commands\Groups\ShowGroup;
 use Ometra\Caronte\Console\Commands\Groups\SyncGroupUserRoles;
 use Ometra\Caronte\Console\Commands\ProtectedApi\SyncScopes;
@@ -33,6 +35,7 @@ use Ometra\Caronte\Http\Middleware\ValidateUserRoles;
 use Ometra\Caronte\Http\Middleware\ValidateUserToken;
 use Ometra\Caronte\Notifications\PasswordRecoverySender;
 use Ometra\Caronte\Notifications\TwoFactorChallengeSender;
+use Ometra\Caronte\Support\CaronteApplicationToken;
 use Ometra\Caronte\Support\ConfiguredRoles;
 use Ometra\Caronte\Support\CaronteTenancy;
 use InvalidArgumentException;
@@ -146,7 +149,9 @@ class CaronteServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
+                InstallCaronte::class,
                 ManagementCaronte::class,
+                UpdateCaronteUi::class,
                 SyncScopes::class,
                 SyncRoles::class,
                 ShowGroup::class,
@@ -198,6 +203,19 @@ class CaronteServiceProvider extends ServiceProvider
         if (! in_array(config('caronte.auth_mode'), ['jwt', 'oidc', 'dual'], true)) {
             throw new InvalidArgumentException(
                 'Caronte: caronte.auth_mode must be jwt, oidc, or dual.'
+            );
+        }
+
+        $accessMode = config('caronte.access.mode', 'application_role');
+        if (! in_array($accessMode, ['application_role', 'application_group'], true)) {
+            throw new InvalidArgumentException(
+                'Caronte: caronte.access.mode must be application_role or application_group.'
+            );
+        }
+
+        if ($accessMode === 'application_group' && ! CaronteApplicationToken::hasGroup()) {
+            throw new InvalidArgumentException(
+                'Caronte: application_group access requires CARONTE_APPLICATION_GROUP_ID and CARONTE_APPLICATION_GROUP_SECRET.'
             );
         }
 

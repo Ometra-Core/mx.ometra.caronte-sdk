@@ -75,22 +75,26 @@ Optional OIDC variables:
 
     composer require ometra/caronte-sdk
 
-2. Publish config:
+2. Install the package resources:
 
-    php artisan vendor:publish --tag=caronte:config
+    php artisan caronte:install
 
-3. Publish migrations (if you want host-owned migration files):
+    This publishes the configuration, required UI assets, and migrations. Use
+    `--force` only when the published configuration and assets should be overwritten.
 
-    php artisan vendor:publish --tag=caronte:migrations
-
-4. Run migrations:
+3. Run migrations:
 
     php artisan migrate
 
-5. Optional publishing:
+4. Optional publishing:
     - php artisan vendor:publish --tag=caronte:views
-    - php artisan vendor:publish --tag=caronte-assets
     - php artisan vendor:publish --tag=caronte:inertia
+
+5. After an SDK upgrade, refresh the UI assets and Inertia components:
+
+    php artisan caronte:ui:update
+
+    Add `--views` only when published Blade views should also be overwritten.
 
 6. Synchronize roles/scopes after configuring caronte.roles and caronte.protected_api.scopes:
     - php artisan caronte:roles:sync

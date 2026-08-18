@@ -66,7 +66,7 @@ return the SDK's normalized response array.
 ## Quick Start (High-Level)
 
 1. Install package dependencies in your host app with composer.
-2. Publish package configuration and migrations.
+2. Run `php artisan caronte:install` to publish configuration, required assets, and migrations.
 3. Set required environment variables for CARONTE_URL, CARONTE_APP_CN, and CARONTE_APP_SECRET.
 4. Run migrations in the host application.
 5. Add package middleware to protected host routes.
@@ -74,6 +74,9 @@ return the SDK's normalized response array.
 7. Verify authentication and management routes in a local environment.
 
 Full steps: see doc/deployment-instructions.md.
+
+After upgrading the SDK, run `php artisan caronte:ui:update` to refresh the
+published UI assets and Inertia components.
 
 ## Delegated Login
 
@@ -103,6 +106,19 @@ The SDK exposes `Ometra\Caronte\Api\GroupApi` with:
 `showGroup()` calls `GET /api/group` with `X-Group-Token` and the current tenant context. It returns the group, applications, assignable roles, API scopes, and tenant user mappings. It never returns secrets, tokens, or internal Caronte permissions.
 
 The management UI includes a "Group access" mode that lists tenant users, groups roles by application, and prevents selecting reserved roles such as `root`.
+
+### Portal applications without a base role
+
+The default `CARONTE_ACCESS_MODE=application_role` requires the authenticated
+user to have at least one role in the current application. A suite portal may
+instead use `CARONTE_ACCESS_MODE=application_group`. In that mode the SDK
+accepts only a user token signed for the configured application group; tenant,
+audience, signature, and group identifier validation remain mandatory.
+
+Group access only opens the portal. It does not grant functional roles in the
+portal or any child application. Launchers must continue filtering child apps
+from the authenticated user's role assignments, and privileged routes must
+continue using `caronte.roles`.
 
 ## Documentation Index
 

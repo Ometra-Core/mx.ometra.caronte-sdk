@@ -32,11 +32,16 @@ GET form, preserves existing scalar and list query parameters, and replaces
 
 ## React / Inertia
 
-Import the molecule directly from the SDK source copied or exposed by the host
-application's asset pipeline:
+Publish the SDK resources after every SDK update, then import the molecule from
+the published namespace:
+
+```bash
+php artisan caronte:ui:update
+```
 
 ```tsx
-import TenantSwitcher from "vendor/ometra/caronte-sdk/resources/js/Components/TenantSwitcher";
+import TenantSwitcher from "@/vendor/caronte/Components/TenantSwitcher";
+import type { CarontePageProps } from "@/vendor/caronte/types";
 
 <TenantSwitcher
   tenants={tenants}
@@ -53,8 +58,14 @@ to the same URL with the new `id_tenant` value. Do not store the selected
 tenant as a single global server-side session value; the URL or header is the
 request-specific source of truth.
 
-Both variants use a native labelled `select`, disable it when fewer than two
-choices exist, and display an explicit empty state when no tenant is supplied.
+Both variants use a native labelled `select` and render nothing when fewer than
+two choices exist. React consumers can use `onTenantChange` to close the host
+menu before navigation. The SDK owns URL mutation and full-page navigation;
+host wrappers own only placement and visual classes.
+
+Changing tenant replaces only `id_tenant` and preserves the current path,
+other query parameters, and browser fragment. The full reload reconstructs
+permissions and application data for the selected tenant.
 
 ## Atomic Design classification
 
