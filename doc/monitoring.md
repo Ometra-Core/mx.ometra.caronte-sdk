@@ -7,7 +7,7 @@ This package does not include a dedicated monitoring stack. Operational visibili
 Package behavior:
 
 - Uses exceptions and structured response envelopes.
-- Does not define a package-specific log channel.
+- Emits credential-free `caronte.token_exchange.*` events through the host application's default log channel.
 - Runtime logging therefore follows host app logging configuration.
 
 Operational recommendation:
@@ -23,6 +23,7 @@ Operational recommendation:
 
 - Login failure rate
 - Token validation failures
+- Token exchange attempts, successes, still-valid skips, and failures
 - Unauthorized and forbidden response rates on package routes
 
 ### Integration health
@@ -42,6 +43,9 @@ Operational recommendation:
 - Callback failures (invalid state, token validation failures)
 - JWKS retrieval failures
 - Refresh token exchange failures
+
+User-token exchange context contains the request mode, exception class or status when applicable, and only a SHA-256
+hash of the JWT ID. It never contains the JWT, cookie, application secret, or refresh token.
 
 ## 3. Suggested Alerts
 

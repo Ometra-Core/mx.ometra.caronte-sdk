@@ -69,7 +69,7 @@ class TenantColumnMigrationTest extends TestCase
 
         Schema::create('MigrationTestUsersMetadata', function (Blueprint $table): void {
             $table->string('uri_user', 40);
-            $table->string('id_tenant', 64)->nullable();
+            $table->string('id_tenant', 64)->nullable()->index();
             $table->string('tenant_id', 64)->nullable();
             $table->string('scope', 128);
             $table->string('key', 45);
@@ -104,7 +104,7 @@ class TenantColumnMigrationTest extends TestCase
     {
         Schema::create('MigrationTestUsers', function (Blueprint $table): void {
             $table->string('uri_user', 40);
-            $table->string('id_tenant', 64)->nullable();
+            $table->string('id_tenant', 64)->nullable()->index();
             $table->string('tenant_id', 64)->nullable();
             $table->primary(['uri_user', 'id_tenant']);
         });

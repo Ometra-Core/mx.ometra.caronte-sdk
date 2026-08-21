@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.6.3] - 2026-08-21
+
+### Fixed
+
+- Hardened concurrent session renewal to consume Caronte's idempotent token-exchange response consistently.
+- Fixed SQLite upgrades from legacy SDK releases by removing tenant-column indexes before rebuilding package tables.
+
+### Observability
+
+- Added credential-free structured events for token-exchange attempts, successes, still-valid skips, and failures.
+
 ## [8.6.2] - 2026-08-18
 
 ### Fixed

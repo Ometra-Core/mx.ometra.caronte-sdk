@@ -69,6 +69,8 @@ return new class extends Migration
             });
         }
 
+        $this->dropIndexesContainingColumn($tableName, 'id_tenant');
+
         Schema::table($tableName, function (Blueprint $table): void {
             $table->dropColumn('id_tenant');
         });
@@ -140,6 +142,8 @@ return new class extends Migration
         }
 
         if (Schema::hasColumn($tableName, 'id_tenant')) {
+            $this->dropIndexesContainingColumn($tableName, 'id_tenant');
+
             Schema::table($tableName, function (Blueprint $table): void {
                 $table->dropColumn('id_tenant');
             });
@@ -190,5 +194,37 @@ return new class extends Migration
         }
 
         return [];
+    }
+
+    /**
+     * Drops non-primary indexes that depend on a column before removing it.
+     *
+     * SQLite does not automatically remove these indexes while rebuilding a table.
+     */
+    private function dropIndexesContainingColumn(string $tableName, string $column): void
+    {
+        $schemaBuilder = Schema::getConnection()->getSchemaBuilder();
+
+        if (! method_exists($schemaBuilder, 'getIndexes')) {
+            return;
+        }
+
+        foreach ($schemaBuilder->getIndexes($tableName) as $index) {
+            if (
+                ($index['primary'] ?? false) === true
+                || ! in_array($column, $index['columns'] ?? [], true)
+            ) {
+                continue;
+            }
+
+            $indexName = (string) ($index['name'] ?? '');
+            if ($indexName === '') {
+                continue;
+            }
+
+            Schema::table($tableName, function (Blueprint $table) use ($indexName): void {
+                $table->dropIndex($indexName);
+            });
+        }
     }
 };

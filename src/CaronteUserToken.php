@@ -8,6 +8,7 @@ use Equidna\Toolkit\Exceptions\BadRequestException;
 use Equidna\Toolkit\Exceptions\UnprocessableEntityException;
 use Equidna\Toolkit\Helpers\RouteHelper;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Hmac\Sha256;
@@ -71,6 +72,8 @@ final class CaronteUserToken
 
         static::$exchanging = true;
 
+        Log::info('caronte.token_exchange.attempted', static::exchangeLogContext($rawToken));
+
         try {
             $response = AuthApi::exchange($rawToken);
 
@@ -88,21 +91,64 @@ final class CaronteUserToken
 
             Caronte::setTokenWasExchanged();
 
+            Log::info('caronte.token_exchange.succeeded', static::exchangeLogContext($rawToken));
+
             return $token;
         } catch (CaronteApiException $exception) {
             if (static::isStillValidExchangeRejection($exception)) {
+                Log::info('caronte.token_exchange.skipped_still_valid', static::exchangeLogContext($rawToken));
+
                 return static::currentValidToken($rawToken);
             }
 
             Caronte::clearCurrentToken();
 
+            Log::warning('caronte.token_exchange.failed', [
+                ...static::exchangeLogContext($rawToken),
+                'status' => $exception->getCode(),
+                'exception' => $exception::class,
+            ]);
+
             throw new UnprocessableEntityException(
                 'Cannot exchange token: ' . $exception->getMessage(),
                 previous: $exception
             );
+        } catch (\Throwable $exception) {
+            Log::warning('caronte.token_exchange.failed', [
+                ...static::exchangeLogContext($rawToken),
+                'exception' => $exception::class,
+            ]);
+
+            throw $exception;
         } finally {
             static::$exchanging = false;
         }
+    }
+
+    /**
+     * Builds credential-free structured context for token exchange logs.
+     *
+     * @param  string  $rawToken  Raw token used only to derive its public token ID.
+     * @return array{token_id_hash?: string, request_mode: string} Safe log context.
+     */
+    private static function exchangeLogContext(string $rawToken): array
+    {
+        $context = [
+            'request_mode' => static::isWebRequest() ? 'web' : 'api',
+        ];
+
+        try {
+            $token = static::decodeToken($rawToken);
+            $tokenId = (string) $token->claims()->get('jti', '');
+
+            if ($tokenId !== '') {
+                $context['token_id_hash'] = hash('sha256', $tokenId);
+            }
+        } catch (\Throwable) {
+            // Logging must never alter authentication behavior.
+        }
+
+        return $context;
     }
 
     private static function validateOidcToken(string $rawToken, bool $skipExchange): Plain
