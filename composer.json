@@ -30,6 +30,9 @@
             "Tests\\": "tests/"
         }
     },
+    "bin": [
+        "bin/validate-group-session-config"
+    ],
     "require-dev": {
         "orchestra/testbench": "^10.0",
         "phpunit/phpunit": "^10.0 || ^11.0"

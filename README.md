@@ -133,6 +133,7 @@ continue using `caronte.roles`.
 - [Business Logic & Core Processes](doc/business-logic-and-core-processes.md)
 - [Open Questions & Assumptions](doc/open-questions-and-assumptions.md)
 - [Multitenant Session UI](doc/multitenant-session-ui.md)
+- [Shared Session Configuration Validation](doc/shared-session-validation.md)
 
 ## Standards Note
 

@@ -1,0 +1,74 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Ometra\Caronte\Support\GroupSessionConfigException;
+use Ometra\Caronte\Support\GroupSessionConfigValidator;
+
+$autoloadCandidates = [
+    __DIR__.'/../vendor/autoload.php',
+    __DIR__.'/../../../autoload.php',
+];
+
+foreach ($autoloadCandidates as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+if (! class_exists(GroupSessionConfigValidator::class)) {
+    fwrite(STDERR, "ERROR: Unable to load Caronte SDK classes.\n");
+    exit(2);
+}
+
+$usage = <<<'TEXT'
+Usage: validate-group-session-config --config <file> [--workspace <directory>]
+
+Options:
+  --config       Versioned JSON group configuration (required).
+  --workspace    Root used to resolve application paths; defaults to the config directory.
+  --help         Show this help.
+TEXT;
+
+try {
+    $options = getopt('', ['config:', 'workspace:', 'help']);
+
+    if (isset($options['help'])) {
+        fwrite(STDOUT, $usage."\n");
+        exit(0);
+    }
+
+    if (! isset($options['config']) || ! is_string($options['config']) || $options['config'] === '') {
+        throw new GroupSessionConfigException('The --config option is required.');
+    }
+
+    $workspace = $options['workspace'] ?? null;
+    if ($workspace !== null && ! is_string($workspace)) {
+        throw new GroupSessionConfigException('The --workspace option must be provided once.');
+    }
+
+    $result = (new GroupSessionConfigValidator)->validate($options['config'], $workspace);
+
+    if (! $result->isValid()) {
+        foreach ($result->violations as $violation) {
+            fwrite(STDERR, 'ERROR: '.$violation."\n");
+        }
+
+        exit(1);
+    }
+
+    fwrite(STDOUT, sprintf(
+        "Group '%s' session configuration is consistent across %d applications.\n",
+        $result->group,
+        $result->applicationCount,
+    ));
+    exit(0);
+} catch (GroupSessionConfigException $exception) {
+    fwrite(STDERR, 'ERROR: '.$exception->getMessage()."\n");
+    exit(2);
+} catch (Throwable $exception) {
+    fwrite(STDERR, 'ERROR: Unexpected validator failure ('.$exception::class.").\n");
+    exit(2);
+}
