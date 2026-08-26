@@ -11,7 +11,7 @@
     ],
     "require": {
         "php": "^8.2",
-        "equidna/bee-hive": "^3.1@dev",
+        "equidna/bee-hive": "^3.1",
         "equidna/laravel-toolkit": ">=1.0.0",
         "lcobucci/jwt": "^5.3",
         "lcobucci/clock": "^3.2",

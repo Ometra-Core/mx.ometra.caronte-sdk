@@ -19,7 +19,7 @@ class FrameworkCompatibilityContractTest extends TestCase
 
         $this->assertSame('^12.0 || ^13.0', $composer['require']['laravel/framework']);
         $this->assertSame('^12.0 || ^13.0', $composer['require']['illuminate/support']);
-        $this->assertSame('^3.1@dev', $composer['require']['equidna/bee-hive']);
+        $this->assertSame('^3.1', $composer['require']['equidna/bee-hive']);
         $this->assertSame('^2.0', $composer['require']['inertiajs/inertia-laravel']);
         $this->assertSame('^10.0 || ^11.0', $composer['require-dev']['orchestra/testbench']);
     }

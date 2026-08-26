@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.8.0] - 2026-08-26
+
 ### Changed
 
 - Added simultaneous Laravel 12 and Laravel 13 package constraints and CI coverage.
 - Added Laravel 13 coverage with Symfony 8 on PHP 8.4 and PHP 8.5.
 - Retained Inertia Laravel 2 compatibility; its published package metadata supports Laravel 10–13 and Symfony Console 6–8.
 - Updated Testbench and PHPUnit development constraints for both supported Laravel generations.
-- Updated Bee Hive to its Laravel 12/13-compatible 3.1 development line.
+- Updated Bee Hive to its stable Laravel 12/13-compatible 3.1 release line.
 
 ## [8.7.0] - 2026-08-24
 
