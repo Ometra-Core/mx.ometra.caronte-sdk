@@ -1,3 +1,22 @@
+# Next release
+
+> **Type:** Compatibility release.
+
+The SDK now installs on Laravel 12 and Laravel 13. The compatibility matrix
+exercises Laravel 13 with Symfony 8 on PHP 8.4 and PHP 8.5 while preserving
+Laravel 12 support down to PHP 8.2. Inertia Laravel remains on major version 2;
+no host-side Inertia migration is required.
+
+The SDK now targets Bee Hive 3.1, whose `dev` compatibility line supports both
+Illuminate 12 and 13. Pin that branch until the corresponding stable package is
+published.
+
+There are no runtime API changes. The service provider, package discovery,
+published Inertia resources, and shared Inertia properties are covered by the
+same package test suite on both framework generations.
+
+---
+
 # Release v8.6.0
 
 > **Release date:** 2026-08-18

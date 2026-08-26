@@ -9,8 +9,28 @@ on:
 
 jobs:
   php:
-    name: PHP Tests
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }} / Symfony ${{ matrix.symfony }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.2'
+            laravel: '12'
+            testbench: '^10.0'
+            symfony: '7'
+          - php: '8.4'
+            laravel: '12'
+            testbench: '^10.0'
+            symfony: '7'
+          - php: '8.4'
+            laravel: '13'
+            testbench: '^11.0'
+            symfony: '8'
+          - php: '8.5'
+            laravel: '13'
+            testbench: '^11.0'
+            symfony: '8'
 
     steps:
       - name: Checkout repository
@@ -19,15 +39,22 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.4'
+          php-version: ${{ matrix.php }}
           extensions: pdo, pdo_sqlite, mbstring, openssl, curl, json, tokenizer, xml
           coverage: none
 
       - name: Validate Composer files
         run: composer validate --no-check-publish --no-check-lock
 
+      - name: Select framework compatibility set
+        run: |
+          composer require --no-update "laravel/framework:^${{ matrix.laravel }}.0" "orchestra/testbench:${{ matrix.testbench }}"
+          if [ "${{ matrix.symfony }}" = "8" ]; then
+            composer require --no-update "symfony/console:^8.0" "symfony/http-foundation:^8.0" "symfony/http-kernel:^8.0"
+          fi
+
       - name: Install PHP dependencies
-        run: composer install --prefer-dist --no-interaction --no-progress
+        run: composer update --prefer-dist --no-interaction --no-progress
 
       - name: Run PHPUnit
         run: composer test

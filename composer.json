@@ -11,12 +11,12 @@
     ],
     "require": {
         "php": "^8.2",
-        "equidna/bee-hive": "^3.0",
+        "equidna/bee-hive": "^3.1@dev",
         "equidna/laravel-toolkit": ">=1.0.0",
         "lcobucci/jwt": "^5.3",
         "lcobucci/clock": "^3.2",
-        "illuminate/support": "^12.0",
-        "laravel/framework": "^12.0",
+        "illuminate/support": "^12.0 || ^13.0",
+        "laravel/framework": "^12.0 || ^13.0",
         "laravel/prompts": "^0.3.7",
         "inertiajs/inertia-laravel": "^2.0"
     },
@@ -34,8 +34,8 @@
         "bin/validate-group-session-config"
     ],
     "require-dev": {
-        "orchestra/testbench": "^10.0",
-        "phpunit/phpunit": "^10.0 || ^11.0"
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "phpunit/phpunit": "^11.5.50 || ^12.5.8 || ^13.0.3"
     },
     "scripts": {
         "post-autoload-dump": [],

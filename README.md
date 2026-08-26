@@ -21,8 +21,11 @@ Primary audience: internal development teams integrating Caronte into Laravel ap
 ## Project Type & Tech Summary
 
 - Project type: Laravel package (library), not a standalone app
-- PHP version: ^8.2
-- Laravel version: ^12.0
+- PHP version: ^8.2 (Laravel 13 hosts require PHP ^8.3; Symfony 8 requires PHP ^8.4)
+- Laravel versions: ^12.0 or ^13.0
+- Symfony compatibility: Laravel 13 hosts may resolve Symfony 7.4 or 8.x
+- Inertia Laravel: ^2.0
+- Bee Hive compatibility: `^3.1@dev`, including Laravel 12 and 13 support.
 - JWT stack: lcobucci/jwt ^5.3 and lcobucci/clock ^3.2
 - HTTP integration: Laravel HTTP client via package support classes
 - Database: uses host app database connection; publishes package migrations for local user cache tables
