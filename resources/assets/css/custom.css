@@ -1,19 +1,18 @@
 :root {
-    --caronte-accent: #f7c948;
-    --caronte-accent-dark: #d7a91e;
-    --caronte-surface: #f8fafc;
+    --caronte-accent: #155eef;
+    --caronte-accent-dark: #0b4bd4;
+    --caronte-surface: #f7f9fc;
     --caronte-panel: #ffffff;
     --caronte-border: #d9e2ec;
-    --caronte-text: #102a43;
-    --caronte-muted: #486581;
-    --caronte-wash: linear-gradient(145deg, rgba(15, 118, 110, 0.12), rgba(248, 250, 252, 0.95));
+    --caronte-text: #10182b;
+    --caronte-muted: #647087;
+    --caronte-wash: #f7f9fc;
 }
 
 body {
     margin: 0;
     font-family: "Inter", sans-serif;
-    background: radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 32%),
-        linear-gradient(180deg, #eef5f3 0%, #f8fafc 45%, #f4f7fb 100%);
+    background: var(--caronte-surface);
     color: var(--caronte-text);
 }
 
@@ -22,6 +21,23 @@ body {
     background: #111317;
     color: #f4f6f8;
 }
+
+/* Shared Caronte light security-console theme. Consumers may override only
+   the documented --caronte-* variables above. */
+.caronte-auth-shell { background: var(--caronte-surface); color: var(--caronte-text); }
+.caronte-auth-shell .caronte-shell { background: var(--caronte-surface); }
+.caronte-auth { justify-content: center; align-items: center; padding: 2rem; }
+.caronte-auth__panel { width: min(460px, 100%); min-height: auto; border: 0; border-radius: 12px; background: #fff; padding: clamp(2rem, 6vw, 3.5rem); box-shadow: 0 20px 55px rgb(16 24 40 / 12%); }
+.caronte-auth__logo { width: min(210px, 70%); }
+.caronte-auth-shell .caronte-copy, .caronte-auth-shell .caronte-card__header p { color: var(--caronte-muted); }
+.caronte-card { border-color: var(--caronte-border); background: #fff; box-shadow: 0 1px 2px rgb(16 24 40 / 5%); }
+.caronte-auth-shell .caronte-card { border: 0; background: transparent; box-shadow: none; padding: 1rem 0 0; }
+.caronte-auth-shell .caronte-form .form-control, .caronte-auth-shell .caronte-form .form-select, .caronte-auth-shell .caronte-form textarea { border-color: var(--caronte-border); background: #fff; color: var(--caronte-text); caret-color: var(--caronte-text); }
+.caronte-auth-shell .caronte-form .form-control:focus, .caronte-auth-shell .caronte-form .form-select:focus, .caronte-auth-shell .caronte-form textarea:focus { border-color: var(--caronte-accent); box-shadow: 0 0 0 .2rem rgb(21 94 239 / 18%); }
+.caronte-auth-shell .caronte-form .form-select option { background: #fff; color: var(--caronte-text); }
+.caronte-btn-primary { background: var(--caronte-accent); border-color: var(--caronte-accent); color: #fff; }
+.caronte-btn-primary:hover, .caronte-btn-primary:focus { background: var(--caronte-accent-dark); border-color: var(--caronte-accent-dark); color: #fff; }
+.caronte-kicker { border-radius: 6px; background: #edf4ff; color: var(--caronte-accent); }
 
 .caronte-shell {
     min-height: 100vh;
@@ -334,3 +350,15 @@ body {
         z-index: 1;
     }
 }
+
+/* Final theme lock for embedded authentication surfaces. */
+.caronte-auth-shell { background: var(--caronte-surface); color: var(--caronte-text); }
+.caronte-auth-shell .caronte-shell { background: var(--caronte-surface); }
+.caronte-auth { justify-content: center; align-items: center; padding: 2rem; }
+.caronte-auth__panel { width: min(460px, 100%); min-height: auto; border: 0; border-radius: 12px; background: #fff; padding: clamp(2rem, 6vw, 3.5rem); box-shadow: 0 20px 55px rgb(16 24 40 / 12%); }
+.caronte-auth-shell .caronte-copy, .caronte-auth-shell .caronte-card__header p { color: var(--caronte-muted); }
+.caronte-auth-shell .caronte-card { border: 0; background: transparent; box-shadow: none; padding: 1rem 0 0; }
+.caronte-auth-shell .caronte-form .form-control, .caronte-auth-shell .caronte-form .form-select, .caronte-auth-shell .caronte-form textarea { border-color: var(--caronte-border); background: #fff; color: var(--caronte-text); caret-color: var(--caronte-text); }
+.caronte-auth-shell .caronte-form .form-control:focus, .caronte-auth-shell .caronte-form .form-select:focus, .caronte-auth-shell .caronte-form textarea:focus { border-color: var(--caronte-accent); box-shadow: 0 0 0 .2rem rgb(21 94 239 / 18%); }
+.caronte-auth-shell .caronte-form .form-select option { background: #fff; color: var(--caronte-text); }
+@media (max-width: 720px) { .caronte-auth { padding: 0; }.caronte-auth__panel { min-height: 100vh; border-radius: 0; background: #fff; } }
