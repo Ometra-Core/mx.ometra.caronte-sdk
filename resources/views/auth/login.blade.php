@@ -26,7 +26,7 @@
                 <form method="POST" action="{{ $routes['login'] }}" class="caronte-form">
                     @csrf
                     @if ($callback_url)
-                        <input type="hidden" name="callback_url" value="{{ $callback_url }}">
+                        <input type="hidden" name="callback_url" value="{{ base64_encode($callback_url) }}">
                     @endif
 
                     <div>

@@ -83,6 +83,7 @@ return [
         'success_url' => env('CARONTE_SUCCESS_URL', '/'),
         'login_url' => env('CARONTE_LOGIN_URL', '/login'),
         'login_view_enabled' => env('CARONTE_LOGIN_VIEW_ENABLED', true),
+        'group_success_url' => env('CARONTE_GROUP_SUCCESS_URL', env('CARONTE_SUCCESS_URL', '/')),
     ],
 
     /*
