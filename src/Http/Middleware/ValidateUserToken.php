@@ -170,15 +170,8 @@ class ValidateUserToken
      */
     private function applicationForbiddenForwardUrl(Request $request): string
     {
-        $previous = url()->previous();
-        $current = url()->current();
-
-        if ($previous !== '' && $previous !== $current) {
-            return $previous;
-        }
-
         if (config('caronte.access.mode', 'application_role') === 'application_group') {
-            $groupSuccessUrl = (string) config('caronte.routes.group_success_url');
+            $groupSuccessUrl = trim((string) config('caronte.routes.group_success_url'));
 
             if ($groupSuccessUrl !== '') {
                 return $groupSuccessUrl;
