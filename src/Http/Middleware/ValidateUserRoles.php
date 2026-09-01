@@ -18,7 +18,7 @@ class ValidateUserRoles
                 return CaronteResponse::forbidden(
                     message: 'User does not have access to this feature.',
                     errors: ['User does not have the required roles: ' . implode(', ', $roles)],
-                    forwardUrl: (string) config('caronte.routes.login_url')
+                    forwardUrl: $this->resolveFeatureFallbackUrl($request)
                 );
             }
 
@@ -29,5 +29,38 @@ class ValidateUserRoles
                 forwardUrl: (string) config('caronte.routes.login_url')
             );
         }
+    }
+
+    private function resolveFeatureFallbackUrl(Request $request): string
+    {
+        $previous = url()->previous();
+        $current = url()->current();
+
+        if ($previous !== '' && $previous !== $current) {
+            return $previous;
+        }
+
+        $successUrl = (string) config('caronte.routes.success_url');
+
+        if ($successUrl !== '') {
+            return $successUrl;
+        }
+
+        return $this->loginForwardUrl($request);
+    }
+
+    private function loginForwardUrl(Request $request): string
+    {
+        $loginUrl = (string) config('caronte.routes.login_url');
+
+        if (! in_array($request->method(), ['GET', 'HEAD'], true)) {
+            return $loginUrl;
+        }
+
+        $separator = str_contains($loginUrl, '?') ? '&' : '?';
+
+        return $loginUrl . $separator . http_build_query([
+            'callback_url' => base64_encode($request->fullUrl()),
+        ]);
     }
 }

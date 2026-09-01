@@ -37,7 +37,7 @@ class ValidateUserToken
                 return CaronteResponse::forbidden(
                     message: 'User does not have access to this application.',
                     errors: ['User does not have access to this application.'],
-                    forwardUrl: $this->loginForwardUrl($request)
+                    forwardUrl: $this->applicationForbiddenForwardUrl($request)
                 );
             }
 
@@ -160,6 +160,32 @@ class ValidateUserToken
         return $loginUrl . $separator . http_build_query([
             'callback_url' => base64_encode($request->fullUrl()),
         ]);
+    }
+
+    /**
+     * Forward URL used when access to the application itself is denied.
+     *
+     * In application_group mode, redirects to the group host application's
+     * success URL instead of the login page.
+     */
+    private function applicationForbiddenForwardUrl(Request $request): string
+    {
+        $previous = url()->previous();
+        $current = url()->current();
+
+        if ($previous !== '' && $previous !== $current) {
+            return $previous;
+        }
+
+        if (config('caronte.access.mode', 'application_role') === 'application_group') {
+            $groupSuccessUrl = (string) config('caronte.routes.group_success_url');
+
+            if ($groupSuccessUrl !== '') {
+                return $groupSuccessUrl;
+            }
+        }
+
+        return $this->loginForwardUrl($request);
     }
 
     private function shouldRememberIntendedUrl(Request $request): bool
