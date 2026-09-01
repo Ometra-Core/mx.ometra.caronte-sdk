@@ -33,14 +33,14 @@ class ValidateUserRoles
 
     private function resolveFeatureFallbackUrl(Request $request): string
     {
-        $previous = url()->previous();
+        $previous = trim((string) url()->previous());
         $current = url()->current();
 
-        if ($previous !== '' && $previous !== $current) {
+        if ($previous !== '' && $previous !== 'about:blank' && $previous !== $current) {
             return $previous;
         }
 
-        $successUrl = (string) config('caronte.routes.success_url');
+        $successUrl = trim((string) config('caronte.routes.success_url'));
 
         if ($successUrl !== '') {
             return $successUrl;
