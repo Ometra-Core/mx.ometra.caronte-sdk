@@ -48,6 +48,7 @@ class ManagementUiTest extends TestCase
 
         $this->withSession([
             config('caronte.session_key') => $this->makeToken(),
+            'caronte.authenticated_at' => now()->timestamp,
         ])->get('/caronte/management')
             ->assertOk()
             ->assertSee('User management')

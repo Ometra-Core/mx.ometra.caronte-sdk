@@ -89,6 +89,9 @@ final class Caronte
         }
 
         $session = request()->session();
+        if (! $session->has('caronte.authenticated_at')) {
+            $session->put('caronte.authenticated_at', now()->timestamp);
+        }
         $session->put((string) config('caronte.session_key', 'caronte.user_token'), $token);
 
         $tenantId = request()->attributes->get('caronte.current_tenant_id');
@@ -123,6 +126,10 @@ final class Caronte
 
         if ($portfolio === []) {
             return;
+        }
+
+        if (! request()->session()->has('caronte.authenticated_at')) {
+            request()->session()->put('caronte.authenticated_at', now()->timestamp);
         }
 
         $selected = is_string($preferredTenantId) && isset($portfolio[$preferredTenantId])
@@ -196,6 +203,7 @@ final class Caronte
         request()->session()->forget((string) config('caronte.session_key', 'caronte.user_token'));
         request()->session()->forget($this->tenantTokensSessionKey());
         request()->session()->forget($this->lastTenantSessionKey());
+        request()->session()->forget('caronte.authenticated_at');
     }
 
     public function clearCurrentToken(): void

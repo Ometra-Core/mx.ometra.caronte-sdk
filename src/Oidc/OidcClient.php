@@ -52,7 +52,10 @@ class OidcClient
             ->post(rtrim((string) config('caronte.oidc.issuer'), '/') . '/oauth/token', $payload);
 
         if ($response->failed()) {
-            throw new RuntimeException((string) data_get($response->json(), 'error_description', 'OIDC token request failed.'));
+            throw new RuntimeException(
+                (string) data_get($response->json(), 'error_description', 'OIDC token request failed.'),
+                $response->status()
+            );
         }
 
         $data = $response->json();

@@ -31,6 +31,7 @@ class MiddlewareBehaviorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withSession(['caronte.authenticated_at' => now()->timestamp]);
 
         Route::middleware(['caronte.application:tenant_required'])
             ->get('/api/_caronte/application-check', fn() => response()->json(['ok' => true]));
@@ -623,13 +624,48 @@ class MiddlewareBehaviorTest extends TestCase
         ]);
 
         $sessionKey = (string) config('caronte.session_key', 'caronte.user_token');
-        $response = $this->withSession([$sessionKey => $expired])
+        $authenticatedAt = now()->subDays(2)->timestamp;
+        $response = $this->withSession([
+            $sessionKey => $expired,
+            'caronte.authenticated_at' => $authenticatedAt,
+        ])
             ->get('/_caronte/session-check', ['Accept' => 'application/json']);
 
         $response->assertOk();
         $response->assertHeader('X-User-Token', $fresh);
         $this->assertSame($fresh, session($sessionKey));
+        $this->assertSame($authenticatedAt, session('caronte.authenticated_at'));
         Http::assertSentCount(1);
+    }
+
+    public function test_web_session_expires_at_thirty_days_even_with_a_valid_jwt(): void
+    {
+        $token = $this->makeToken();
+
+        $this->withSession([
+            (string) config('caronte.session_key', 'caronte.user_token') => $token,
+            'caronte.authenticated_at' => now()->subDays(30)->timestamp,
+        ])->get('/_caronte/session-check', ['Accept' => 'application/json'])
+            ->assertUnauthorized()
+            ->assertSessionMissing((string) config('caronte.session_key', 'caronte.user_token'));
+    }
+
+    public function test_transient_exchange_failure_preserves_a_still_valid_session(): void
+    {
+        config()->set('caronte.token.refresh_leeway_seconds', 60);
+        $expiring = $this->makeToken(
+            issuedAt: new DateTimeImmutable('-14 minutes', new DateTimeZone('UTC')),
+            expiresAt: new DateTimeImmutable('+30 seconds', new DateTimeZone('UTC')),
+        );
+        Http::fake(['https://caronte.test/api/auth/exchange' => Http::response([
+            'status' => 503,
+            'message' => 'Service unavailable',
+        ], 503)]);
+
+        $this->withSession([(string) config('caronte.session_key', 'caronte.user_token') => $expiring])
+            ->get('/_caronte/session-check', ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertSessionHas((string) config('caronte.session_key', 'caronte.user_token'), $expiring);
     }
 
     public function test_web_session_selects_a_portfolio_token_per_request(): void
@@ -783,6 +819,30 @@ class MiddlewareBehaviorTest extends TestCase
             ->assertStatus(401)
             ->assertSessionMissing((string) config('caronte.session_key', 'caronte.user_token'))
             ->assertSessionMissing('caronte.oidc.refresh_token');
+    }
+
+    public function test_oidc_session_keeps_still_valid_token_when_refresh_service_is_unavailable(): void
+    {
+        config()->set('caronte.auth_mode', 'oidc');
+        config()->set('caronte.oidc.issuer', 'https://caronte.test');
+        config()->set('caronte.oidc.client_id', 'test-app-id');
+        config()->set('caronte.oidc.client_secret', 'oidc-secret');
+        $this->fakeOidcValidator();
+
+        $token = $this->makeOidcToken(
+            issuedAt: new DateTimeImmutable('-14 minutes', new DateTimeZone('UTC')),
+            expiresAt: new DateTimeImmutable('+30 seconds', new DateTimeZone('UTC')),
+        );
+        Http::fake(['https://caronte.test/oauth/token' => Http::response([
+            'error_description' => 'Service unavailable',
+        ], 503)]);
+
+        $this->withSession([
+            (string) config('caronte.session_key', 'caronte.user_token') => $token,
+            'caronte.oidc.refresh_token' => 'refresh-token',
+        ])->get('/_caronte/session-check', ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertSessionHas((string) config('caronte.session_key', 'caronte.user_token'), $token);
     }
 
     public function test_role_middleware_rejects_users_without_the_required_role(): void

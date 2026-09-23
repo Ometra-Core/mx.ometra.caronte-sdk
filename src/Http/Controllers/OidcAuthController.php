@@ -65,6 +65,8 @@ class OidcAuthController extends BaseController
             $refreshToken = (string) ($tokens['refresh_token'] ?? '');
 
             $validator->validate($idToken, $nonce);
+            $request->session()->regenerate();
+            $request->session()->put('caronte.authenticated_at', now()->timestamp);
             Caronte::saveToken($idToken);
 
             if ($refreshToken !== '') {

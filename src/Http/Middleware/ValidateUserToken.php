@@ -21,6 +21,17 @@ class ValidateUserToken
 
         try {
             if (! RouteHelper::isApi()) {
+                $authenticatedAt = $request->session()->get('caronte.authenticated_at');
+                if (! is_numeric($authenticatedAt)
+                    || now()->timestamp - (int) $authenticatedAt >= 30 * 24 * 60 * 60) {
+                    Caronte::clearToken();
+
+                    return CaronteResponse::unauthorized(
+                        message: 'Session expired. Please login again.',
+                        forwardUrl: $this->loginForwardUrl($request)
+                    );
+                }
+
                 $tenantResolution = $this->resolveWebTenant($request);
                 if ($tenantResolution instanceof Response) {
                     return $tenantResolution;

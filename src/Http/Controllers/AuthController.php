@@ -474,6 +474,8 @@ class AuthController extends BaseController
     /** @param array<string, mixed> $response */
     private function saveWebTokenResponse(array $response, string $fallbackToken, ?string $preferredTenantId = null): void
     {
+        request()->session()->regenerate();
+        request()->session()->put('caronte.authenticated_at', now()->timestamp);
         $entries = data_get($response, 'data.tokens', []);
         $validated = [];
 
