@@ -101,6 +101,10 @@ final class CaronteUserToken
                 return static::currentValidToken($rawToken);
             }
 
+            if ($exception->getCode() === 429 || $exception->getCode() >= 500) {
+                return static::currentValidToken($rawToken);
+            }
+
             Caronte::clearCurrentToken();
 
             Log::warning('caronte.token_exchange.failed', [
@@ -119,7 +123,7 @@ final class CaronteUserToken
                 'exception' => $exception::class,
             ]);
 
-            throw $exception;
+            return static::currentValidToken($rawToken);
         } finally {
             static::$exchanging = false;
         }
@@ -195,6 +199,11 @@ final class CaronteUserToken
 
             return $token;
         } catch (\Throwable $exception) {
+            if ($exception->getCode() === 429 || $exception->getCode() >= 500
+                || $exception instanceof \Illuminate\Http\Client\ConnectionException) {
+                return app(OidcTokenValidator::class)->validate($rawToken);
+            }
+
             Caronte::clearToken();
 
             if (app()->bound('session')) {

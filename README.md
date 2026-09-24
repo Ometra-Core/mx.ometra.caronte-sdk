@@ -18,6 +18,21 @@ Main capabilities:
 
 Primary audience: internal development teams integrating Caronte into Laravel applications.
 
+## Browser session recovery
+
+The SDK exchanges JWTs automatically near expiry, retaining the replacement in the server-side session. Browser access ends 30 days after the original login, even when tokens continue to rotate; logout or revocation ends it sooner. Configure each Laravel client with an HTTPS `APP_URL` and a persistent session store/cookie:
+
+```env
+SESSION_DRIVER=redis
+SESSION_LIFETIME=43200
+SESSION_EXPIRE_ON_CLOSE=false
+SESSION_SECURE_COOKIE=true
+SESSION_HTTP_ONLY=true
+SESSION_SAME_SITE=lax
+```
+
+Use distinct `SESSION_COOKIE` values for Caronte and its clients unless they intentionally share a Laravel session store and encryption key. Set `SESSION_DOMAIN` only when the cookie must be shared by intended subdomains. A `409 tenant_selection_required` response means the user must choose a tenant; it is not a password error. Integrating applications must upgrade this SDK and verify their own session configuration.
+
 ## Project Type & Tech Summary
 
 - Project type: Laravel package (library), not a standalone app

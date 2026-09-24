@@ -61,6 +61,7 @@ class ResolvedOpenQuestionsTest extends TestCase
 
         $this->withSession([
             config('caronte.session_key') => $token,
+            'caronte.authenticated_at' => now()->timestamp,
             'caronte.tenant_tokens' => [
                 'tenant-1' => [
                     'id_tenant' => 'tenant-1',

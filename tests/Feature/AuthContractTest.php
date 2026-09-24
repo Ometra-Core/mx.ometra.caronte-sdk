@@ -27,6 +27,12 @@ use Tests\TestCase;
 
 class AuthContractTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withSession(['caronte.authenticated_at' => now()->timestamp]);
+    }
+
     public function test_login_uses_current_caronte_headers_and_persists_token_in_session(): void
     {
         $token = $this->makeToken();
@@ -46,6 +52,7 @@ class AuthContractTest extends TestCase
 
         $response->assertRedirect('/');
         $this->assertSame($token, session(config('caronte.session_key')));
+        $this->assertIsInt(session('caronte.authenticated_at'));
 
         Http::assertSent(function ($request): bool {
             return $request->url() === 'https://caronte.test/api/auth/login'
