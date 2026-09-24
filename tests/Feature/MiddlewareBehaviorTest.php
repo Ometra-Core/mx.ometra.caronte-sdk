@@ -695,6 +695,55 @@ class MiddlewareBehaviorTest extends TestCase
             ->assertJsonPath('tenant_context', 'tenant-1');
     }
 
+    public function test_web_session_falls_back_to_first_accessible_tenant_and_filters_menu(): void
+    {
+        $inaccessible = $this->makeToken([
+            'uri_user' => 'user-123', 'name' => 'Root User', 'email' => 'root@example.com',
+            'id_tenant' => 'tenant-1', 'roles' => [], 'metadata' => [],
+        ]);
+        $accessible = $this->makeToken([
+            'uri_user' => 'user-123', 'name' => 'Root User', 'email' => 'root@example.com',
+            'id_tenant' => 'tenant-2', 'roles' => [[
+                'name' => 'root', 'app_id' => CaronteApplicationToken::appId(),
+                'uri_applicationRole' => sha1(CaronteApplicationToken::appId() . 'root'),
+            ]], 'metadata' => [],
+        ]);
+        $portfolio = [
+            'tenant-1' => ['id_tenant' => 'tenant-1', 'name' => 'Tenant 1', 'token' => $inaccessible],
+            'tenant-2' => ['id_tenant' => 'tenant-2', 'name' => 'Tenant 2', 'token' => $accessible],
+        ];
+
+        $this->withSession(['caronte.tenant_tokens' => $portfolio, 'caronte.last_tenant_id' => 'tenant-1'])
+            ->get('/_caronte/session-check')
+            ->assertOk()
+            ->assertJsonPath('tenant_context', 'tenant-2')
+            ->assertSessionHas('caronte.last_tenant_id', 'tenant-2');
+
+        $this->assertSame([
+            ['id_tenant' => 'tenant-2', 'name' => 'Tenant 2'],
+        ], \Ometra\Caronte\Facades\Caronte::getAvailableTenants());
+
+        $this->withSession(['caronte.tenant_tokens' => $portfolio])
+            ->withHeader('Accept', 'application/json')
+            ->get('/_caronte/session-check?id_tenant=tenant-1')
+            ->assertStatus(403);
+    }
+
+    public function test_web_session_without_accessible_tenants_forwards_to_suite_login(): void
+    {
+        config()->set('caronte.routes.login_url', 'https://apollo.test/login');
+        $inaccessible = $this->makeToken([
+            'uri_user' => 'user-123', 'name' => 'Root User', 'email' => 'root@example.com',
+            'id_tenant' => 'tenant-1', 'roles' => [], 'metadata' => [],
+        ]);
+
+        $this->withSession(['caronte.tenant_tokens' => [
+            'tenant-1' => ['id_tenant' => 'tenant-1', 'name' => 'Tenant 1', 'token' => $inaccessible],
+        ], 'caronte.last_tenant_id' => 'tenant-1'])
+            ->get('/_caronte/session-check')
+            ->assertRedirect('https://apollo.test/login');
+    }
+
     public function test_web_session_rejects_conflicting_or_unavailable_tenant_selection(): void
     {
         $token = $this->makeToken();

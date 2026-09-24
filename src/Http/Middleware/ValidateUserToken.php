@@ -139,19 +139,35 @@ class ValidateUserToken
             );
         }
 
+        $accessiblePortfolio = Caronte::accessibleTenantTokenPortfolio();
+        if ($accessiblePortfolio === []) {
+            return CaronteResponse::forbidden(
+                message: 'User does not have access to any tenant for this application.',
+                errors: ['User does not have access to any tenant for this application.'],
+                forwardUrl: (string) config('caronte.routes.login_url')
+            );
+        }
+
+        if ($requestedTenantId !== '' && ! isset($accessiblePortfolio[$requestedTenantId])) {
+            return CaronteResponse::forbidden(
+                message: 'Tenant does not have access to this application.',
+                errors: ['The selected tenant cannot access this application.']
+            );
+        }
+
         if ($requestedTenantId === '') {
             $lastTenantId = $request->session()->get(
                 (string) config('caronte.last_tenant_session_key', 'caronte.last_tenant_id')
             );
-            $requestedTenantId = is_string($lastTenantId) && isset($portfolio[$lastTenantId])
+            $requestedTenantId = is_string($lastTenantId) && isset($accessiblePortfolio[$lastTenantId])
                 ? $lastTenantId
-                : (string) array_key_first($portfolio);
-        } else {
-            $request->session()->put(
-                (string) config('caronte.last_tenant_session_key', 'caronte.last_tenant_id'),
-                $requestedTenantId
-            );
+                : (string) array_key_first($accessiblePortfolio);
         }
+
+        $request->session()->put(
+            (string) config('caronte.last_tenant_session_key', 'caronte.last_tenant_id'),
+            $requestedTenantId
+        );
 
         $request->attributes->set('caronte.current_tenant_id', $requestedTenantId);
 

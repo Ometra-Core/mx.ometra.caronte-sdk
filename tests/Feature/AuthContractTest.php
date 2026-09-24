@@ -450,6 +450,32 @@ class AuthContractTest extends TestCase
             && $request['include_tenant_tokens'] === true);
     }
 
+    public function test_web_login_keeps_last_tenant_when_it_is_in_the_new_application_portfolio(): void
+    {
+        $tenantA = $this->makeToken();
+        $tenantB = $this->makeToken([
+            'uri_user' => 'user-123', 'name' => 'Root User', 'email' => 'root@example.com',
+            'id_tenant' => 'tenant-2', 'roles' => [[
+                'name' => 'root', 'app_id' => CaronteApplicationToken::appId(),
+                'uri_applicationRole' => sha1(CaronteApplicationToken::appId() . 'root'),
+            ]], 'metadata' => [],
+        ]);
+        Http::fake(['https://caronte.test/api/auth/login' => Http::response([
+            'status' => 200, 'message' => 'Token generated',
+            'data' => ['token' => $tenantA, 'tokens' => [
+                ['id_tenant' => 'tenant-1', 'name' => 'Tenant 1', 'token' => $tenantA],
+                ['id_tenant' => 'tenant-2', 'name' => 'Tenant 2', 'token' => $tenantB],
+            ]],
+        ])]);
+
+        $this->withSession(['caronte.last_tenant_id' => 'tenant-2'])
+            ->post('/login', ['email' => 'root@example.com', 'password' => 'Password123!'])
+            ->assertRedirect('/');
+
+        $this->assertSame('tenant-2', session('caronte.last_tenant_id'));
+        $this->assertSame($tenantB, session('caronte.user_token'));
+    }
+
     public function test_web_logout_revokes_globally_and_clears_the_portfolio(): void
     {
         $token = $this->makeToken();

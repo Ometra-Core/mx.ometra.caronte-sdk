@@ -4,13 +4,19 @@ namespace Ometra\Caronte\Helpers;
 
 use Ometra\Caronte\Facades\Caronte;
 use Ometra\Caronte\Support\CaronteApplicationToken;
+use Lcobucci\JWT\Token\Plain;
+use Ometra\Caronte\CaronteUserToken;
 
 class PermissionHelper
 {
     public static function hasApplication(): bool
     {
+        return static::hasApplicationForToken(Caronte::getToken());
+    }
+
+    public static function hasApplicationForToken(Plain $token): bool
+    {
         if (config('caronte.access.mode', 'application_role') === 'application_group') {
-            $token = Caronte::getToken();
             $claims = $token->claims();
 
             return CaronteApplicationToken::hasGroup()
@@ -21,7 +27,7 @@ class PermissionHelper
                 );
         }
 
-        $user = Caronte::getUser();
+        $user = CaronteUserToken::userPayload($token);
         $roles = collect($user->roles ?? []);
 
         return $roles->contains(function ($role): bool {

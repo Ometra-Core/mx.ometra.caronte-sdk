@@ -7,6 +7,7 @@ use Equidna\Toolkit\Exceptions\UnauthorizedException;
 use Equidna\Toolkit\Helpers\RouteHelper;
 use Exception;
 use Lcobucci\JWT\Token\Plain;
+use Ometra\Caronte\Helpers\PermissionHelper;
 use Ometra\Caronte\Exceptions\TenantMissingException;
 use Ometra\Caronte\Models\CaronteUser;
 use Ometra\Caronte\Support\CaronteApplicationToken;
@@ -132,9 +133,12 @@ final class Caronte
             request()->session()->put('caronte.authenticated_at', now()->timestamp);
         }
 
+        $lastTenantId = request()->session()->get($this->lastTenantSessionKey());
         $selected = is_string($preferredTenantId) && isset($portfolio[$preferredTenantId])
             ? $preferredTenantId
-            : (string) array_key_first($portfolio);
+            : (is_string($lastTenantId) && isset($portfolio[$lastTenantId])
+                ? $lastTenantId
+                : (string) array_key_first($portfolio));
         request()->session()->put($this->tenantTokensSessionKey(), $portfolio);
         request()->session()->put($this->lastTenantSessionKey(), $selected);
         request()->session()->put(
@@ -151,10 +155,10 @@ final class Caronte
                 'id_tenant' => $entry['id_tenant'],
                 'name' => $entry['name'],
             ],
-            $this->tenantTokenPortfolio()
+            $this->accessibleTenantTokenPortfolio()
         ));
 
-        if ($tenants !== [] || ! app()->bound('request')) {
+        if ($tenants !== [] || $this->tenantTokenPortfolio() !== [] || ! app()->bound('request')) {
             return $tenants;
         }
 
@@ -192,6 +196,42 @@ final class Caronte
 
         $stored = request()->session()->get($this->tenantTokensSessionKey(), []);
         return is_array($stored) ? $stored : [];
+    }
+
+    /** @return array<string, array{id_tenant: string, name: string, token: string}> */
+    public function accessibleTenantTokenPortfolio(): array
+    {
+        $accessible = [];
+        $portfolio = $this->tenantTokenPortfolio();
+        $portfolioChanged = false;
+        foreach ($portfolio as $tenantId => $entry) {
+            if (! is_array($entry) || ! is_string($entry['token'] ?? null)) {
+                continue;
+            }
+
+            try {
+                $token = CaronteUserToken::validateToken($entry['token']);
+                $user = CaronteUserToken::userPayload($token);
+                if ((string) ($user->id_tenant ?? '') !== (string) $tenantId
+                    || ! PermissionHelper::hasApplicationForToken($token)) {
+                    continue;
+                }
+                if ($token->toString() !== $entry['token']) {
+                    $entry['token'] = $token->toString();
+                    $portfolio[$tenantId] = $entry;
+                    $portfolioChanged = true;
+                }
+                $accessible[$tenantId] = $entry;
+            } catch (Throwable) {
+                continue;
+            }
+        }
+
+        if ($portfolioChanged && $this->hasRequestSession()) {
+            request()->session()->put($this->tenantTokensSessionKey(), $portfolio);
+        }
+
+        return $accessible;
     }
 
     public function clearToken(): void
