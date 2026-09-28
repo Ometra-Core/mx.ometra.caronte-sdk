@@ -1117,6 +1117,81 @@ class MiddlewareBehaviorTest extends TestCase
             ->assertSessionMissing((string) config('caronte.session_key'));
     }
 
+    public function test_oidc_logout_refreshes_an_expired_hint_before_returning_to_login(): void
+    {
+        config()->set('caronte.auth_mode', 'oidc');
+        config()->set('caronte.oidc.issuer', 'https://caronte.test');
+        config()->set('caronte.oidc.client_id', 'test-app-id');
+        config()->set('caronte.oidc.client_secret', 'oidc-secret');
+        $this->fakeOidcValidator();
+        $expired = $this->makeOidcToken(
+            issuedAt: new DateTimeImmutable('-30 minutes', new DateTimeZone('UTC')),
+            expiresAt: new DateTimeImmutable('-5 minutes', new DateTimeZone('UTC')),
+        );
+        $fresh = $this->makeOidcToken();
+        Http::fake(['https://caronte.test/oauth/token' => Http::response([
+            'id_token' => $fresh,
+            'refresh_token' => 'rotated-refresh',
+        ], 200)]);
+
+        $response = $this->withSession([
+            (string) config('caronte.session_key', 'caronte.user_token') => $expired,
+            'caronte.oidc.refresh_token' => 'old-refresh',
+        ])->post('/oidc/logout');
+
+        $response->assertRedirectContains('https://caronte.test/oauth/logout?');
+        $response->assertSessionMissing((string) config('caronte.session_key', 'caronte.user_token'));
+        $response->assertSessionMissing('caronte.oidc.refresh_token');
+        parse_str((string) parse_url((string) $response->headers->get('Location'), PHP_URL_QUERY), $query);
+        $this->assertSame($fresh, $query['id_token_hint'] ?? null);
+        $this->assertSame('http://localhost/login', $query['post_logout_redirect_uri'] ?? null);
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://caronte.test/oauth/token'
+            && $request['refresh_token'] === 'old-refresh');
+    }
+
+    public function test_oidc_logout_uses_a_valid_hint_without_refreshing(): void
+    {
+        config()->set('caronte.auth_mode', 'oidc');
+        config()->set('caronte.oidc.issuer', 'https://caronte.test');
+        $this->fakeOidcValidator();
+        $fresh = $this->makeOidcToken();
+        Http::fake();
+
+        $response = $this->withSession([
+            (string) config('caronte.session_key', 'caronte.user_token') => $fresh,
+            'caronte.oidc.refresh_token' => 'existing-refresh',
+        ])->post('/oidc/logout');
+
+        $response->assertRedirectContains('https://caronte.test/oauth/logout?');
+        parse_str((string) parse_url((string) $response->headers->get('Location'), PHP_URL_QUERY), $query);
+        $this->assertSame($fresh, $query['id_token_hint'] ?? null);
+        Http::assertNothingSent();
+    }
+
+    public function test_oidc_logout_returns_locally_when_no_valid_hint_can_be_obtained(): void
+    {
+        config()->set('caronte.auth_mode', 'oidc');
+        config()->set('caronte.oidc.issuer', 'https://caronte.test');
+        config()->set('caronte.oidc.client_id', 'test-app-id');
+        config()->set('caronte.oidc.client_secret', 'oidc-secret');
+        $this->fakeOidcValidator();
+        $expired = $this->makeOidcToken(
+            issuedAt: new DateTimeImmutable('-30 minutes', new DateTimeZone('UTC')),
+            expiresAt: new DateTimeImmutable('-5 minutes', new DateTimeZone('UTC')),
+        );
+        Http::fake(['https://caronte.test/oauth/token' => Http::response([
+            'error_description' => 'Invalid refresh token.',
+        ], 400)]);
+
+        $this->withSession([
+            (string) config('caronte.session_key', 'caronte.user_token') => $expired,
+            'caronte.oidc.refresh_token' => 'old-refresh',
+        ])->post('/oidc/logout')
+            ->assertRedirect('/login')
+            ->assertSessionMissing((string) config('caronte.session_key', 'caronte.user_token'))
+            ->assertSessionMissing('caronte.oidc.refresh_token');
+    }
+
     public function test_single_tenant_session_middleware_binds_configured_tenant(): void
     {
         config()->set('caronte.tenancy.mode', 'single');
@@ -1378,6 +1453,12 @@ class MiddlewareBehaviorTest extends TestCase
 
                 if (! $token instanceof Plain) {
                     throw new \RuntimeException('Invalid OIDC token.');
+                }
+
+                $expiresAt = $token->claims()->get('exp', null);
+
+                if (! $expiresAt instanceof DateTimeImmutable || $expiresAt->getTimestamp() <= now()->timestamp) {
+                    throw new \RuntimeException('Expired OIDC token.');
                 }
 
                 if ($expectedNonce !== null) {

@@ -2,6 +2,7 @@
 
 namespace Ometra\Caronte\Http\Controllers;
 
+use DateTimeInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Ometra\Caronte\Facades\Caronte;
@@ -12,6 +13,7 @@ use Ometra\Caronte\Oidc\Pkce;
 use Ometra\Caronte\Support\CaronteCallbackUrl;
 use Ometra\Caronte\Support\CaronteResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class OidcAuthController extends BaseController
 {
@@ -88,15 +90,46 @@ class OidcAuthController extends BaseController
         }
     }
 
-    public function logout(Request $request): RedirectResponse
+    public function logout(Request $request, OidcClient $client, OidcTokenValidator $validator): RedirectResponse
     {
         $idToken = $request->session()->get((string) config('caronte.session_key', 'caronte.user_token'));
+        $refreshToken = $request->session()->get('caronte.oidc.refresh_token');
+        $validIdToken = null;
+        $shouldRefresh = true;
+
+        if (is_string($idToken) && $idToken !== '') {
+            try {
+                $token = $validator->validate($idToken);
+                $validIdToken = $idToken;
+                $expiresAt = $token->claims()->get('exp', null);
+                $shouldRefresh = ! $expiresAt instanceof DateTimeInterface
+                    || $expiresAt->getTimestamp() <= now()->addMinute()->timestamp;
+            } catch (Throwable) {
+                // A refresh token may still authorize a final logout request.
+            }
+        }
+
+        if ($shouldRefresh && is_string($refreshToken) && $refreshToken !== '') {
+            try {
+                $tokens = $client->refresh($refreshToken);
+                $candidate = (string) ($tokens['id_token'] ?? '');
+                $validator->validate($candidate);
+                $validIdToken = $candidate;
+            } catch (Throwable) {
+                // Local logout still completes if the remote session has expired.
+            }
+        }
+
         Caronte::clearToken();
         $request->session()->forget('caronte.oidc.refresh_token');
 
+        if ($validIdToken === null) {
+            return redirect()->to((string) config('caronte.routes.login_url'));
+        }
+
         $issuer = rtrim((string) config('caronte.oidc.issuer'), '/');
         $url = $issuer . '/oauth/logout?' . http_build_query(array_filter([
-            'id_token_hint' => is_string($idToken) ? $idToken : '',
+            'id_token_hint' => $validIdToken,
             'post_logout_redirect_uri' => url((string) config('caronte.routes.login_url')),
         ]));
 
